@@ -1,1 +1,6 @@
 .DS_Store
+/pm4py
+AGENTS.md
+CLAUDE.md
+generate-log.py
+.venv
