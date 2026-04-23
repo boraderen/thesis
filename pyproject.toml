@@ -10,6 +10,7 @@ dependencies = [
     "numpy>=2.4.4",
     "pandas>=3.0.2",
     "pm4py>=2.7.22.2",
+    "scikit-learn>=1.8.0",
     "streamlit>=1.56.0",
     "torch>=2.11.0",
 ]

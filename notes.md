@@ -26,7 +26,8 @@ Use this file to collect rough ideas, partial thoughts, references to revisit, a
 
 ## Evaluation ideas
 
-- 
+- Create Petri net of ideal process, simulate a log from it, then inject deviating traces — use as controlled benchmark
+- Compare PCP with autoencoders etc.
 
 ## To discuss
 
