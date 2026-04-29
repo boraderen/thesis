@@ -5,3 +5,5 @@ CLAUDE.md
 generate-log.py
 .venv
 instructions.md
+test.py
+/cdlg-package
