@@ -8,3 +8,21 @@ instructions.md
 test.py
 /cdlg-package
 notes.md
+
+# LaTeX temp files
+thesis/*.aux
+thesis/*.bbl
+thesis/*.blg
+thesis/*.bcf
+thesis/*.fdb_latexmk
+thesis/*.fls
+thesis/*.log
+thesis/*.out
+thesis/*.run.xml
+thesis/*.synctex.gz
+thesis/*.toc
+thesis/*.lof
+thesis/*.lot
+thesis/*.idx
+thesis/*.ind
+thesis/*.ilg

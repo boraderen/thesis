@@ -1,0 +1,12 @@
+{
+    "latex-workshop.latex.autoClean.run": "onBuilt",
+    "latex-workshop.latex.clean.method": "glob",
+    "latex-workshop.latex.clean.fileTypes": [
+        "*.aux", "*.bbl", "*.blg", "*.bcf", "*.fdb_latexmk", "*.fls",
+        "*.log", "*.out", "*.run.xml", "*.toc", "*.lof", "*.lot",
+        "*.idx", "*.ind", "*.ilg",
+        "%DOCFILE%.synctex.gz",
+        "%DOCFILE%.synctex(busy)",
+        "%DOCFILE%.bbl"
+    ]
+}
