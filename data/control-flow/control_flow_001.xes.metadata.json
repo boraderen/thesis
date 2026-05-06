@@ -1,0 +1,115 @@
+{
+  "config": {
+    "actual_num_events": 156012,
+    "actual_num_traces": 10000,
+    "avg_trace_length": 15,
+    "choice_weight": 0.3,
+    "duplicate_activity_prob": 0.0,
+    "global_seed": 42,
+    "gradual_overlap_fraction": 0.1,
+    "horizon_end": "2024-09-13T15:05:56.232737+00:00",
+    "horizon_max_days": 365,
+    "horizon_min_days": 270,
+    "horizon_start": "2020-01-01T00:00:00+00:00",
+    "inter_arrival_mean_min": 5,
+    "loop_weight": 0.05,
+    "max_activities": 26,
+    "max_trace_length": 20,
+    "min_activities": 20,
+    "min_trace_length": 12,
+    "noise_probability": 0.005,
+    "noise_similar_vs_random": 0.05,
+    "num_case_types": 3,
+    "num_logs": 1,
+    "num_resources": 5,
+    "num_roles": 2,
+    "num_traces": 10000,
+    "or_weight": 0.03,
+    "output_path": "data/control-flow/",
+    "parallel_weight": 0.1,
+    "recurring_period_fraction": 0.2,
+    "regions": [
+      "DE-NRW",
+      "DE-BY",
+      "DE-HE",
+      "DE-BW",
+      "DE-BE"
+    ],
+    "sequence_weight": 0.7,
+    "service_time_mean_min": 10,
+    "service_time_std_min": 5,
+    "silent_transition_prob": 0.005,
+    "start_timestamp": "2020-01-01T00:00:00+00:00",
+    "trace_length_variance": 35,
+    "tree_depth_max": 4,
+    "tree_depth_min": 4,
+    "tree_generation_attempts": 32
+  },
+  "drifts": [
+    {
+      "affected_columns": [
+        "concept:name"
+      ],
+      "change_details": {
+        "activities_added": [
+          "x",
+          "y",
+          "z"
+        ],
+        "activities_deleted": [],
+        "activities_moved": [
+          "b",
+          "c",
+          "a",
+          "q",
+          "y",
+          "i",
+          "d",
+          "e",
+          "b",
+          "f",
+          "l",
+          "x",
+          "n",
+          "s",
+          "j",
+          "z",
+          "o",
+          "v",
+          "h",
+          "p",
+          "m",
+          "r",
+          "k",
+          "g",
+          "u",
+          "t"
+        ],
+        "operator_swaps": [
+          {
+            "affected_activities": "c,a,q,y,i,d,e,b,f,l,x,n,s,j,z,o,v,h,p,m,r,k,g,u,t",
+            "from": "sequence",
+            "to": "choice"
+          }
+        ],
+        "variant_count_after": 22,
+        "variant_count_before": 12
+      },
+      "change_point_timestamp": "2022-04-17T19:37:31.625436+00:00",
+      "drift_id": "d01",
+      "drift_type": "sudden",
+      "overlap_window_end": null,
+      "overlap_window_start": null,
+      "perspective": "control_flow",
+      "subtype": "tree_mutation"
+    }
+  ],
+  "log_name": "control_flow_001",
+  "noise": {
+    "fully_random_noise": 50,
+    "noise_probability": 0.005,
+    "noisy_traces": 50,
+    "similar_trace_noise": 0,
+    "similar_vs_random": 0.05
+  }
+}
