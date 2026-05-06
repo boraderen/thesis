@@ -17,8 +17,8 @@ htmlcov/
 # Jupyter
 .ipynb_checkpoints/
 
-# Generated event logs (driftify output)
-data/generated/
+# Data directory
+/data/
 .vscode/
 /pm4py
 AGENTS.md
