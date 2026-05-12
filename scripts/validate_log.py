@@ -55,6 +55,7 @@ def validate_xes(path: str | Path, config: GeneratorConfig | None = None) -> lis
     _check_types(df, issues)
     _check_timestamps(df, issues)
     _check_drift_metadata(df, log, sidecar, issues)
+    _check_variant_metadata(df, sidecar, issues)
     if cfg is not None:
         _check_config_counts(df, cfg, issues)
         _check_distribution_stability(df, sidecar, issues)
@@ -213,6 +214,47 @@ def _check_drift_metadata(df: pd.DataFrame, log, sidecar: dict[str, Any], issues
             )
 
 
+def _check_variant_metadata(df: pd.DataFrame, sidecar: dict[str, Any], issues: list[Issue]) -> None:
+    if not sidecar:
+        return
+    config = sidecar.get("config", {})
+    if "num_trace_variants" in config:
+        expected = _trace_variant_count(df)
+        actual = int(config["num_trace_variants"])
+        if actual != expected:
+            issues.append(
+                _issue(
+                    "error",
+                    "variant_count_mismatch",
+                    "metadata num_trace_variants does not match observed trace variants",
+                    metadata_value=actual,
+                    observed_value=expected,
+                )
+            )
+    deprecated_keys = {
+        "observed_variant_count_before",
+        "observed_variant_count_after",
+        "observed_variant_counts_by_version",
+        "structural_variant_estimate_before",
+        "structural_variant_estimate_after",
+        "structural_variant_estimates_by_version",
+        "variant_counts",
+    }
+    for drift in sidecar.get("drifts", []):
+        details = drift.get("change_details", {})
+        found = sorted(deprecated_keys.intersection(details))
+        if found:
+            issues.append(
+                _issue(
+                    "warning",
+                    "deprecated_variant_metadata",
+                    "control-flow variant metadata should contain only observed variant_count fields",
+                    drift_id=drift.get("drift_id"),
+                    fields=found,
+                )
+            )
+
+
 def _check_config_counts(df: pd.DataFrame, config: GeneratorConfig, issues: list[Issue]) -> None:
     allowed = {
         RESOURCE_KEY: set(config.resources),
@@ -291,6 +333,16 @@ def _normalized_counts(values: pd.Series, universe: list[str]) -> np.ndarray:
     counts = Counter(values.astype(str))
     total = max(1, sum(counts.values()))
     return np.array([counts[value] / total for value in universe], dtype=float)
+
+
+def _trace_variant_count(df: pd.DataFrame) -> int:
+    if df.empty:
+        return 0
+    variants = {
+        tuple(group.sort_values([START_TIMESTAMP_KEY, TIMESTAMP_KEY])[ACTIVITY_KEY].astype(str))
+        for _, group in df.groupby(CASE_ID_KEY, sort=False)
+    }
+    return len(variants)
 
 
 def _load_sidecar(path: Path) -> dict[str, Any]:

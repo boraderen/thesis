@@ -21,8 +21,6 @@ class TreeMutationResult:
     activities_deleted: list[str]
     activities_moved: list[str]
     operator_swaps: list[dict[str, str]]
-    variant_count_before: int
-    variant_count_after: int
 
     def change_details(self) -> dict[str, object]:
         return {
@@ -30,8 +28,6 @@ class TreeMutationResult:
             "activities_deleted": self.activities_deleted,
             "activities_moved": self.activities_moved,
             "operator_swaps": self.operator_swaps,
-            "variant_count_before": self.variant_count_before,
-            "variant_count_after": self.variant_count_after,
         }
 
 
@@ -170,7 +166,6 @@ def mutate_tree(
     intensity: float = 0.25,
 ) -> TreeMutationResult:
     drift_tree = clone_tree(tree)
-    before = estimate_variant_count(drift_tree)
     visible_count = max(1, len(_visible_leaves(drift_tree)))
     rounds = max(1, int(np.ceil(visible_count * max(0.05, intensity))))
     added: list[str] = []
@@ -201,8 +196,6 @@ def mutate_tree(
         activities_deleted=deleted,
         activities_moved=moved,
         operator_swaps=swaps,
-        variant_count_before=before,
-        variant_count_after=estimate_variant_count(drift_tree),
     )
 
 

@@ -50,6 +50,28 @@ def test_reproducibility_same_seed_identical_log(small_config):
     assert first.metadata["drifts"] == second.metadata["drifts"]
 
 
+def test_control_flow_metadata_uses_observed_variant_counts_only(small_config):
+    generated = generate_log(
+        small_config,
+        [{"subtype": "tree_mutation", "drift_type": "sudden"}],
+        default_perspective="control_flow",
+        rng=make_rng(55),
+    )
+
+    drift = generated.metadata["drifts"][0]
+    details = drift["change_details"]
+
+    assert "variant_count_before" in details
+    assert "variant_count_after" in details
+    assert "variant_counts_by_version" in details
+    assert "structural_variant_estimate_before" not in details
+    assert "structural_variant_estimate_after" not in details
+    assert "observed_variant_count_before" not in details
+    assert "observed_variant_count_after" not in details
+    assert "observed_variant_counts_by_version" not in details
+    assert generated.metadata["config"]["num_trace_variants"] >= 1
+
+
 @given(length=st.integers(min_value=1, max_value=30), seed=st.integers(min_value=1, max_value=2**31 - 1))
 @settings(max_examples=35)
 def test_timestamp_assignment_monotonicity_property(length, seed):

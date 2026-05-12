@@ -116,6 +116,8 @@ def _bucket_by_length(
     for trace in traces:
         if _valid_length(trace, config):
             buckets.setdefault(len(trace), []).append(trace)
+    for length, bucket in buckets.items():
+        buckets[length] = sorted(bucket)
     return buckets
 
 

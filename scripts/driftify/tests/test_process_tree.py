@@ -21,8 +21,8 @@ def test_mutate_tree_records_cdlg_style_change_details(small_config, rng):
     assert "activities_added" in details
     assert "activities_deleted" in details
     assert "activities_moved" in details
-    assert "variant_count_before" in details
-    assert "variant_count_after" in details
+    assert "variant_count_before" not in details
+    assert "variant_count_after" not in details
     assert (
         mutation.activities_added
         or mutation.activities_deleted

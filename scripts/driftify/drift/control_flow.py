@@ -17,7 +17,6 @@ from scripts.driftify.drift.common import (
 from scripts.driftify.metadata import DriftMetadata
 from scripts.driftify.process_tree import (
     TreeMutationResult,
-    estimate_variant_count,
     generate_process_tree,
     mutate_tree,
 )
@@ -109,7 +108,6 @@ def _build_incremental(
     deleted: list[str] = []
     moved: list[str] = []
     swaps: list[dict[str, str]] = []
-    variant_counts = [estimate_variant_count(current)]
     for _ in range(version_count - 1):
         mutation = mutate_tree(versions[-1], config, rng, _intensity(plan) / 2)
         versions.append(mutation.tree)
@@ -117,7 +115,6 @@ def _build_incremental(
         deleted.extend(mutation.activities_deleted)
         moved.extend(mutation.activities_moved)
         swaps.extend(mutation.operator_swaps)
-        variant_counts.append(mutation.variant_count_after)
     mini_points = _mini_change_points(plan, version_count)
     details = {
         "activities_added": added,
@@ -126,7 +123,6 @@ def _build_incremental(
         "operator_swaps": swaps,
         "version_count": version_count,
         "version_change_points": [point.isoformat() for point in mini_points],
-        "variant_counts": variant_counts,
     }
     drift = ControlFlowDrift(plan=plan, versions=versions, details=details)
     return drift, _metadata(plan, details)

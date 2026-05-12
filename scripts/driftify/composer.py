@@ -74,11 +74,13 @@ def generate_log(
     arrivals = generate_case_arrivals(config, inter_case_runtime, horizon_start, horizon_end, rng)
     trace_pools = _trace_pools(control_flow, max(1, len(arrivals)), config, rng)
     rows: list[dict[str, object]] = []
+    observed_variants_by_tree: dict[int, set[tuple[str, ...]]] = {}
 
     for case_index, case_start in enumerate(arrivals, start=1):
         case_id = f"case_{case_index:06d}"
         tree = control_flow.tree_for(case_start, rng)
         trace = sample_from_pool(trace_pools[id(tree)], rng)
+        observed_variants_by_tree.setdefault(id(tree), set()).add(tuple(trace))
         case_type = inter_case_runtime.sample_case_type(case_start, rng)
         amount, region = data_runtime.sample_amount_region(case_start, rng)
         previous_resource: str | None = None
@@ -114,8 +116,10 @@ def generate_log(
     df = pd.DataFrame(rows, columns=SCHEMA_COLUMNS)
     if df.empty:
         df = pd.DataFrame(columns=SCHEMA_COLUMNS)
+    pre_noise_variant_count = len(set().union(*observed_variants_by_tree.values())) if observed_variants_by_tree else 0
     df, noise_metadata = inject_noise(df, config, activity_pool, rng)
     df = finalize_dataframe(df)
+    _enrich_control_flow_variant_counts(control_flow, observed_variants_by_tree)
 
     metadata = metadata_payload(
         log_name=log_name,
@@ -125,6 +129,8 @@ def generate_log(
             "horizon_end": horizon_end.isoformat(),
             "actual_num_traces": int(df[CASE_ID_KEY].nunique()) if not df.empty else 0,
             "actual_num_events": int(len(df)),
+            "num_trace_variants": _trace_variant_count(df),
+            "num_trace_variants_before_noise": pre_noise_variant_count,
         },
         drifts=_all_metadata(control_flow, resource_runtime, inter_case_runtime, data_runtime),
         noise=noise_metadata,
@@ -216,3 +222,33 @@ def _all_metadata(*runtimes: object) -> list[DriftMetadata]:
     for runtime in runtimes:
         drifts.extend(getattr(runtime, "metadata", []))
     return sorted(drifts, key=lambda item: item.drift_id)
+
+
+def _enrich_control_flow_variant_counts(
+    control_flow: ControlFlowModel,
+    observed_variants_by_tree: dict[int, set[tuple[str, ...]]],
+) -> None:
+    metadata_by_id = {metadata.drift_id: metadata for metadata in control_flow.metadata}
+    for drift in control_flow.drifts:
+        counts = [
+            len(observed_variants_by_tree.get(id(tree), set()))
+            for tree in drift.versions
+        ]
+        drift.details["variant_counts_by_version"] = counts
+        if counts:
+            drift.details["variant_count_before"] = counts[0]
+            drift.details["variant_count_after"] = counts[-1]
+
+        metadata = metadata_by_id.get(drift.plan.drift_id)
+        if metadata is not None:
+            metadata.change_details.update(drift.details)
+
+
+def _trace_variant_count(df: pd.DataFrame) -> int:
+    if df.empty:
+        return 0
+    variants = {
+        tuple(group.sort_values([START_TIMESTAMP_KEY, TIMESTAMP_KEY])[ACTIVITY_KEY].astype(str))
+        for _, group in df.groupby(CASE_ID_KEY, sort=False)
+    }
+    return len(variants)

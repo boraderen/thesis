@@ -39,7 +39,7 @@ Supported subtypes:
 {"subtype": "tree_mutation", "drift_type": "sudden"}
 ```
 
-The tree mutation can add activities, delete activities, move activities, and swap operators such as sequence/choice/parallel. The metadata records these changes as `activities_added`, `activities_deleted`, `activities_moved`, `operator_swaps`, and variant count changes.
+The tree mutation can add activities, delete activities, move activities, and swap operators such as sequence/choice/parallel. The metadata records these changes as `activities_added`, `activities_deleted`, `activities_moved`, and `operator_swaps`. After trace generation, Driftify also records the real trace variant counts observed in the generated log.
 
 `generate_resource_log.py`
 
@@ -329,7 +329,26 @@ affected_columns
 change_details
 ```
 
-For example, a control-flow drift records the exact activities added/deleted/moved and operator swaps.
+The top-level `config` section also contains generated-log measurements:
+
+```text
+actual_num_traces
+actual_num_events
+num_trace_variants
+num_trace_variants_before_noise
+```
+
+`num_trace_variants` is the number of unique activity sequences actually present in the final log. This is the value to compare with PM4PY's variant count. `num_trace_variants_before_noise` is counted before noise injection, so it can differ when noisy traces add or remove variants.
+
+For control-flow drifts, `change_details` contains the exact activities added/deleted/moved and operator swaps. It also contains observed variant counts:
+
+```text
+variant_count_before
+variant_count_after
+variant_counts_by_version
+```
+
+These are observed trace variants from the generated cases, not process-tree structural estimates.
 
 You can read the sidecar metadata file:
 
