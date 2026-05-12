@@ -1,7 +1,0 @@
-"Concept","Notes"
-"Gradual drift mechanics","Derive the linear and exponential overlap formulas from scratch."
-"Process tree operators","Exercise: given a tree, enumerate all possible traces by hand."
-"SOM training algorithm","Repeat: BMU selection, neighbourhood update rule, learning rate decay."
-"PCA elbow rule","Exercise: implement elbow selection on a toy dataset."
-"Incremental drift","Distinguish from recurring drift — draw a version-vs-time diagram for each."
-"Intra-case state features","List candidate features; argue which capture drift vs. which are noise."

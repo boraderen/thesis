@@ -1,7 +1,0 @@
-"Front","Back"
-"What is concept drift in process mining?","A situation where an event log contains data from different versions of a process, i.e., the underlying process changed over time."
-"What are the four concept drift types?","Sudden, gradual, incremental, recurring."
-"What is a process tree?","A hierarchical model representing a process using operators (sequence, choice, parallel, loop) and activity leaves."
-"What is the difference between sudden and gradual drift?","Sudden: hard switch at a single change point. Gradual: transition window where both old and new process versions overlap."
-"What is a Self-Organizing Map (SOM)?","An unsupervised neural network that maps high-dimensional data onto a 2D grid, preserving topological relationships so similar inputs cluster nearby."
-"What are the three state types in the thesis?","Intra-case state (single running case), resource state (resource behaviour across all cases), inter-case state (global process situation)."
