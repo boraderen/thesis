@@ -41,7 +41,7 @@ joint = joint_signal(intra_dist, resource_states, inter_states)
 st.subheader("Intra-case state fractions over time")
 st.plotly_chart(
     stacked_area_intra(joint, intra_cols, intra_som.cell_labels),
-    use_container_width=True,
+    width="stretch",
 )
 
 col_l, col_r = st.columns(2)
@@ -53,7 +53,7 @@ with col_l:
         labels = st.session_state["resource_som"].cell_labels
         st.plotly_chart(
             state_index_line(joint, "resource_state", labels, title=f"W={window_minutes} min"),
-            use_container_width=True,
+            width="stretch",
         )
 with col_r:
     st.subheader("Inter-case state")
@@ -63,7 +63,7 @@ with col_r:
         labels = st.session_state["inter_som"].cell_labels
         st.plotly_chart(
             state_index_line(joint, "inter_state", labels, title=f"W={window_minutes} min"),
-            use_container_width=True,
+            width="stretch",
         )
 
 st.caption(

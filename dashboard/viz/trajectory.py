@@ -15,29 +15,29 @@ def state_timeline(
     title: str = "",
     height: int = 180,
 ) -> go.Figure:
-    """Render a sequence of state labels as a coloured strip along x."""
+    """Render a sequence of state labels as a single coloured strip Heatmap.
+
+    Using one Heatmap trace (instead of one SVG shape per step) keeps the plot
+    interactive even for hundreds of thousands of windows.
+    """
     fig = go.Figure()
     if len(state_ids) == 0:
         return fig
-    for i, sid in enumerate(state_ids):
-        bg = state_bg(int(sid))
-        fg = state_fg(int(sid))
-        x0 = x.iloc[i] if i < len(x) else i
-        x1 = x.iloc[i + 1] if i + 1 < len(x) else x0
-        fig.add_shape(
-            type="rect", x0=x0, x1=x1, y0=0, y1=1,
-            line=dict(width=0), fillcolor=bg, layer="below",
-        )
-        fig.add_annotation(
-            x=x0, y=0.5, text=str(cell_labels[int(sid)]),
-            showarrow=False, font=dict(color=fg, size=10), xanchor="left",
-        )
+    n_states = max(len(cell_labels), int(state_ids.max()) + 1) if len(state_ids) else 1
+    colorscale = [[i / max(1, n_states - 1), state_bg(i)] for i in range(n_states)]
+    hover = np.array([cell_labels[int(s)] if int(s) < len(cell_labels) else f"S{int(s)}" for s in state_ids])
+    fig.add_trace(go.Heatmap(
+        x=x, y=["state"], z=[state_ids],
+        text=[hover], hoverinfo="x+text",
+        colorscale=colorscale, showscale=False,
+        zmin=0, zmax=max(1, n_states - 1),
+    ))
     fig.update_layout(
         title=title,
         height=height,
         margin=dict(l=10, r=10, t=40 if title else 10, b=10),
         xaxis=dict(showgrid=False),
-        yaxis=dict(visible=False, range=[0, 1]),
+        yaxis=dict(visible=False),
     )
     return fig
 

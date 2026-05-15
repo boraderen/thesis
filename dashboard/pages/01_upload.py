@@ -20,7 +20,7 @@ col_upload, col_demo = st.columns([3, 1])
 with col_upload:
     uploaded = st.file_uploader("Event log", type=["xes", "csv"], accept_multiple_files=False)
 with col_demo:
-    use_demo = st.button("Load synthetic demo", use_container_width=True)
+    use_demo = st.button("Load synthetic demo", width="stretch")
 
 log: pd.DataFrame | None = None
 if uploaded is not None:
@@ -56,14 +56,14 @@ color_map = {c: f"hsl({(i * 53) % 360}, 60%, 92%)" for i, c in enumerate(cases)}
 styled = preview.style.apply(
     lambda row: [f"background-color: {color_map[row['case_id']]}"] * len(row), axis=1
 )
-st.dataframe(styled, use_container_width=True)
+st.dataframe(styled, width="stretch")
 
 st.subheader("Activity frequency")
 counts = log["activity"].value_counts().sort_values(ascending=True).reset_index()
 counts.columns = ["activity", "count"]
 fig = px.bar(counts, x="count", y="activity", orientation="h", height=max(220, 28 * len(counts)))
 fig.update_layout(margin=dict(l=10, r=10, t=10, b=10))
-st.plotly_chart(fig, use_container_width=True)
+st.plotly_chart(fig, width="stretch")
 
 if numeric_attrs or categorical_attrs:
     st.caption(

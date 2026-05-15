@@ -39,13 +39,13 @@ st.caption(
 )
 preview_cols = ["case_id", "activity", "timestamp", *spec.columns]
 styled = styled_feature_table(feat[preview_cols], spec.groups, max_rows=30)
-st.dataframe(styled, use_container_width=True, height=380)
+st.dataframe(styled, width="stretch", height=380)
 
 matrix = feat[spec.columns].to_numpy()
 pca = fit_pca(matrix)
 
 st.subheader("PCA")
-st.plotly_chart(pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim), use_container_width=True)
+st.plotly_chart(pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim), width="stretch")
 
 som = train_som(
     pca.transformed,
@@ -63,7 +63,7 @@ with col_l:
     st.subheader("SOM grid")
     st.plotly_chart(
         som_heatmap(som.grid_h, som.grid_w, som.cell_counts, som.cell_labels, title="States by dominant last activity"),
-        use_container_width=True,
+        width="stretch",
     )
 with col_r:
     st.subheader("Case trajectory")
@@ -72,5 +72,5 @@ with col_r:
     sub = feat[feat["case_id"] == chosen].reset_index(drop=True)
     st.plotly_chart(
         state_timeline(sub["timestamp"], sub["state_id"].to_numpy(), som.cell_labels, title=f"Case {chosen}"),
-        use_container_width=True,
+        width="stretch",
     )

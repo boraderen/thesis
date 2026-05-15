@@ -38,7 +38,7 @@ st.caption(
     f"{len(matrix_df):,} windows × 7 features (W={spec.window_minutes} min, τ={spec.stall_minutes} min)"
 )
 styled = styled_feature_table(matrix_df, spec.groups, max_rows=30)
-st.dataframe(styled, use_container_width=True, height=380)
+st.dataframe(styled, width="stretch", height=380)
 
 mat = matrix_df[spec.columns].to_numpy()
 use_pca = mat.shape[0] > 20
@@ -47,7 +47,7 @@ if use_pca:
     pca = fit_pca(mat)
     st.plotly_chart(
         pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim),
-        use_container_width=True,
+        width="stretch",
     )
     som_input = pca.transformed
 else:
@@ -77,15 +77,14 @@ with col_l:
     st.subheader("SOM grid")
     st.plotly_chart(
         som_heatmap(som.grid_h, som.grid_w, som.cell_counts, som.cell_labels, title="System-level states"),
-        use_container_width=True,
+        width="stretch",
     )
 with col_r:
     st.subheader("Inter-case state trajectory")
-    hover = matrix_df[spec.columns].round(2).astype(str).agg(", ".join, axis=1)
     fig = state_timeline(
         matrix_df["window_start"], som.state_ids, som.cell_labels,
         title=f"State per {spec.window_minutes}-min window",
     )
-    st.plotly_chart(fig, use_container_width=True)
-    with st.expander("Window feature values"):
-        st.dataframe(matrix_df, use_container_width=True, height=240)
+    st.plotly_chart(fig, width="stretch")
+    with st.expander(f"Window feature values (first {min(500, len(matrix_df))} rows)"):
+        st.dataframe(matrix_df.head(500), width="stretch", height=240)

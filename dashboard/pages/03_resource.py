@@ -47,12 +47,12 @@ st.caption(
     f"{len(spec.resources)} resources)."
 )
 styled = styled_feature_table(matrix_df, spec.groups, max_rows=30)
-st.dataframe(styled, use_container_width=True, height=380)
+st.dataframe(styled, width="stretch", height=380)
 
 mat = matrix_df[spec.columns].to_numpy()
 pca = fit_pca(mat)
 st.subheader("PCA")
-st.plotly_chart(pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim), use_container_width=True)
+st.plotly_chart(pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim), width="stretch")
 
 som = train_som(pca.transformed, grid_h=2, grid_w=3, annotations=None)
 matrix_df = matrix_df.assign(state_id=som.state_ids)
@@ -65,7 +65,7 @@ with col_l:
     st.subheader("SOM grid")
     st.plotly_chart(
         som_heatmap(som.grid_h, som.grid_w, som.cell_counts, som.cell_labels, title="Window states"),
-        use_container_width=True,
+        width="stretch",
     )
 with col_r:
     st.subheader("Resource state trajectory")
@@ -76,5 +76,5 @@ with col_r:
             som.cell_labels,
             title=f"State per {spec.window_minutes}-min window",
         ),
-        use_container_width=True,
+        width="stretch",
     )

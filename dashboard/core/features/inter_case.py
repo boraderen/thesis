@@ -37,14 +37,17 @@ def _zlog_minutes(seconds: np.ndarray) -> np.ndarray:
 def _stalled_count(
     case_last: pd.Series, win_starts: pd.DatetimeIndex, win_minutes: int, stall_minutes: int
 ) -> np.ndarray:
-    """For each window end, count open cases whose last event is older than `stall_minutes`."""
-    threshold = pd.Timedelta(minutes=stall_minutes)
+    """For each window end, count cases whose last event is older than `stall_minutes`.
+
+    Vectorised via searchsorted on case_last sorted in ns. We count cases with
+    `case_last < (win_end - threshold)` — under threshold > 0 this already implies
+    the case has started by win_end, so a separate filter is unnecessary.
+    """
+    threshold_ns = pd.Timedelta(minutes=stall_minutes).value
     win_end = win_starts + pd.Timedelta(minutes=win_minutes)
-    out = np.zeros(len(win_starts), dtype=int)
-    for i, w_end in enumerate(win_end):
-        active = case_last[case_last <= w_end]
-        out[i] = int(((w_end - active) > threshold).sum())
-    return out
+    cutoff_ns = win_end.view("int64") - threshold_ns
+    last_ns = np.sort(pd.DatetimeIndex(case_last).view("int64"))
+    return np.searchsorted(last_ns, cutoff_ns, side="left").astype(int)
 
 
 def _describe_cell(features: np.ndarray, columns: list[str]) -> str:
@@ -56,20 +59,14 @@ def _describe_cell(features: np.ndarray, columns: list[str]) -> str:
 
 
 def _delta_stats(df: pd.DataFrame, win_index: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
-    """Compute mean and std of ln-minute gaps between consecutive events in each window."""
-    means = np.zeros(len(win_index), dtype=float)
-    stds = np.zeros(len(win_index), dtype=float)
-    for i, w_start in enumerate(win_index):
-        bucket = df[df["__win__"] == w_start]
-        if len(bucket) < 2:
-            continue
-        seconds = bucket["timestamp"].sort_values().diff().dt.total_seconds().dropna().to_numpy()
-        if not len(seconds):
-            continue
-        log_min = _zlog_minutes(seconds)
-        means[i] = float(np.mean(log_min))
-        stds[i] = float(np.std(log_min))
-    return means, stds
+    """Mean and std of ln-minute gaps between consecutive in-window events, per window."""
+    ordered = df.sort_values(["__win__", "timestamp"])
+    gap_s = ordered.groupby("__win__")["timestamp"].diff().dt.total_seconds()
+    mask = gap_s.notna()
+    log_min = pd.Series(_zlog_minutes(gap_s[mask].to_numpy()), index=gap_s.index[mask])
+    grouped = log_min.groupby(ordered.loc[mask, "__win__"])
+    agg = grouped.agg(["mean", "std"]).reindex(win_index).fillna(0.0)
+    return agg["mean"].to_numpy(dtype=float), agg["std"].to_numpy(dtype=float)
 
 
 def _window_counts(df: pd.DataFrame, win_index: pd.DatetimeIndex, win_minutes: int) -> pd.DataFrame:
