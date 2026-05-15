@@ -25,12 +25,12 @@ with col_demo:
 log: pd.DataFrame | None = None
 if uploaded is not None:
     log = load_uploaded(uploaded.name, uploaded.read())
-elif use_demo or "log" not in st.session_state:
-    if use_demo or "log" not in st.session_state:
-        log = synthetic_log()
-
-if log is None and "log" in st.session_state:
+elif use_demo:
+    log = synthetic_log()
+elif "log" in st.session_state:
     log = st.session_state["log"]
+else:
+    log = synthetic_log()
 
 if log is None:
     st.info("Upload a file or click *Load synthetic demo* to continue.")

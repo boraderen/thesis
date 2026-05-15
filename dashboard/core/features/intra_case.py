@@ -24,6 +24,57 @@ def _zlog_minutes(seconds: np.ndarray) -> np.ndarray:
     return np.log1p(mins)
 
 
+def _windowed_blocks(df: pd.DataFrame, activities: list[str], window: int) -> tuple[np.ndarray, np.ndarray]:
+    """Fill the per-event activity one-hot and Δt gap blocks for a sorted log."""
+    n = len(df)
+    act_to_idx = {a: i for i, a in enumerate(activities)}
+    act_block = np.zeros((n, window * len(activities)), dtype=float)
+    gap_block = np.zeros((n, max(0, window - 1)), dtype=float)
+    for _, idxs in df.groupby("case_id", sort=False).indices.items():
+        acts = df["activity"].iloc[idxs].to_numpy()
+        ts = df["timestamp"].iloc[idxs].to_numpy()
+        for pos, row_idx in enumerate(idxs):
+            for w in range(window):
+                src = pos - (window - 1 - w)
+                if src >= 0:
+                    act_block[row_idx, w * len(activities) + act_to_idx[acts[src]]] = 1.0
+            for g in range(window - 1):
+                src_next = pos - (window - 2 - g)
+                src_prev = src_next - 1
+                if src_prev < 0 or src_next < 0:
+                    continue
+                delta_s = (ts[src_next] - ts[src_prev]) / np.timedelta64(1, "s")
+                gap_block[row_idx, g] = _zlog_minutes(np.array([delta_s]))[0]
+    return act_block, gap_block
+
+
+def _name_window_cols(activities: list[str], window: int) -> tuple[list[str], list[str]]:
+    """Generate the column names for activity one-hot and Δt blocks."""
+    act_names = [f"act[t-{window - 1 - w}]={a}" for w in range(window) for a in activities]
+    delta_names = [f"Δt[t-{window - 2 - g}]" for g in range(window - 1)]
+    return act_names, delta_names
+
+
+def _attr_blocks(
+    df: pd.DataFrame, numeric_attrs: tuple[str, ...], categorical_attrs: tuple[str, ...]
+) -> tuple[list[np.ndarray], list[str]]:
+    """Return blocks + column names for normalised numeric and one-hot categorical case attributes."""
+    blocks: list[np.ndarray] = []
+    names: list[str] = []
+    if numeric_attrs:
+        num = df[list(numeric_attrs)].astype(float).to_numpy()
+        denom = np.where(np.ptp(num, axis=0) == 0, 1.0, np.ptp(num, axis=0))
+        blocks.append((num - num.min(axis=0)) / denom)
+        names.extend(f"num:{c}" for c in numeric_attrs)
+    if categorical_attrs:
+        dummies = pd.get_dummies(
+            df[list(categorical_attrs)].astype(str), prefix=list(categorical_attrs)
+        )
+        blocks.append(dummies.to_numpy(dtype=float))
+        names.extend(f"cat:{c}" for c in dummies.columns)
+    return blocks, names
+
+
 @st.cache_data(show_spinner=False)
 def build_features(
     log: pd.DataFrame,
@@ -34,70 +85,22 @@ def build_features(
     """Return one row per event with windowed activity, gap, and case features."""
     df = log.sort_values(["case_id", "timestamp"]).reset_index(drop=True)
     activities = sorted(df["activity"].unique().tolist())
-    act_to_idx = {a: i for i, a in enumerate(activities)}
 
-    n = len(df)
-    act_block = np.zeros((n, window * len(activities)), dtype=float)
-    gap_block = np.zeros((n, window - 1), dtype=float) if window > 1 else np.zeros((n, 0), dtype=float)
-    elapsed = np.zeros(n, dtype=float)
-
+    act_block, gap_block = _windowed_blocks(df, activities, window)
     case_starts = df.groupby("case_id")["timestamp"].transform("min")
-    elapsed = _zlog_minutes((df["timestamp"] - case_starts).dt.total_seconds().to_numpy())
+    elapsed = _zlog_minutes((df["timestamp"] - case_starts).dt.total_seconds().to_numpy()).reshape(-1, 1)
+    attr_blocks, attr_cols = _attr_blocks(df, numeric_attrs, categorical_attrs)
 
-    case_groups = df.groupby("case_id", sort=False).indices
-    for _, idxs in case_groups.items():
-        acts = df["activity"].iloc[idxs].to_numpy()
-        ts = df["timestamp"].iloc[idxs].to_numpy()
-        for pos, row_idx in enumerate(idxs):
-            for w in range(window):
-                src = pos - (window - 1 - w)
-                if src < 0:
-                    continue
-                a = acts[src]
-                act_block[row_idx, w * len(activities) + act_to_idx[a]] = 1.0
-            if window > 1:
-                for g in range(window - 1):
-                    src_next = pos - (window - 2 - g)
-                    src_prev = src_next - 1
-                    if src_prev < 0 or src_next < 0:
-                        continue
-                    delta = (ts[src_next] - ts[src_prev]) / np.timedelta64(1, "s")
-                    gap_block[row_idx, g] = _zlog_minutes(np.array([delta]))[0]
+    act_names, delta_names = _name_window_cols(activities, window)
+    columns = act_names + delta_names + ["elapsed"] + attr_cols
+    groups = {
+        "activity": list(act_names),
+        "delta": list(delta_names),
+        "elapsed": ["elapsed"],
+        "case_attr": list(attr_cols),
+    }
 
-    blocks = [act_block, gap_block, elapsed.reshape(-1, 1)]
-    columns: list[str] = []
-    groups: dict[str, list[str]] = {"activity": [], "delta": [], "elapsed": [], "case_attr": []}
-    for w in range(window):
-        for a in activities:
-            name = f"act[t-{window - 1 - w}]={a}"
-            columns.append(name)
-            groups["activity"].append(name)
-    for g in range(window - 1):
-        name = f"Δt[t-{window - 2 - g}]"
-        columns.append(name)
-        groups["delta"].append(name)
-    columns.append("elapsed")
-    groups["elapsed"].append("elapsed")
-
-    if numeric_attrs:
-        num = df[list(numeric_attrs)].astype(float).to_numpy()
-        denom = np.where(np.ptp(num, axis=0) == 0, 1.0, np.ptp(num, axis=0))
-        norm = (num - num.min(axis=0)) / denom
-        blocks.append(norm)
-        for c in numeric_attrs:
-            name = f"num:{c}"
-            columns.append(name)
-            groups["case_attr"].append(name)
-
-    if categorical_attrs:
-        dummies = pd.get_dummies(df[list(categorical_attrs)].astype(str), prefix=list(categorical_attrs))
-        blocks.append(dummies.to_numpy(dtype=float))
-        for c in dummies.columns:
-            name = f"cat:{c}"
-            columns.append(name)
-            groups["case_attr"].append(name)
-
-    matrix = np.hstack(blocks)
+    matrix = np.hstack([act_block, gap_block, elapsed, *attr_blocks])
     feat = pd.DataFrame(matrix, columns=columns)
     feat.insert(0, "case_id", df["case_id"].values)
     feat.insert(1, "activity", df["activity"].values)
