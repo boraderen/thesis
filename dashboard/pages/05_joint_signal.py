@@ -4,7 +4,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from core.drift import intra_state_distribution, joint_signal
+from core.drift import intra_state_distribution
 from core.features.inter_case import build_features as build_inter
 from core.features.resource import build_features as build_resource
 from core.pca import fit_pca
@@ -79,38 +79,30 @@ else:
     inter_som = None
     inter_states_df = None
 
-joint = joint_signal(
-    intra_dist,
-    resource_pack[0] if resource_pack else None,
-    inter_states_df,
-)
-
 st.subheader(f"Intra-case state fractions over time (W = {window_minute_label(intra_W)})")
-intra_fig = stacked_area_intra(joint, intra_cols, intra_som.cell_labels)
-add_window_boundaries(intra_fig, joint["window_start"])
+intra_fig = stacked_area_intra(intra_dist, intra_cols, intra_som.cell_labels)
+add_window_boundaries(intra_fig, intra_dist["window_start"])
 st.plotly_chart(intra_fig, width="stretch")
 
-st.subheader(f"Resource state" + (f" (W = {window_minute_label(resource_W)})" if has_resource else ""))
+st.subheader("Resource state" + (f" (W = {window_minute_label(resource_W)})" if has_resource else ""))
 if not has_resource:
     st.info("Log has no resource column.")
 elif resource_pack is None:
     st.info("Window is wider than the log span — pick a smaller resource W.")
 else:
     res_states, res_som, res_grid = resource_pack
-    labels = res_som.cell_labels
-    res_fig = state_index_line(joint, "resource_state", labels, title=window_minute_label(resource_W))
+    res_fig = state_index_line(res_states, "resource_state", res_som.cell_labels, title=window_minute_label(resource_W))
     n_res = res_grid[0] * res_grid[1]
-    add_window_boundaries(res_fig, joint["window_start"], y_min=-0.5, y_max=n_res - 0.5)
+    add_window_boundaries(res_fig, res_states["window_start"], y_min=-0.5, y_max=n_res - 0.5)
     st.plotly_chart(res_fig, width="stretch")
 
 st.subheader(f"Inter-case state (W = {window_minute_label(inter_W)})")
 if inter_states_df is None:
     st.info("Window is wider than the log span — pick a smaller inter-case W.")
 else:
-    labels = inter_som.cell_labels
-    inter_fig = state_index_line(joint, "inter_state", labels, title=window_minute_label(inter_W))
+    inter_fig = state_index_line(inter_states_df, "inter_state", inter_som.cell_labels, title=window_minute_label(inter_W))
     n_inter = inter_grid[0] * inter_grid[1]
-    add_window_boundaries(inter_fig, joint["window_start"], y_min=-0.5, y_max=n_inter - 0.5)
+    add_window_boundaries(inter_fig, inter_states_df["window_start"], y_min=-0.5, y_max=n_inter - 0.5)
     st.plotly_chart(inter_fig, width="stretch")
 
 st.caption(
