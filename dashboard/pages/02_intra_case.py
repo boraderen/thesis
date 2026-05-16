@@ -7,9 +7,10 @@ import streamlit as st
 from core.features.intra_case import build_features
 from core.pca import fit_pca
 from core.som import train_som
+from core.transitions import find_transitions
 from viz.som_grid import som_heatmap
 from viz.tables import styled_feature_table
-from viz.trajectory import pca_variance_plot, state_timeline
+from viz.trajectory import add_transition_markers, pca_variance_plot, state_timeline
 
 st.set_page_config(page_title="Intra-case SOM", layout="wide")
 st.title("2 — Intra-case SOM")
@@ -92,7 +93,20 @@ with col_r:
     case_ids = feat["case_id"].drop_duplicates().tolist()
     chosen = st.selectbox("Case", case_ids, index=0)
     sub = feat[feat["case_id"] == chosen].reset_index(drop=True)
-    st.plotly_chart(
-        state_timeline(sub["timestamp"], sub["state_id"].to_numpy(), som.cell_labels, title=f"Case {chosen}"),
-        width="stretch",
+    transitions = find_transitions(
+        sub["timestamp"], sub["state_id"].to_numpy(), som.cell_labels, sub[selected_cols]
+    )
+    fig = state_timeline(sub["timestamp"], sub["state_id"].to_numpy(), som.cell_labels, title=f"Case {chosen}")
+    if not transitions.empty:
+        add_transition_markers(fig, transitions["timestamp"])
+    st.plotly_chart(fig, width="stretch")
+
+st.subheader("Transitions")
+if transitions.empty:
+    st.caption("No state changes in this case.")
+else:
+    st.caption(f"{len(transitions)} transitions in case {chosen}.")
+    st.dataframe(
+        transitions[["timestamp", "from", "to", "top_changes"]],
+        width="stretch", height=min(420, 60 + 36 * len(transitions)),
     )

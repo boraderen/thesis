@@ -7,10 +7,11 @@ import streamlit as st
 from core.features.resource import build_features
 from core.pca import fit_pca
 from core.som import train_som
+from core.transitions import find_transitions
 from core.windows import window_minute_choices, window_minute_label
 from viz.som_grid import som_heatmap
 from viz.tables import styled_feature_table
-from viz.trajectory import pca_variance_plot, state_timeline
+from viz.trajectory import add_transition_markers, pca_variance_plot, state_timeline
 
 st.set_page_config(page_title="Resource SOM", layout="wide")
 st.title("3 — Resource SOM")
@@ -101,12 +102,23 @@ with col_l:
     )
 with col_r:
     st.subheader("Resource state trajectory")
-    st.plotly_chart(
-        state_timeline(
-            matrix_df["window_start"],
-            som.state_ids,
-            som.cell_labels,
-            title=f"State per {spec.window_minutes}-min window",
-        ),
-        width="stretch",
+    transitions = find_transitions(
+        matrix_df["window_start"], som.state_ids, som.cell_labels, matrix_df[selected_cols]
+    )
+    fig = state_timeline(
+        matrix_df["window_start"], som.state_ids, som.cell_labels,
+        title=f"State per {spec.window_minutes}-min window",
+    )
+    if not transitions.empty:
+        add_transition_markers(fig, transitions["timestamp"])
+    st.plotly_chart(fig, width="stretch")
+
+st.subheader("Transitions")
+if transitions.empty:
+    st.caption("No state changes in this trajectory.")
+else:
+    st.caption(f"{len(transitions)} transitions detected.")
+    st.dataframe(
+        transitions[["timestamp", "from", "to", "top_changes"]].head(500),
+        width="stretch", height=min(420, 60 + 36 * len(transitions)),
     )

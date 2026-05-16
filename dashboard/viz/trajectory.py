@@ -42,6 +42,13 @@ def state_timeline(
     return fig
 
 
+def add_transition_markers(fig: go.Figure, timestamps: pd.Series) -> go.Figure:
+    """Overlay dashed vertical markers at each transition timestamp."""
+    for ts in timestamps:
+        fig.add_vline(x=ts, line=dict(color="#3C3489", width=1, dash="dash"), opacity=0.55)
+    return fig
+
+
 def pca_variance_plot(ratios: np.ndarray, chosen_k: int, raw_dim: int) -> go.Figure:
     """Bar plot of per-component explained variance with the elbow line."""
     components = np.arange(1, len(ratios) + 1)
