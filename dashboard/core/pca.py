@@ -33,6 +33,15 @@ def fit_pca(matrix: np.ndarray, threshold: float = 0.05) -> PCAResult:
     """Fit a PCA on `matrix` and select k via the elbow rule."""
     if matrix.size == 0:
         raise ValueError("Empty feature matrix")
+    if matrix.shape[0] < 2:
+        k = matrix.shape[1]
+        return PCAResult(
+            components=np.eye(k),
+            explained_variance_ratio=np.ones(k) / k if k else np.zeros(0),
+            transformed=matrix.copy(),
+            chosen_k=k,
+            raw_dim=k,
+        )
     max_k = min(matrix.shape[0], matrix.shape[1], 20)
     pca = PCA(n_components=max_k)
     transformed = pca.fit_transform(matrix)

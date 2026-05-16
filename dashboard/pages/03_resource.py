@@ -35,6 +35,12 @@ with st.sidebar:
     st.session_state["window_minutes"] = window_minutes
 
 matrix_df, spec = build_features(log, window_minutes=window_minutes)
+if len(matrix_df) < 2:
+    st.warning(
+        f"Window W is wider than the log span — only {len(matrix_df)} window emerged. "
+        "Pick a smaller W to get a trajectory."
+    )
+    st.stop()
 
 KIND_LABELS = {
     "events": "Events per resource",
