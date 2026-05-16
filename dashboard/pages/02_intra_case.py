@@ -55,9 +55,8 @@ if not selected_cols:
 
 st.subheader("Feature matrix")
 st.caption(
-    f"{len(feat):,} events × {len(spec.columns)} feature columns "
-    f"(window={spec.window}, |A|={len(spec.activities)}); "
-    f"{len(selected_cols)} columns feed the SOM."
+    f"{len(feat):,} events × {len(selected_cols)} feature columns "
+    f"(window={spec.window}, |A|={len(spec.activities)})"
 )
 preview_cols = ["case_id", "activity", "timestamp", *selected_cols]
 preview_groups = {g: [c for c in cols if c in selected_cols] for g, cols in spec.groups.items()}

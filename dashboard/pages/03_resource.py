@@ -72,8 +72,8 @@ if not selected_cols:
 
 st.subheader("Feature matrix")
 st.caption(
-    f"{len(matrix_df):,} windows × {len(spec.columns)} columns (W={spec.window_minutes} min, "
-    f"{len(spec.resources)} resources); {len(selected_cols)} columns feed the SOM."
+    f"{len(matrix_df):,} windows × {len(selected_cols)} columns (W={spec.window_minutes} min, "
+    f"{len(spec.resources)} resources)"
 )
 preview_cols = ["window_start", *selected_cols]
 preview_groups = {g: [c for c in cols if c in selected_cols] for g, cols in spec.groups.items()}
