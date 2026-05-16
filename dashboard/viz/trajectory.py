@@ -8,6 +8,16 @@ import plotly.graph_objects as go
 from viz.palette import state_bg, state_fg
 
 
+def _runs(state_ids: np.ndarray) -> list[tuple[int, int, int]]:
+    """Collapse consecutive equal state ids into (start_idx, end_idx_inclusive, state)."""
+    if len(state_ids) == 0:
+        return []
+    changes = np.where(np.diff(state_ids) != 0)[0] + 1
+    starts = np.concatenate(([0], changes))
+    ends = np.concatenate((changes - 1, [len(state_ids) - 1]))
+    return [(int(s), int(e), int(state_ids[s])) for s, e in zip(starts, ends)]
+
+
 def state_timeline(
     x: pd.Series,
     state_ids: np.ndarray,
@@ -15,29 +25,40 @@ def state_timeline(
     title: str = "",
     height: int = 180,
 ) -> go.Figure:
-    """Render a sequence of state labels as a single coloured strip Heatmap.
+    """Render a state trajectory as left-aligned segments.
 
-    Using one Heatmap trace (instead of one SVG shape per step) keeps the plot
-    interactive even for hundreds of thousands of windows.
+    Each segment runs from its starting event to the next state change (or to
+    the final timestamp for the last segment). Consecutive events in the same
+    state are merged into one rectangle, so the plot stays cheap even on
+    hundred-thousand-window logs.
     """
     fig = go.Figure()
     if len(state_ids) == 0:
         return fig
-    n_states = max(len(cell_labels), int(state_ids.max()) + 1) if len(state_ids) else 1
-    colorscale = [[i / max(1, n_states - 1), state_bg(i)] for i in range(n_states)]
-    hover = np.array([cell_labels[int(s)] if int(s) < len(cell_labels) else f"S{int(s)}" for s in state_ids])
-    fig.add_trace(go.Heatmap(
-        x=x, y=["state"], z=[state_ids],
-        text=[hover], hoverinfo="x+text",
-        colorscale=colorscale, showscale=False,
-        zmin=0, zmax=max(1, n_states - 1),
-    ))
+    x = pd.to_datetime(pd.Series(x).reset_index(drop=True))
+    runs = _runs(np.asarray(state_ids))
+    last_x = x.iloc[-1]
+    span = (last_x - x.iloc[0]) if len(x) > 1 else pd.Timedelta(minutes=1)
+    tail = span / max(1, len(x) - 1) if len(x) > 1 else pd.Timedelta(minutes=1)
+    for start, end, sid in runs:
+        x0 = x.iloc[start]
+        x1 = x.iloc[end + 1] if end + 1 < len(x) else last_x + tail
+        label = cell_labels[sid] if sid < len(cell_labels) else f"S{sid}"
+        fig.add_shape(
+            type="rect", x0=x0, x1=x1, y0=0, y1=1,
+            line=dict(width=0), fillcolor=state_bg(sid), layer="below",
+        )
+        fig.add_annotation(
+            x=x0, y=0.5, text=f"<b>{label}</b>",
+            xanchor="left", yanchor="middle",
+            showarrow=False, font=dict(color=state_fg(sid), size=11),
+        )
     fig.update_layout(
         title=title,
         height=height,
         margin=dict(l=10, r=10, t=40 if title else 10, b=10),
-        xaxis=dict(showgrid=False),
-        yaxis=dict(visible=False),
+        xaxis=dict(showgrid=False, range=[x.iloc[0], last_x + tail]),
+        yaxis=dict(visible=False, range=[0, 1]),
     )
     return fig
 
