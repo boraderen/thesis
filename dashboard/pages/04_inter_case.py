@@ -89,20 +89,14 @@ styled = styled_feature_table(matrix_df[preview_cols], preview_groups, max_rows=
 st.dataframe(styled, width="stretch", height=380)
 
 mat = matrix_df[selected_cols].to_numpy()
-use_pca = mat.shape[0] > 20
+pca = fit_pca(mat, force_k=int(pca_k) if pca_k else None)
 st.subheader("PCA")
-if use_pca:
-    pca = fit_pca(mat, force_k=int(pca_k) if pca_k else None)
-    st.plotly_chart(
-        pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim),
-        width="stretch",
-    )
-    som_input = pca.transformed
-else:
-    st.info(f"PCA skipped — only {mat.shape[0]} windows, feeding directly to SOM.")
-    som_input = mat
+st.plotly_chart(
+    pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim),
+    width="stretch",
+)
 
-som = train_som(som_input, grid_h=grid_h, grid_w=grid_w, annotations=None)
+som = train_som(pca.transformed, grid_h=grid_h, grid_w=grid_w, annotations=None)
 
 centroids = np.zeros((som.grid_h * som.grid_w, len(selected_cols)))
 for cell_id in range(som.grid_h * som.grid_w):

@@ -71,9 +71,8 @@ inter_pca_k = int(st.session_state.get("inter_pca_k", 0))
 inter_matrix, inter_spec = build_inter(log, window_minutes=inter_W, stall_minutes=60)
 if len(inter_matrix) >= 2:
     inter_mat = inter_matrix[inter_spec.columns].to_numpy()
-    inter_pca = fit_pca(inter_mat, force_k=inter_pca_k if inter_pca_k else None) if inter_mat.shape[0] > 20 else None
-    som_input = inter_pca.transformed if inter_pca is not None else inter_mat
-    inter_som = train_som(som_input, grid_h=inter_grid[0], grid_w=inter_grid[1])
+    inter_pca = fit_pca(inter_mat, force_k=inter_pca_k if inter_pca_k else None)
+    inter_som = train_som(inter_pca.transformed, grid_h=inter_grid[0], grid_w=inter_grid[1])
     inter_states_df = inter_matrix.assign(state_id=inter_som.state_ids)[["window_start", "state_id"]].rename(
         columns={"state_id": "inter_state"}
     )
