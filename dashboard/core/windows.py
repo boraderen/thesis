@@ -15,6 +15,8 @@ WINDOW_MINUTE_OPTIONS: list[tuple[int, str]] = [
     (1440, "1 day"),
     (4320, "3 days"),
     (10080, "1 week"),
+    (20160, "2 weeks"),
+    (30240, "3 weeks"),
     (43800, "1 month"),
     (87600, "2 months"),
     (131400, "3 months"),
