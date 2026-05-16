@@ -23,14 +23,21 @@ class ResourceSpec:
 
 
 def _maybe_aggregate(log: pd.DataFrame) -> tuple[pd.Series, bool]:
-    """Return a resource series, possibly aggregated to org:group / role prefix."""
+    """Return a resource series, possibly aggregated to keep at most MAX_RESOURCES buckets.
+
+    Preference order: (1) keep as-is if already small enough; (2) use org:group if it
+    yields at most MAX_RESOURCES distinct groups; (3) keep the top-(MAX_RESOURCES-1)
+    busiest individual resources and lump the rest as 'other'.
+    """
     res = log["resource"].astype(str)
-    distinct = res.nunique()
-    if distinct <= MAX_RESOURCES:
+    if res.nunique() <= MAX_RESOURCES:
         return res, False
     if "org_group" in log.columns and log["org_group"].notna().any():
-        return log["org_group"].astype(str), True
-    return res.str[:1], True
+        grp = log["org_group"].astype(str)
+        if grp.nunique() <= MAX_RESOURCES:
+            return grp, True
+    top = res.value_counts().head(MAX_RESOURCES - 1).index
+    return res.where(res.isin(top), other="other"), True
 
 
 def _floor_window(ts: pd.Series, minutes: int) -> pd.Series:
