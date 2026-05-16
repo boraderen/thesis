@@ -92,26 +92,16 @@ st.caption(
 score_numeric = tuple(st.session_state.get("case_numeric_attrs", []))
 score_categorical = tuple(st.session_state.get("case_categorical_attrs", []))
 scores = per_window_scores(log, intra_W, numeric_attrs=score_numeric, categorical_attrs=score_categorical)
-st.plotly_chart(
-    score_line(scores, "cf_score",
-               title="Control-flow — KL(activity dist || baseline)"),
-    width="stretch",
-)
-st.plotly_chart(
-    score_line(scores, "resource_score",
-               title="Resource — mean KL(per-activity resource dist || baseline)"),
-    width="stretch",
-)
-st.plotly_chart(
-    score_line(scores, "inter_score",
-               title="Inter-case — |z(events in window)| vs. baseline mean/std"),
-    width="stretch",
-)
-st.plotly_chart(
-    score_line(scores, "data_score",
-               title="Data attributes — mean(|z(numeric)| + KL(categorical))"),
-    width="stretch",
-)
+for col, title in [
+    ("cf_score", "Control-flow — KL(activity dist || baseline)"),
+    ("resource_score", "Resource — mean KL(per-activity resource dist || baseline)"),
+    ("inter_score", "Inter-case — |z(events in window)| vs. baseline mean/std"),
+    ("data_score", "Data attributes — mean(|z(numeric)| + KL(categorical))"),
+]:
+    fig = score_line(scores, col, title=title)
+    y_max = float(scores[col].max()) if not scores.empty else 1.0
+    add_window_boundaries(fig, scores["window_start"], y_min=0, y_max=max(y_max, 1e-9))
+    st.plotly_chart(fig, width="stretch")
 
 st.subheader(f"Intra-case state fractions over time (W = {window_minute_label(intra_W)})")
 intra_fig = stacked_area_intra(intra_dist, intra_cols, intra_som.cell_labels)
