@@ -33,14 +33,37 @@ with st.sidebar:
 
 matrix_df, spec = build_features(log, window_minutes=window_minutes, stall_minutes=stall)
 
+FEATURE_LABELS = {
+    "active_cases": "Active cases",
+    "new_arrivals": "New arrivals",
+    "completions": "Completions",
+    "total_events": "Total events",
+    "mean_delta_t": "Mean Δt (ln min)",
+    "std_delta_t": "Std Δt (ln min)",
+    "stalled_cases": "Stalled cases",
+}
+with st.sidebar:
+    st.subheader("Features for state clustering")
+    selected_cols = st.multiselect(
+        "Include features",
+        options=spec.columns,
+        default=spec.columns,
+        format_func=lambda c: FEATURE_LABELS.get(c, c),
+    )
+if not selected_cols:
+    st.warning("Select at least one feature.")
+    st.stop()
+
 st.subheader("Feature matrix")
 st.caption(
-    f"{len(matrix_df):,} windows × 7 features (W={spec.window_minutes} min, τ={spec.stall_minutes} min)"
+    f"{len(matrix_df):,} windows × {len(spec.columns)} features "
+    f"(W={spec.window_minutes} min, τ={spec.stall_minutes} min); "
+    f"{len(selected_cols)} feed the SOM."
 )
 styled = styled_feature_table(matrix_df, spec.groups, max_rows=30)
 st.dataframe(styled, width="stretch", height=380)
 
-mat = matrix_df[spec.columns].to_numpy()
+mat = matrix_df[selected_cols].to_numpy()
 use_pca = mat.shape[0] > 20
 st.subheader("PCA")
 if use_pca:
@@ -56,12 +79,12 @@ else:
 
 som = train_som(som_input, grid_h=2, grid_w=2, annotations=None)
 
-centroids = np.zeros((som.grid_h * som.grid_w, len(spec.columns)))
+centroids = np.zeros((som.grid_h * som.grid_w, len(selected_cols)))
 for cell_id in range(som.grid_h * som.grid_w):
     mask = som.state_ids == cell_id
     if mask.any():
         centroids[cell_id] = mat[mask].mean(axis=0)
-descriptive = describe_cells(centroids, spec.columns)
+descriptive = describe_cells(centroids, selected_cols)
 som = som.__class__(
     grid_h=som.grid_h, grid_w=som.grid_w,
     bmus=som.bmus, state_ids=som.state_ids,

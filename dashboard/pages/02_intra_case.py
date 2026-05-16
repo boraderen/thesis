@@ -22,6 +22,13 @@ log: pd.DataFrame = st.session_state["log"]
 numeric_attrs = tuple(st.session_state.get("case_numeric_attrs", []))
 categorical_attrs = tuple(st.session_state.get("case_categorical_attrs", []))
 
+GROUP_LABELS = {
+    "activity": "Activity one-hot (windowed)",
+    "delta": "Δt gaps",
+    "elapsed": "Elapsed case time",
+    "case_attr": "Case attributes",
+}
+
 with st.sidebar:
     st.header("Controls")
     window = st.slider("Window size w", min_value=1, max_value=5, value=3)
@@ -32,16 +39,31 @@ feat, spec = build_features(
     log, window=window, numeric_attrs=numeric_attrs, categorical_attrs=categorical_attrs
 )
 
+available_groups = [g for g in GROUP_LABELS if spec.groups.get(g)]
+with st.sidebar:
+    st.subheader("Features for state clustering")
+    picked = st.multiselect(
+        "Include groups",
+        options=available_groups,
+        default=available_groups,
+        format_func=lambda g: GROUP_LABELS[g],
+    )
+selected_cols = [c for g in picked for c in spec.groups[g]]
+if not selected_cols:
+    st.warning("Select at least one feature group to train the SOM.")
+    st.stop()
+
 st.subheader("Feature matrix")
 st.caption(
     f"{len(feat):,} events × {len(spec.columns)} feature columns "
-    f"(window={spec.window}, |A|={len(spec.activities)})"
+    f"(window={spec.window}, |A|={len(spec.activities)}); "
+    f"{len(selected_cols)} columns feed the SOM."
 )
 preview_cols = ["case_id", "activity", "timestamp", *spec.columns]
 styled = styled_feature_table(feat[preview_cols], spec.groups, max_rows=30)
 st.dataframe(styled, width="stretch", height=380)
 
-matrix = feat[spec.columns].to_numpy()
+matrix = feat[selected_cols].to_numpy()
 pca = fit_pca(matrix)
 
 st.subheader("PCA")

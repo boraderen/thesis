@@ -34,15 +34,51 @@ with st.sidebar:
 
 matrix_df, spec = build_features(log, window_minutes=window_minutes)
 
+KIND_LABELS = {
+    "events": "Events per resource",
+    "active": "Active cases per resource",
+    "wait": "Mean wait into resource",
+    "ho": "Handover counts",
+}
+kind_groups = {k: [c for c in spec.columns if c.startswith(f"{k}:")] for k in KIND_LABELS}
+
+with st.sidebar:
+    st.subheader("Features for state clustering")
+    picked_kinds = st.multiselect(
+        "Feature kinds",
+        options=list(KIND_LABELS),
+        default=list(KIND_LABELS),
+        format_func=lambda k: KIND_LABELS[k],
+    )
+    picked_resources = st.multiselect(
+        "Resources",
+        options=spec.resources,
+        default=spec.resources,
+    )
+
+selected_cols = [
+    c for k in picked_kinds for c in kind_groups[k]
+    if k == "ho" or any(c.endswith(f":{r}") for r in picked_resources)
+]
+if "ho" in picked_kinds:
+    selected_cols = [
+        c for c in selected_cols
+        if not c.startswith("ho:")
+        or any(f"ho:{a}→{b}" == c for a in picked_resources for b in picked_resources if a != b)
+    ]
+if not selected_cols:
+    st.warning("Select at least one feature kind and one resource.")
+    st.stop()
+
 st.subheader("Feature matrix")
 st.caption(
     f"{len(matrix_df):,} windows × {len(spec.columns)} columns (W={spec.window_minutes} min, "
-    f"{len(spec.resources)} resources)."
+    f"{len(spec.resources)} resources); {len(selected_cols)} columns feed the SOM."
 )
 styled = styled_feature_table(matrix_df, spec.groups, max_rows=30)
 st.dataframe(styled, width="stretch", height=380)
 
-mat = matrix_df[spec.columns].to_numpy()
+mat = matrix_df[selected_cols].to_numpy()
 pca = fit_pca(mat)
 st.subheader("PCA")
 st.plotly_chart(pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim), width="stretch")
