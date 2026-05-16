@@ -126,31 +126,35 @@ st.caption(
 )
 
 intra_shift = intra_state_shift(intra_dist)
-intra_shift_fig = score_line(intra_shift, "score", title="Intra-case SOM — KL(window state dist || baseline)")
-if not intra_shift.empty:
-    y_max = float(intra_shift["score"].max())
-    add_window_boundaries(intra_shift_fig, intra_shift["window_start"], y_min=0, y_max=max(y_max, 1e-9))
-st.plotly_chart(intra_shift_fig, width="stretch")
-
-if resource_pack is not None:
-    res_states, res_som, res_grid = resource_pack
-    res_shift = state_id_shift(
-        res_states.rename(columns={"resource_state": "state_id"}),
-        n_states=res_grid[0] * res_grid[1],
+res_shift = (
+    state_id_shift(
+        resource_pack[0].rename(columns={"resource_state": "state_id"}),
+        n_states=resource_pack[2][0] * resource_pack[2][1],
     )
-    res_shift_fig = score_line(res_shift, "score", title="Resource SOM — rolling KL(state mix || baseline)")
-    if not res_shift.empty:
-        y_max = float(res_shift["score"].max())
-        add_window_boundaries(res_shift_fig, res_shift["window_start"], y_min=0, y_max=max(y_max, 1e-9))
-    st.plotly_chart(res_shift_fig, width="stretch")
-
-if inter_states_df is not None:
-    inter_shift = state_id_shift(
+    if resource_pack is not None else None
+)
+inter_shift = (
+    state_id_shift(
         inter_states_df.rename(columns={"inter_state": "state_id"}),
         n_states=inter_grid[0] * inter_grid[1],
     )
-    inter_shift_fig = score_line(inter_shift, "score", title="Inter-case SOM — rolling KL(state mix || baseline)")
-    if not inter_shift.empty:
-        y_max = float(inter_shift["score"].max())
-        add_window_boundaries(inter_shift_fig, inter_shift["window_start"], y_min=0, y_max=max(y_max, 1e-9))
-    st.plotly_chart(inter_shift_fig, width="stretch")
+    if inter_states_df is not None else None
+)
+shift_max = max(
+    [s["score"].max() for s in (intra_shift, res_shift, inter_shift) if s is not None and not s.empty],
+    default=1.0,
+)
+
+
+def _shift_plot(df: pd.DataFrame, title: str) -> None:
+    fig = score_line(df, "score", title=title)
+    fig.update_yaxes(range=[0, max(shift_max, 1e-9)])
+    add_window_boundaries(fig, df["window_start"], y_min=0, y_max=max(shift_max, 1e-9))
+    st.plotly_chart(fig, width="stretch")
+
+
+_shift_plot(intra_shift, "Intra-case SOM — KL(window state dist || baseline)")
+if res_shift is not None:
+    _shift_plot(res_shift, "Resource SOM — rolling KL(state mix || baseline)")
+if inter_shift is not None:
+    _shift_plot(inter_shift, "Inter-case SOM — rolling KL(state mix || baseline)")

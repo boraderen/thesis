@@ -48,17 +48,27 @@ numeric_attrs = tuple(st.session_state.get("case_numeric_attrs", []))
 categorical_attrs = tuple(st.session_state.get("case_categorical_attrs", []))
 scores = per_window_scores(log, W, numeric_attrs=numeric_attrs, categorical_attrs=categorical_attrs)
 
-SCORE_TITLES = [
+KL_TITLES = [
     ("cf_score", "Control-flow — KL(activity dist || baseline)"),
     ("resource_score", "Resource — mean KL(per-activity resource dist || baseline)"),
-    ("inter_score", "Inter-case — |z(events in window)| vs. baseline mean/std"),
     ("data_score", "Data attributes — mean(|z(numeric)| + KL(categorical))"),
 ]
-for col, title in SCORE_TITLES:
+kl_max = max(
+    [float(scores[c].max()) for c, _ in KL_TITLES if c in scores.columns and not scores.empty],
+    default=1.0,
+)
+for col, title in KL_TITLES:
     fig = score_line(scores, col, title=title)
-    y_max = float(scores[col].max()) if not scores.empty else 1.0
-    add_window_boundaries(fig, scores["window_start"], y_min=0, y_max=max(y_max, 1e-9))
+    fig.update_yaxes(range=[0, max(kl_max, 1e-9)])
+    add_window_boundaries(fig, scores["window_start"], y_min=0, y_max=max(kl_max, 1e-9))
     st.plotly_chart(fig, width="stretch")
+
+# Inter-case uses a z-score (unbounded, different unit) so it gets its own axis.
+inter_fig = score_line(scores, "inter_score",
+                       title="Inter-case — |z(events in window)| vs. baseline mean/std")
+inter_max = float(scores["inter_score"].max()) if not scores.empty else 1.0
+add_window_boundaries(inter_fig, scores["window_start"], y_min=0, y_max=max(inter_max, 1e-9))
+st.plotly_chart(inter_fig, width="stretch")
 
 st.caption(
     "Different units across plots: KL divergence (CF/Resource/Data) typically "
