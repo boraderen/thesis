@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from core.windows import floor_to_window, window_index
+
 _CELL_NAMES = {
     "new_arrivals": "Burst opening",
     "completions": "Burst closing",
@@ -58,29 +60,31 @@ def _describe_cell(features: np.ndarray, columns: list[str]) -> str:
     return _CELL_NAMES.get(top_col, "Steady flow")
 
 
-def _delta_stats(df: pd.DataFrame, win_index: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
+def _delta_stats(df: pd.DataFrame, win_idx: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
     """Mean and std of ln-minute gaps between consecutive in-window events, per window."""
     ordered = df.sort_values(["__win__", "timestamp"])
     gap_s = ordered.groupby("__win__")["timestamp"].diff().dt.total_seconds()
     mask = gap_s.notna()
     log_min = pd.Series(_zlog_minutes(gap_s[mask].to_numpy()), index=gap_s.index[mask])
     grouped = log_min.groupby(ordered.loc[mask, "__win__"])
-    agg = grouped.agg(["mean", "std"]).reindex(win_index).fillna(0.0)
+    agg = grouped.agg(["mean", "std"]).reindex(win_idx).fillna(0.0)
     return agg["mean"].to_numpy(dtype=float), agg["std"].to_numpy(dtype=float)
 
 
-def _window_counts(df: pd.DataFrame, win_index: pd.DatetimeIndex, win_minutes: int) -> pd.DataFrame:
+def _window_counts(
+    df: pd.DataFrame, win_idx: pd.DatetimeIndex, origin: pd.Timestamp, win_minutes: int
+) -> pd.DataFrame:
     """Compute active/arrivals/completions/totals per window."""
-    first = df.groupby("case_id")["timestamp"].min().dt.floor(f"{win_minutes}min")
-    last = df.groupby("case_id")["timestamp"].max().dt.floor(f"{win_minutes}min")
+    first = floor_to_window(df.groupby("case_id")["timestamp"].min(), origin, win_minutes)
+    last = floor_to_window(df.groupby("case_id")["timestamp"].max(), origin, win_minutes)
     return pd.DataFrame(
         {
-            "active_cases": df.groupby("__win__")["case_id"].nunique().reindex(win_index, fill_value=0),
-            "new_arrivals": first.value_counts().reindex(win_index, fill_value=0),
-            "completions": last.value_counts().reindex(win_index, fill_value=0),
-            "total_events": df.groupby("__win__").size().reindex(win_index, fill_value=0),
+            "active_cases": df.groupby("__win__")["case_id"].nunique().reindex(win_idx, fill_value=0),
+            "new_arrivals": first.value_counts().reindex(win_idx, fill_value=0),
+            "completions": last.value_counts().reindex(win_idx, fill_value=0),
+            "total_events": df.groupby("__win__").size().reindex(win_idx, fill_value=0),
         },
-        index=win_index,
+        index=win_idx,
     ).astype(float)
 
 
@@ -90,13 +94,14 @@ def build_features(
 ) -> tuple[pd.DataFrame, InterSpec]:
     """Compute the 7 per-window inter-case features."""
     df = log.sort_values("timestamp").copy()
-    df["__win__"] = df["timestamp"].dt.floor(f"{window_minutes}min")
-    win_index = pd.date_range(df["__win__"].min(), df["__win__"].max(), freq=f"{window_minutes}min")
+    origin = df["timestamp"].min()
+    df["__win__"] = floor_to_window(df["timestamp"], origin, window_minutes)
+    win_idx = window_index(origin, df["timestamp"].max(), window_minutes)
 
-    counts = _window_counts(df, win_index, window_minutes)
-    deltas_mean, deltas_std = _delta_stats(df, win_index)
+    counts = _window_counts(df, win_idx, origin, window_minutes)
+    deltas_mean, deltas_std = _delta_stats(df, win_idx)
     case_last = df.groupby("case_id")["timestamp"].max()
-    stalled = _stalled_count(case_last, win_index, window_minutes, stall_minutes)
+    stalled = _stalled_count(case_last, win_idx, window_minutes, stall_minutes)
 
     out = counts.assign(mean_delta_t=deltas_mean, std_delta_t=deltas_std, stalled_cases=stalled.astype(float))
     out.index.name = "window_start"

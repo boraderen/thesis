@@ -7,6 +7,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from core.windows import floor_to_window, window_index
+
 
 @dataclass(frozen=True)
 class ResourceSpec:
@@ -17,11 +19,6 @@ class ResourceSpec:
     resources: list[str]
     window_minutes: int
     window_starts: pd.DatetimeIndex
-
-
-def _floor_window(ts: pd.Series, minutes: int) -> pd.Series:
-    """Floor a timestamp series to the start of its window."""
-    return ts.dt.floor(f"{minutes}min")
 
 
 def _zlog_minutes(seconds: np.ndarray) -> np.ndarray:
@@ -47,7 +44,7 @@ def _handover_counts(log: pd.DataFrame, resources: list[str]) -> pd.DataFrame:
 
 
 def _resource_mean_wait(
-    df: pd.DataFrame, resources: list[str], win_index: pd.DatetimeIndex
+    df: pd.DataFrame, resources: list[str], win_idx: pd.DatetimeIndex
 ) -> pd.DataFrame:
     """For each window and resource r, mean ln-minutes wait into r within the window."""
     df = df.sort_values(["case_id", "timestamp"]).copy()
@@ -59,9 +56,9 @@ def _resource_mean_wait(
     pivot = (
         crossings.groupby(["__win__", "__res__"])["wait_lnmin"].mean().unstack(fill_value=0)
         if not crossings.empty
-        else pd.DataFrame(0.0, index=win_index, columns=resources)
+        else pd.DataFrame(0.0, index=win_idx, columns=resources)
     )
-    pivot = pivot.reindex(win_index, fill_value=0).reindex(columns=resources, fill_value=0)
+    pivot = pivot.reindex(win_idx, fill_value=0).reindex(columns=resources, fill_value=0)
     pivot.columns = [f"wait:{r}" for r in resources]
     return pivot
 
@@ -73,21 +70,22 @@ def build_features(log: pd.DataFrame, window_minutes: int = 60) -> tuple[pd.Data
         raise ValueError("No 'resource' column in the log")
     df = log.copy()
     df["__res__"] = df["resource"].astype(str)
-    df["__win__"] = _floor_window(df["timestamp"], window_minutes)
+    origin = df["timestamp"].min()
+    df["__win__"] = floor_to_window(df["timestamp"], origin, window_minutes)
     resources = sorted(df["__res__"].dropna().unique().tolist())
 
-    win_index = pd.date_range(df["__win__"].min(), df["__win__"].max(), freq=f"{window_minutes}min")
+    win_idx = window_index(origin, df["timestamp"].max(), window_minutes)
 
-    events_by = df.groupby(["__win__", "__res__"]).size().unstack(fill_value=0).reindex(win_index, fill_value=0)
+    events_by = df.groupby(["__win__", "__res__"]).size().unstack(fill_value=0).reindex(win_idx, fill_value=0)
     events_by = events_by.reindex(columns=resources, fill_value=0)
     events_by.columns = [f"events:{r}" for r in resources]
 
     active = df.groupby(["__win__", "__res__"])["case_id"].nunique().unstack(fill_value=0)
-    active = active.reindex(win_index, fill_value=0).reindex(columns=resources, fill_value=0)
+    active = active.reindex(win_idx, fill_value=0).reindex(columns=resources, fill_value=0)
     active.columns = [f"active:{r}" for r in resources]
 
-    wait = _resource_mean_wait(df, resources, win_index)
-    ho = _handover_counts(df, resources).reindex(win_index, fill_value=0)
+    wait = _resource_mean_wait(df, resources, win_idx)
+    ho = _handover_counts(df, resources).reindex(win_idx, fill_value=0)
 
     matrix = pd.concat([events_by, active, wait, ho], axis=1)
     matrix.index.name = "window_start"

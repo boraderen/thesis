@@ -1,6 +1,8 @@
 """Shared options for calendar-window controls."""
 from __future__ import annotations
 
+import pandas as pd
+
 WINDOW_MINUTE_OPTIONS: list[tuple[int, str]] = [
     (5, "5 min"),
     (15, "15 min"),
@@ -13,6 +15,11 @@ WINDOW_MINUTE_OPTIONS: list[tuple[int, str]] = [
     (1440, "1 day"),
     (4320, "3 days"),
     (10080, "1 week"),
+    (43800, "1 month"),
+    (87600, "2 months"),
+    (131400, "3 months"),
+    (262800, "6 month"),
+    (525960, "1 year")
 ]
 
 
@@ -30,3 +37,16 @@ def window_minute_label(minutes: int) -> str:
         if m == minutes:
             return label
     return f"{minutes} min"
+
+
+def floor_to_window(ts: pd.Series, origin: pd.Timestamp, minutes: int) -> pd.Series:
+    """Floor timestamps to window starts anchored at `origin` (window width = minutes)."""
+    freq = pd.Timedelta(minutes=minutes)
+    return origin + ((ts - origin) // freq) * freq
+
+
+def window_index(origin: pd.Timestamp, last_ts: pd.Timestamp, minutes: int) -> pd.DatetimeIndex:
+    """Build the inclusive window-start index from origin through the window containing last_ts."""
+    freq = pd.Timedelta(minutes=minutes)
+    last_win = origin + ((last_ts - origin) // freq) * freq
+    return pd.date_range(start=origin, end=last_win, freq=freq)

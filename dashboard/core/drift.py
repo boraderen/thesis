@@ -5,6 +5,8 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
+from core.windows import floor_to_window
+
 
 @st.cache_data(show_spinner=False)
 def intra_state_distribution(
@@ -13,7 +15,8 @@ def intra_state_distribution(
     """Aggregate per-event SOM states into per-window frequency vectors."""
     df = feat.copy()
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
-    df["__win__"] = df["timestamp"].dt.floor(f"{window_minutes}min")
+    origin = df["timestamp"].min()
+    df["__win__"] = floor_to_window(df["timestamp"], origin, window_minutes)
     counts = (
         df.groupby(["__win__", "state_id"]).size().unstack(fill_value=0)
         .reindex(columns=range(n_states), fill_value=0)
