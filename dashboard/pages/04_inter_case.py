@@ -8,6 +8,7 @@ import streamlit as st
 from core.features.inter_case import build_features, describe_cells
 from core.pca import fit_pca
 from core.som import train_som
+from core.windows import window_minute_choices, window_minute_label
 from viz.som_grid import som_heatmap
 from viz.tables import styled_feature_table
 from viz.trajectory import pca_variance_plot, state_timeline
@@ -24,11 +25,11 @@ log: pd.DataFrame = st.session_state["log"]
 with st.sidebar:
     st.header("Controls")
     default_W = int(st.session_state.get("window_minutes", 60))
-    options = [30, 60, 120]
-    if default_W not in options:
-        options = sorted(options + [default_W])
-    window_minutes = st.selectbox("Window W (minutes)", options, index=options.index(default_W))
-    stall = st.slider("Stall threshold τ (minutes)", min_value=15, max_value=240, value=60, step=15)
+    options = window_minute_choices(default_W)
+    window_minutes = st.selectbox(
+        "Window W", options, index=options.index(default_W), format_func=window_minute_label
+    )
+    stall = st.slider("Stall threshold τ (minutes)", min_value=15, max_value=480, value=60, step=15)
     st.session_state["window_minutes"] = window_minutes
 
 matrix_df, spec = build_features(log, window_minutes=window_minutes, stall_minutes=stall)

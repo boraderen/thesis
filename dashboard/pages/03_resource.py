@@ -7,6 +7,7 @@ import streamlit as st
 from core.features.resource import build_features
 from core.pca import fit_pca
 from core.som import train_som
+from core.windows import window_minute_choices, window_minute_label
 from viz.som_grid import som_heatmap
 from viz.tables import styled_feature_table
 from viz.trajectory import pca_variance_plot, state_timeline
@@ -26,10 +27,10 @@ if "resource" not in log.columns:
 with st.sidebar:
     st.header("Controls")
     default_W = int(st.session_state.get("window_minutes", 60))
-    options = [30, 60, 120]
-    if default_W not in options:
-        options = sorted(options + [default_W])
-    window_minutes = st.selectbox("Window W (minutes)", options, index=options.index(default_W))
+    options = window_minute_choices(default_W)
+    window_minutes = st.selectbox(
+        "Window W", options, index=options.index(default_W), format_func=window_minute_label
+    )
     st.session_state["window_minutes"] = window_minutes
 
 matrix_df, spec = build_features(log, window_minutes=window_minutes)

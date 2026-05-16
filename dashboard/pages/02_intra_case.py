@@ -31,7 +31,7 @@ GROUP_LABELS = {
 
 with st.sidebar:
     st.header("Controls")
-    window = st.slider("Window size w", min_value=1, max_value=5, value=3)
+    window = st.slider("Window size w (events)", min_value=1, max_value=10, value=3)
     grid_label = st.selectbox("SOM grid", ["2×2", "3×3", "4×4"], index=1)
     grid_h = grid_w = int(grid_label.split("×")[0])
 
