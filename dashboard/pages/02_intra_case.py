@@ -4,10 +4,13 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from core.drift import intra_state_distribution
 from core.features.intra_case import build_features
 from core.pca import fit_pca
 from core.som import train_som
 from core.transitions import find_transitions
+from core.windows import window_minute_choices, window_minute_label
+from viz.drift_signal import stacked_area_intra
 from viz.som_grid import som_heatmap
 from viz.tables import styled_feature_table
 from viz.trajectory import add_transition_markers, pca_variance_plot, state_timeline
@@ -35,6 +38,16 @@ with st.sidebar:
     window = st.slider("Window size w (events)", min_value=1, max_value=10, value=3)
     grid_label = st.selectbox("SOM grid", ["2×2", "3×3", "4×4"], index=1)
     grid_h = grid_w = int(grid_label.split("×")[0])
+    default_W = int(st.session_state.get("window_minutes", 60))
+    win_options = window_minute_choices(default_W)
+    distribution_W = st.selectbox(
+        "Distribution window W",
+        win_options,
+        index=win_options.index(default_W),
+        format_func=window_minute_label,
+        help="Calendar window used to aggregate per-event states into frequency bands.",
+    )
+    st.session_state["window_minutes"] = distribution_W
 
 feat, spec = build_features(
     log, window=window, numeric_attrs=numeric_attrs, categorical_attrs=categorical_attrs
@@ -100,6 +113,19 @@ with col_r:
     if not transitions.empty:
         add_transition_markers(fig, transitions["boundary"])
     st.plotly_chart(fig, width="stretch")
+
+st.subheader("State frequency distribution over time")
+n_states = som.grid_h * som.grid_w
+intra_dist = intra_state_distribution(feat, n_states=n_states, window_minutes=distribution_W)
+st.caption(
+    f"Per {window_minute_label(distribution_W)} window — what fraction of events landed in each state. "
+    f"{len(intra_dist):,} windows across all {feat['case_id'].nunique():,} cases."
+)
+intra_cols = [f"intra_S{i}" for i in range(n_states)]
+st.plotly_chart(
+    stacked_area_intra(intra_dist, intra_cols, som.cell_labels),
+    width="stretch",
+)
 
 st.subheader("Transitions")
 if transitions.empty:
