@@ -16,8 +16,8 @@ OUTPUT_PATH = "data/resource/"
 NUM_LOGS = 1
 GLOBAL_SEED = 7
 
-# Log size — big and long so drift periods are easy to read.
-NUM_TRACES = 6000
+# Log size — very big and long so drift regimes are unmistakable.
+NUM_TRACES = 8000
 MIN_TRACE_LENGTH = 4
 MAX_TRACE_LENGTH = 8
 AVG_TRACE_LENGTH = 6
@@ -56,14 +56,18 @@ SERVICE_TIME_STD_MIN = 7
 NOISE_PROBABILITY = 0
 NOISE_SIMILAR_VS_RANDOM = 0
 
-# Drift configuration — three sudden reassignments stacked with a pool-size
-# cut, each at its own change point. Driftify uses 0.8 post-drift dominance,
-# so the cumulative effect is very visible on the resource SOM.
+# Drift configuration — only resource drifts (no CF / inter-case), stacked to
+# make the regime change unmistakable: four sudden reassignments (almost one
+# per activity) bracketed by two sudden pool-size cuts. Driftify hardcodes
+# the post-drift dominance at 0.8, so the cumulative shift in per-activity
+# resource probabilities is extreme.
 DRIFTS = [
-    {"subtype": "reassignment", "drift_type": "sudden", "change_proportion": 0.8},
-    {"subtype": "reassignment", "drift_type": "sudden", "change_proportion": 0.8},
+    {"subtype": "reassignment", "drift_type": "sudden"},
+    {"subtype": "reassignment", "drift_type": "sudden"},
     {"subtype": "pool_size", "drift_type": "sudden"},
-    {"subtype": "reassignment", "drift_type": "sudden", "change_proportion": 0.8},
+    {"subtype": "reassignment", "drift_type": "sudden"},
+    {"subtype": "reassignment", "drift_type": "sudden"},
+    {"subtype": "pool_size", "drift_type": "sudden"},
 ]
 
 
