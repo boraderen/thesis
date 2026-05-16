@@ -50,3 +50,13 @@ def window_index(origin: pd.Timestamp, last_ts: pd.Timestamp, minutes: int) -> p
     freq = pd.Timedelta(minutes=minutes)
     last_win = origin + ((last_ts - origin) // freq) * freq
     return pd.date_range(start=origin, end=last_win, freq=freq)
+
+
+SOM_GRID_OPTIONS: list[tuple[int, int]] = [
+    (2, 2), (2, 3), (3, 2), (3, 3), (3, 4), (4, 3), (4, 4), (5, 5),
+]
+
+
+def som_grid_label(hw: tuple[int, int]) -> str:
+    """Human label for a grid size tuple."""
+    return f"{hw[0]}×{hw[1]}"

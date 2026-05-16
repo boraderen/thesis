@@ -8,6 +8,15 @@ import plotly.graph_objects as go
 from viz.palette import state_bg, state_fg
 
 
+def _timeline_hover(state_ids: np.ndarray, labels: list[str], dominants: list[str] | None) -> np.ndarray:
+    """Build the per-cell hover string array for a state timeline."""
+    def one(sid: int) -> str:
+        label = labels[sid] if sid < len(labels) else f"S{sid}"
+        dom = (dominants[sid] if dominants and sid < len(dominants) else "") or "—"
+        return f"{label}<br>dominant: {dom}"
+    return np.array([one(int(s)) for s in state_ids])
+
+
 def state_timeline(
     x: pd.Series,
     state_ids: np.ndarray,
@@ -17,35 +26,21 @@ def state_timeline(
     cell_dominant: list[str] | None = None,
     xgap: int = 2,
 ) -> go.Figure:
-    """Render a state trajectory as a single coloured-strip Heatmap (one trace).
-
-    Plotly's heatmap centers each cell on its event/window timestamp, so a
-    cell's visible boundary sits at the midpoint between successive units.
-    `xgap` adds a thin gap between cells; set to 0 to hide observation
-    boundaries (useful when observations aren't calendar-aligned).
-    """
+    """Render a state trajectory as a single coloured-strip Heatmap (one trace)."""
     fig = go.Figure()
     if len(state_ids) == 0:
         return fig
     n_states = max(len(cell_labels), int(state_ids.max()) + 1) if len(state_ids) else 1
-    colorscale = [[i / max(1, n_states - 1), state_bg(i)] for i in range(n_states)]
-
-    def _hover(sid: int) -> str:
-        label = cell_labels[sid] if sid < len(cell_labels) else f"S{sid}"
-        dom = (cell_dominant[sid] if cell_dominant and sid < len(cell_dominant) else "") or "—"
-        return f"{label}<br>dominant: {dom}"
-
-    hover = np.array([_hover(int(s)) for s in state_ids])
     fig.add_trace(go.Heatmap(
         x=x, y=["state"], z=[state_ids],
-        text=[hover], hoverinfo="x+text",
-        colorscale=colorscale, showscale=False,
-        zmin=0, zmax=max(1, n_states - 1),
+        text=[_timeline_hover(state_ids, cell_labels, cell_dominant)],
+        hoverinfo="x+text",
+        colorscale=[[i / max(1, n_states - 1), state_bg(i)] for i in range(n_states)],
+        showscale=False, zmin=0, zmax=max(1, n_states - 1),
         xgap=xgap,
     ))
     fig.update_layout(
-        title=title,
-        height=height,
+        title=title, height=height,
         margin=dict(l=10, r=10, t=40 if title else 10, b=10),
         xaxis=dict(showgrid=False),
         yaxis=dict(visible=False),

@@ -9,7 +9,7 @@ from core.features.intra_case import build_features
 from core.pca import fit_pca
 from core.som import train_som
 from core.transitions import find_transitions
-from core.windows import window_minute_choices, window_minute_label
+from core.windows import SOM_GRID_OPTIONS, som_grid_label, window_minute_choices, window_minute_label
 from viz.drift_signal import add_window_boundaries, stacked_area_intra
 from viz.som_grid import som_heatmap
 from viz.tables import styled_feature_table
@@ -36,9 +36,21 @@ GROUP_LABELS = {
 with st.sidebar:
     st.header("Controls")
     window = st.slider("Window size w (events)", min_value=1, max_value=10, value=3)
-    grid_label = st.selectbox("SOM grid", ["2×2", "3×3", "4×4"], index=1)
-    grid_h = grid_w = int(grid_label.split("×")[0])
-    default_W = int(st.session_state.get("window_minutes", 60))
+    grid_default = st.session_state.get("intra_grid", (3, 3))
+    if grid_default not in SOM_GRID_OPTIONS:
+        grid_default = (3, 3)
+    grid_h, grid_w = st.selectbox(
+        "SOM grid", SOM_GRID_OPTIONS,
+        index=SOM_GRID_OPTIONS.index(grid_default),
+        format_func=som_grid_label,
+    )
+    st.session_state["intra_grid"] = (grid_h, grid_w)
+    pca_k = st.number_input(
+        "PCA components (0 = auto/elbow)",
+        min_value=0, max_value=20, value=int(st.session_state.get("intra_pca_k", 0)), step=1,
+    )
+    st.session_state["intra_pca_k"] = pca_k
+    default_W = int(st.session_state.get("intra_distribution_W", 60))
     win_options = window_minute_choices(default_W)
     distribution_W = st.selectbox(
         "Distribution window W",
@@ -47,7 +59,7 @@ with st.sidebar:
         format_func=window_minute_label,
         help="Calendar window used to aggregate per-event states into frequency bands.",
     )
-    st.session_state["window_minutes"] = distribution_W
+    st.session_state["intra_distribution_W"] = distribution_W
 
 feat, spec = build_features(
     log, window=window, numeric_attrs=numeric_attrs, categorical_attrs=categorical_attrs
@@ -78,7 +90,7 @@ styled = styled_feature_table(feat[preview_cols], preview_groups, max_rows=30)
 st.dataframe(styled, width="stretch", height=380)
 
 matrix = feat[selected_cols].to_numpy()
-pca = fit_pca(matrix)
+pca = fit_pca(matrix, force_k=int(pca_k) if pca_k else None)
 
 st.subheader("PCA")
 st.plotly_chart(pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim), width="stretch")

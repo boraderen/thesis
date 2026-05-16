@@ -9,7 +9,7 @@ from core.features.inter_case import build_features, describe_cells
 from core.pca import fit_pca
 from core.som import train_som
 from core.transitions import find_transitions
-from core.windows import window_minute_choices, window_minute_label
+from core.windows import SOM_GRID_OPTIONS, som_grid_label, window_minute_choices, window_minute_label
 from viz.som_grid import som_heatmap
 from viz.tables import styled_feature_table
 from viz.trajectory import add_transition_markers, pca_variance_plot, state_timeline
@@ -25,13 +25,27 @@ log: pd.DataFrame = st.session_state["log"]
 
 with st.sidebar:
     st.header("Controls")
-    default_W = int(st.session_state.get("window_minutes", 60))
+    default_W = int(st.session_state.get("inter_W", 60))
     options = window_minute_choices(default_W)
     window_minutes = st.selectbox(
         "Window W", options, index=options.index(default_W), format_func=window_minute_label
     )
     stall = st.slider("Stall threshold τ (minutes)", min_value=15, max_value=480, value=60, step=15)
-    st.session_state["window_minutes"] = window_minutes
+    st.session_state["inter_W"] = window_minutes
+    grid_default = st.session_state.get("inter_grid", (2, 2))
+    if grid_default not in SOM_GRID_OPTIONS:
+        grid_default = (2, 2)
+    grid_h, grid_w = st.selectbox(
+        "SOM grid", SOM_GRID_OPTIONS,
+        index=SOM_GRID_OPTIONS.index(grid_default),
+        format_func=som_grid_label,
+    )
+    st.session_state["inter_grid"] = (grid_h, grid_w)
+    pca_k = st.number_input(
+        "PCA components (0 = auto/elbow)",
+        min_value=0, max_value=20, value=int(st.session_state.get("inter_pca_k", 0)), step=1,
+    )
+    st.session_state["inter_pca_k"] = pca_k
 
 matrix_df, spec = build_features(log, window_minutes=window_minutes, stall_minutes=stall)
 if len(matrix_df) < 2:
@@ -76,7 +90,7 @@ mat = matrix_df[selected_cols].to_numpy()
 use_pca = mat.shape[0] > 20
 st.subheader("PCA")
 if use_pca:
-    pca = fit_pca(mat)
+    pca = fit_pca(mat, force_k=int(pca_k) if pca_k else None)
     st.plotly_chart(
         pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim),
         width="stretch",
@@ -86,7 +100,7 @@ else:
     st.info(f"PCA skipped — only {mat.shape[0]} windows, feeding directly to SOM.")
     som_input = mat
 
-som = train_som(som_input, grid_h=2, grid_w=2, annotations=None)
+som = train_som(som_input, grid_h=grid_h, grid_w=grid_w, annotations=None)
 
 centroids = np.zeros((som.grid_h * som.grid_w, len(selected_cols)))
 for cell_id in range(som.grid_h * som.grid_w):

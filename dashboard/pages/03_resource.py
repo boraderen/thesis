@@ -8,7 +8,7 @@ from core.features.resource import build_features
 from core.pca import fit_pca
 from core.som import train_som
 from core.transitions import find_transitions
-from core.windows import window_minute_choices, window_minute_label
+from core.windows import SOM_GRID_OPTIONS, som_grid_label, window_minute_choices, window_minute_label
 from viz.som_grid import som_heatmap
 from viz.tables import styled_feature_table
 from viz.trajectory import add_transition_markers, pca_variance_plot, state_timeline
@@ -27,12 +27,26 @@ if "resource" not in log.columns:
 
 with st.sidebar:
     st.header("Controls")
-    default_W = int(st.session_state.get("window_minutes", 60))
+    default_W = int(st.session_state.get("resource_W", 60))
     options = window_minute_choices(default_W)
     window_minutes = st.selectbox(
         "Window W", options, index=options.index(default_W), format_func=window_minute_label
     )
-    st.session_state["window_minutes"] = window_minutes
+    st.session_state["resource_W"] = window_minutes
+    grid_default = st.session_state.get("resource_grid", (2, 3))
+    if grid_default not in SOM_GRID_OPTIONS:
+        grid_default = (2, 3)
+    grid_h, grid_w = st.selectbox(
+        "SOM grid", SOM_GRID_OPTIONS,
+        index=SOM_GRID_OPTIONS.index(grid_default),
+        format_func=som_grid_label,
+    )
+    st.session_state["resource_grid"] = (grid_h, grid_w)
+    pca_k = st.number_input(
+        "PCA components (0 = auto/elbow)",
+        min_value=0, max_value=20, value=int(st.session_state.get("resource_pca_k", 0)), step=1,
+    )
+    st.session_state["resource_pca_k"] = pca_k
 
 matrix_df, spec = build_features(log, window_minutes=window_minutes)
 if len(matrix_df) < 2:
@@ -89,11 +103,11 @@ styled = styled_feature_table(matrix_df[preview_cols], preview_groups, max_rows=
 st.dataframe(styled, width="stretch", height=380)
 
 mat = matrix_df[selected_cols].to_numpy()
-pca = fit_pca(mat)
+pca = fit_pca(mat, force_k=int(pca_k) if pca_k else None)
 st.subheader("PCA")
 st.plotly_chart(pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim), width="stretch")
 
-som = train_som(pca.transformed, grid_h=2, grid_w=3, annotations=None)
+som = train_som(pca.transformed, grid_h=grid_h, grid_w=grid_w, annotations=None)
 matrix_df = matrix_df.assign(state_id=som.state_ids)
 st.session_state["resource_matrix"] = matrix_df
 st.session_state["resource_spec"] = spec
