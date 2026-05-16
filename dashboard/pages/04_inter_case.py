@@ -60,7 +60,9 @@ st.caption(
     f"(W={spec.window_minutes} min, τ={spec.stall_minutes} min); "
     f"{len(selected_cols)} feed the SOM."
 )
-styled = styled_feature_table(matrix_df, spec.groups, max_rows=30)
+preview_cols = ["window_start", *selected_cols]
+preview_groups = {g: [c for c in cols if c in selected_cols] for g, cols in spec.groups.items()}
+styled = styled_feature_table(matrix_df[preview_cols], preview_groups, max_rows=30)
 st.dataframe(styled, width="stretch", height=380)
 
 mat = matrix_df[selected_cols].to_numpy()

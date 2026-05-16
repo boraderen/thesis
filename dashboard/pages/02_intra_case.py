@@ -59,8 +59,9 @@ st.caption(
     f"(window={spec.window}, |A|={len(spec.activities)}); "
     f"{len(selected_cols)} columns feed the SOM."
 )
-preview_cols = ["case_id", "activity", "timestamp", *spec.columns]
-styled = styled_feature_table(feat[preview_cols], spec.groups, max_rows=30)
+preview_cols = ["case_id", "activity", "timestamp", *selected_cols]
+preview_groups = {g: [c for c in cols if c in selected_cols] for g, cols in spec.groups.items()}
+styled = styled_feature_table(feat[preview_cols], preview_groups, max_rows=30)
 st.dataframe(styled, width="stretch", height=380)
 
 matrix = feat[selected_cols].to_numpy()
