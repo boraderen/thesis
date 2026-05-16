@@ -37,8 +37,10 @@ def find_transitions(
     times = pd.to_datetime(timestamps).reset_index(drop=True)
     for idx in changes:
         before, after = feat.iloc[idx], feat.iloc[idx + 1]
+        t_prev, t_next = times.iloc[idx], times.iloc[idx + 1]
         rows.append({
-            "timestamp": times.iloc[idx + 1],
+            "timestamp": t_next,
+            "boundary": t_prev + (t_next - t_prev) / 2,
             "from_idx": int(state_ids[idx]),
             "to_idx": int(state_ids[idx + 1]),
             "from": cell_labels[int(state_ids[idx])] if int(state_ids[idx]) < len(cell_labels) else f"S{int(state_ids[idx])}",
@@ -46,4 +48,4 @@ def find_transitions(
             "top_changes": _top_changes(before, after, top_n),
         })
     df = pd.DataFrame(rows)
-    return df[["timestamp", "from", "to", "from_idx", "to_idx", "top_changes"]] if len(df) else df
+    return df[["timestamp", "boundary", "from", "to", "from_idx", "to_idx", "top_changes"]] if len(df) else df

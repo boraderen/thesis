@@ -121,7 +121,7 @@ with col_r:
         title=f"State per {spec.window_minutes}-min window",
     )
     if not transitions.empty:
-        add_transition_markers(fig, transitions["timestamp"])
+        add_transition_markers(fig, transitions["boundary"])
     st.plotly_chart(fig, width="stretch")
     with st.expander(f"Window feature values (first {min(500, len(matrix_df))} rows)"):
         st.dataframe(matrix_df.head(500), width="stretch", height=240)

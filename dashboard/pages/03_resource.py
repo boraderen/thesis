@@ -116,7 +116,7 @@ with col_r:
         title=f"State per {spec.window_minutes}-min window",
     )
     if not transitions.empty:
-        add_transition_markers(fig, transitions["timestamp"])
+        add_transition_markers(fig, transitions["boundary"])
     st.plotly_chart(fig, width="stretch")
 
 st.subheader("Transitions")

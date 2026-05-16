@@ -98,7 +98,7 @@ with col_r:
     )
     fig = state_timeline(sub["timestamp"], sub["state_id"].to_numpy(), som.cell_labels, title=f"Case {chosen}")
     if not transitions.empty:
-        add_transition_markers(fig, transitions["timestamp"])
+        add_transition_markers(fig, transitions["boundary"])
     st.plotly_chart(fig, width="stretch")
 
 st.subheader("Transitions")
