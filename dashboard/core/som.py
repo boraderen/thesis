@@ -1,0 +1,80 @@
+"""Self-organising map: train, assign BMU, label cells by dominant feature."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Iterable
+
+import numpy as np
+import streamlit as st
+from minisom import MiniSom
+
+
+@dataclass(frozen=True)
+class SOMResult:
+    """Outcome of training a SOM on a feature matrix."""
+
+    grid_h: int
+    grid_w: int
+    bmus: np.ndarray  # shape (n_samples, 2) row, col
+    state_ids: np.ndarray  # 1D index = row * grid_w + col
+    cell_labels: list[str]  # length grid_h * grid_w — log-agnostic enumeration "S{id}"
+    cell_counts: np.ndarray  # 1D length grid_h * grid_w
+    cell_dominant: list[str]  # length grid_h * grid_w — descriptive overlay for tooltips
+
+
+def _label_cells(
+    grid_h: int,
+    grid_w: int,
+    bmus: np.ndarray,
+    annotations: Iterable[str] | None,
+) -> tuple[list[str], np.ndarray, list[str]]:
+    """Return labels, counts, and the most-common annotation per cell (separately)."""
+    counts = np.zeros(grid_h * grid_w, dtype=int)
+    labels = [f"S{i}" for i in range(grid_h * grid_w)]
+    dominants = [""] * (grid_h * grid_w)
+    annotations = list(annotations) if annotations is not None else None
+    for cell_id in range(grid_h * grid_w):
+        mask = (bmus[:, 0] * grid_w + bmus[:, 1]) == cell_id
+        counts[cell_id] = int(mask.sum())
+        if annotations and counts[cell_id] > 0:
+            picked = [annotations[i] for i in np.where(mask)[0]]
+            vals, c = np.unique(picked, return_counts=True)
+            dominants[cell_id] = str(vals[c.argmax()])
+    return labels, counts, dominants
+
+
+def _iteration_budget(n_samples: int, epochs: int = 5, cap: int = 50_000, floor: int = 500) -> int:
+    """Number of single-sample weight updates: ~epochs full passes, capped for big logs."""
+    return max(floor, min(cap, epochs * n_samples))
+
+
+@st.cache_data(show_spinner=False)
+def train_som(
+    matrix: np.ndarray,
+    grid_h: int = 3,
+    grid_w: int = 3,
+    epochs: int = 5,
+    seed: int = 7,
+    annotations: tuple[str, ...] | None = None,
+) -> SOMResult:
+    """Train a SOM for ~`epochs` random-order passes; return BMU assignments + cell labels."""
+    if matrix.size == 0:
+        raise ValueError("Empty matrix")
+    dim = matrix.shape[1]
+    sigma = max(1.0, min(grid_h, grid_w) / 2.0)
+    som = MiniSom(grid_h, grid_w, dim, sigma=sigma, learning_rate=0.5, random_seed=seed)
+    som.random_weights_init(matrix)
+    n_iter = _iteration_budget(matrix.shape[0], epochs=epochs)
+    som.train(matrix, n_iter, random_order=True, verbose=False)
+    bmus = np.array([som.winner(x) for x in matrix], dtype=int)
+    labels, counts, dominants = _label_cells(grid_h, grid_w, bmus, annotations)
+    state_ids = bmus[:, 0] * grid_w + bmus[:, 1]
+    return SOMResult(
+        grid_h=grid_h,
+        grid_w=grid_w,
+        bmus=bmus,
+        state_ids=state_ids,
+        cell_labels=labels,
+        cell_counts=counts,
+        cell_dominant=dominants,
+    )

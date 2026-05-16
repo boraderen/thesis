@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +20,7 @@ from scripts.driftify.config import (
     START_TIMESTAMP_KEY,
     TIMESTAMP_KEY,
 )
-from scripts.driftify.metadata import drift_info_json
+from scripts.driftify.metadata import drift_metadata_md, log_attributes_payload
 
 
 EVENT_LEVEL_COLUMNS = [
@@ -37,7 +36,8 @@ EVENT_LEVEL_COLUMNS = [
 
 def dataframe_to_event_log(df: pd.DataFrame, payload: dict[str, Any]) -> EventLog:
     log = EventLog()
-    log.attributes["drift_info"] = drift_info_json(payload)
+    for key, value in log_attributes_payload(payload).items():
+        log.attributes[key] = value
     log.attributes["generator"] = "driftify"
     for case_id, group in df.sort_values([CASE_ID_KEY, TIMESTAMP_KEY]).groupby(CASE_ID_KEY, sort=False):
         first = group.iloc[0]
@@ -67,8 +67,8 @@ def write_xes_with_metadata(
     path.parent.mkdir(parents=True, exist_ok=True)
     log = dataframe_to_event_log(df, payload)
     xes_exporter.apply(log, str(path), variant=xes_exporter.Variants.LINE_BY_LINE)
-    sidecar = path.with_name(path.name + ".metadata.json")
-    sidecar.write_text(json.dumps(payload, indent=2, sort_keys=True), encoding="utf-8")
+    sidecar = path.with_name(path.name + ".metadata.md")
+    sidecar.write_text(drift_metadata_md(payload), encoding="utf-8")
     return path
 
 
