@@ -1,6 +1,6 @@
 # Driftify Usage Guide
 
-Driftify generates synthetic XES event logs with injected concept drift. It is designed for experiments where you need a known ground truth: every generated log contains drift metadata in the XES file and in a matching metadata JSON sidecar.
+Driftify generates synthetic XES event logs with injected concept drift. It is designed for experiments where you need a known ground truth: every generated log contains the full drift metadata embedded in the XES file (log-level attributes) and a human-readable Markdown summary written alongside the log.
 
 The main entry points are the standalone scripts in this folder. You usually edit the constants at the top of one script, then run it.
 
@@ -22,10 +22,10 @@ The generator writes:
 
 ```text
 <output_folder>/<log_name>.xes
-<output_folder>/<log_name>.xes.metadata.json
+<output_folder>/<log_name>.xes.metadata.md
 ```
 
-The `.xes.metadata.json` file is easier to read programmatically. The XES file also stores the same drift ground truth as a log-level `drift_info` attribute.
+The `.xes.metadata.md` file is a Markdown summary intended for humans. The XES file stores the machine-readable copy as log-level attributes (`drift_info`, `config_info`, `noise_info`) — use those when reading metadata programmatically.
 
 ## Available Generator Scripts
 
@@ -350,15 +350,19 @@ variant_counts_by_version
 
 These are observed trace variants from the generated cases, not process-tree structural estimates.
 
-You can read the sidecar metadata file:
+For a quick human-readable view, open the `.xes.metadata.md` sidecar in any Markdown viewer.
+
+To read the metadata programmatically, pull the JSON-encoded log-level attributes:
 
 ```python
 import json
+from pm4py.objects.log.importer.xes import importer as xes_importer
 
-with open("data/control-flow/control_flow_001.xes.metadata.json") as f:
-    metadata = json.load(f)
-
-print(metadata["drifts"])
+log = xes_importer.apply("data/control-flow/control_flow_001.xes")
+drifts = json.loads(log.attributes["drift_info"])
+config = json.loads(log.attributes["config_info"])
+noise = json.loads(log.attributes["noise_info"])
+print(drifts)
 ```
 
 ## Validation

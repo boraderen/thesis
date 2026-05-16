@@ -40,13 +40,14 @@ Issue = dict[str, Any]
 def validate_xes(path: str | Path, config: GeneratorConfig | None = None) -> list[Issue]:
     xes_path = Path(path)
     issues: list[Issue] = []
-    sidecar = _load_sidecar(xes_path)
-    config_data = sidecar.get("config", {}) if sidecar else {}
-    cfg = config or _config_from_metadata(config_data)
 
     log = _read_xes(xes_path, issues)
     if log is None:
         return issues
+    metadata = _load_metadata_from_log(log)
+    config_data = metadata.get("config", {})
+    cfg = config or _config_from_metadata(config_data)
+
     df = _event_log_to_dataframe(log)
     df = _canonicalize_columns(df)
     _check_schema(df, issues)
@@ -54,11 +55,11 @@ def validate_xes(path: str | Path, config: GeneratorConfig | None = None) -> lis
         return issues
     _check_types(df, issues)
     _check_timestamps(df, issues)
-    _check_drift_metadata(df, log, sidecar, issues)
-    _check_variant_metadata(df, sidecar, issues)
+    _check_drift_metadata(df, log, metadata, issues)
+    _check_variant_metadata(df, metadata, issues)
     if cfg is not None:
         _check_config_counts(df, cfg, issues)
-        _check_distribution_stability(df, sidecar, issues)
+        _check_distribution_stability(df, metadata, issues)
     return issues
 
 
@@ -165,20 +166,17 @@ def _check_timestamps(df: pd.DataFrame, issues: list[Issue]) -> None:
             )
 
 
-def _check_drift_metadata(df: pd.DataFrame, log, sidecar: dict[str, Any], issues: list[Issue]) -> None:
+def _check_drift_metadata(df: pd.DataFrame, log, metadata: dict[str, Any], issues: list[Issue]) -> None:
     drift_info = log.attributes.get("drift_info")
     if drift_info is None:
         issues.append(_issue("error", "drift_info_missing", "log-level drift_info attribute is absent"))
-        drifts = sidecar.get("drifts", []) if sidecar else []
+        drifts = metadata.get("drifts", [])
     else:
         try:
             drifts = json.loads(drift_info)
         except json.JSONDecodeError as exc:
             issues.append(_issue("error", "drift_info_invalid_json", str(exc)))
-            drifts = sidecar.get("drifts", []) if sidecar else []
-    if sidecar and "drifts" in sidecar and drift_info is not None:
-        if json.dumps(sidecar["drifts"], sort_keys=True, separators=(",", ":")) != json.dumps(drifts, sort_keys=True, separators=(",", ":")):
-            issues.append(_issue("warning", "metadata_sidecar_mismatch", "sidecar and log-level drift metadata differ"))
+            drifts = metadata.get("drifts", [])
     if not drifts:
         return
     start = pd.to_datetime(df[START_TIMESTAMP_KEY], utc=True).min()
@@ -214,10 +212,10 @@ def _check_drift_metadata(df: pd.DataFrame, log, sidecar: dict[str, Any], issues
             )
 
 
-def _check_variant_metadata(df: pd.DataFrame, sidecar: dict[str, Any], issues: list[Issue]) -> None:
-    if not sidecar:
+def _check_variant_metadata(df: pd.DataFrame, metadata: dict[str, Any], issues: list[Issue]) -> None:
+    if not metadata:
         return
-    config = sidecar.get("config", {})
+    config = metadata.get("config", {})
     if "num_trace_variants" in config:
         expected = _trace_variant_count(df)
         actual = int(config["num_trace_variants"])
@@ -240,7 +238,7 @@ def _check_variant_metadata(df: pd.DataFrame, sidecar: dict[str, Any], issues: l
         "structural_variant_estimates_by_version",
         "variant_counts",
     }
-    for drift in sidecar.get("drifts", []):
+    for drift in metadata.get("drifts", []):
         details = drift.get("change_details", {})
         found = sorted(deprecated_keys.intersection(details))
         if found:
@@ -290,8 +288,8 @@ def _check_config_counts(df: pd.DataFrame, config: GeneratorConfig, issues: list
             )
 
 
-def _check_distribution_stability(df: pd.DataFrame, sidecar: dict[str, Any], issues: list[Issue]) -> None:
-    drifts = sidecar.get("drifts", []) if sidecar else []
+def _check_distribution_stability(df: pd.DataFrame, metadata: dict[str, Any], issues: list[Issue]) -> None:
+    drifts = metadata.get("drifts", []) if metadata else []
     if any(drift.get("perspective") == "resource" for drift in drifts):
         return
     if df[CASE_ID_KEY].nunique() < 40:
@@ -345,11 +343,19 @@ def _trace_variant_count(df: pd.DataFrame) -> int:
     return len(variants)
 
 
-def _load_sidecar(path: Path) -> dict[str, Any]:
-    sidecar = path.with_name(path.name + ".metadata.json")
-    if not sidecar.exists():
-        return {}
-    return json.loads(sidecar.read_text(encoding="utf-8"))
+def _load_metadata_from_log(log) -> dict[str, Any]:
+    """Re-assemble the metadata payload from a loaded XES log's attributes."""
+    out: dict[str, Any] = {"log_name": log.attributes.get("log_name", "")}
+    for key, dest in (("config_info", "config"), ("noise_info", "noise"), ("drift_info", "drifts")):
+        raw = log.attributes.get(key)
+        if raw:
+            try:
+                out[dest] = json.loads(raw)
+            except json.JSONDecodeError:
+                out[dest] = {} if dest != "drifts" else []
+        else:
+            out[dest] = {} if dest != "drifts" else []
+    return out
 
 
 def _config_from_metadata(config_data: dict[str, Any]) -> GeneratorConfig | None:
