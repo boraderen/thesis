@@ -7,6 +7,7 @@ import streamlit as st
 from core.drift import intra_state_distribution
 from core.features.inter_case import build_features as build_inter
 from core.features.resource import build_features as build_resource
+from core.loader import span_label
 from core.pca import fit_pca
 from core.som import train_som
 from core.windows import window_minute_choices, window_minute_label
@@ -30,6 +31,7 @@ def _select_W(label: str, key: str) -> int:
 
 
 log: pd.DataFrame = st.session_state["log"]
+st.caption(span_label(log))
 intra_feat: pd.DataFrame = st.session_state["intra_feat"]
 intra_som = st.session_state["intra_som"]
 has_resource = "resource" in log.columns

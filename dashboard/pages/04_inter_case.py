@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from core.features.inter_case import build_features, describe_cells
+from core.loader import span_label
 from core.pca import fit_pca
 from core.som import train_som
 from core.transitions import find_transitions
@@ -22,6 +23,7 @@ if "log" not in st.session_state:
     st.stop()
 
 log: pd.DataFrame = st.session_state["log"]
+st.caption(span_label(log))
 
 with st.sidebar:
     st.header("Controls")

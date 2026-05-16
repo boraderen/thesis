@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from core.features.resource import build_features
+from core.loader import span_label
 from core.pca import fit_pca
 from core.som import train_som
 from core.transitions import find_transitions
@@ -21,6 +22,7 @@ if "log" not in st.session_state:
     st.stop()
 
 log: pd.DataFrame = st.session_state["log"]
+st.caption(span_label(log))
 if "resource" not in log.columns:
     st.error("This log has no `resource` column — the resource SOM is disabled.")
     st.stop()

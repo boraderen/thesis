@@ -6,6 +6,7 @@ import streamlit as st
 
 from core.drift import intra_state_distribution
 from core.features.intra_case import build_features
+from core.loader import span_label
 from core.pca import fit_pca
 from core.som import train_som
 from core.transitions import find_transitions
@@ -23,6 +24,7 @@ if "log" not in st.session_state:
     st.stop()
 
 log: pd.DataFrame = st.session_state["log"]
+st.caption(span_label(log))
 numeric_attrs = tuple(st.session_state.get("case_numeric_attrs", []))
 categorical_attrs = tuple(st.session_state.get("case_categorical_attrs", []))
 

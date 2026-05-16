@@ -91,6 +91,23 @@ def summary_stats(df: pd.DataFrame) -> dict[str, object]:
     }
 
 
+def span_label(df: pd.DataFrame) -> str:
+    """Human-readable time-span caption: '5.2 days · 2026-04-01 04:10 → 2026-04-06 09:18'."""
+    start, end = df["timestamp"].min(), df["timestamp"].max()
+    span_s = (end - start).total_seconds()
+    if span_s < 3600:
+        rough = f"{span_s / 60:.1f} min"
+    elif span_s < 86400:
+        rough = f"{span_s / 3600:.1f} hours"
+    elif span_s < 30 * 86400:
+        rough = f"{span_s / 86400:.1f} days"
+    elif span_s < 365 * 86400:
+        rough = f"{span_s / (30.4 * 86400):.1f} months"
+    else:
+        rough = f"{span_s / (365 * 86400):.1f} years"
+    return f"Log spans **{rough}** · {start:%Y-%m-%d %H:%M} → {end:%Y-%m-%d %H:%M}"
+
+
 def case_attributes(df: pd.DataFrame) -> tuple[list[str], list[str]]:
     """Detect numeric and categorical case-level attributes (constant per case_id)."""
     skip = {"case_id", "activity", "timestamp", "resource", "org_group"}
