@@ -23,34 +23,16 @@ if "resource" not in log.columns:
     st.error("This log has no `resource` column — the resource SOM is disabled.")
     st.stop()
 
-n_distinct = int(log["resource"].astype(str).nunique())
 with st.sidebar:
     st.header("Controls")
     default_W = int(st.session_state.get("window_minutes", 60))
     options = [30, 60, 120]
     if default_W not in options:
         options = sorted(options + [default_W])
-    window_minutes = st.selectbox(
-        "Window W (minutes)", options, index=options.index(default_W)
-    )
+    window_minutes = st.selectbox("Window W (minutes)", options, index=options.index(default_W))
     st.session_state["window_minutes"] = window_minutes
-    aggregate = st.toggle(
-        f"Aggregate resources ({n_distinct} distinct)",
-        value=False,
-        help="When off, every resource keeps its own column. Turn on to cap the number of buckets.",
-    )
-    max_resources = (
-        st.number_input("Max resources", min_value=2, max_value=64, value=min(8, n_distinct), step=1)
-        if aggregate else None
-    )
 
-matrix_df, spec = build_features(
-    log, window_minutes=window_minutes, max_resources=int(max_resources) if max_resources else None
-)
-if spec.aggregated:
-    st.info(
-        f"Aggregated to {len(spec.resources)} buckets (top-N by event count, rest grouped as 'other')."
-    )
+matrix_df, spec = build_features(log, window_minutes=window_minutes)
 
 st.subheader("Feature matrix")
 st.caption(

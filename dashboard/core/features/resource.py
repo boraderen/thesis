@@ -15,27 +15,8 @@ class ResourceSpec:
     columns: list[str]
     groups: dict[str, list[str]]
     resources: list[str]
-    aggregated: bool
     window_minutes: int
     window_starts: pd.DatetimeIndex
-
-
-def _maybe_aggregate(log: pd.DataFrame, max_resources: int | None) -> tuple[pd.Series, bool]:
-    """Return a resource series, optionally aggregated to keep at most max_resources buckets.
-
-    If `max_resources` is None or already accommodates the log, the original resources are
-    used. Otherwise prefer org:group if it fits, else keep the top-(max_resources-1) busiest
-    resources and lump the rest as 'other'.
-    """
-    res = log["resource"].astype(str)
-    if max_resources is None or res.nunique() <= max_resources:
-        return res, False
-    if "org_group" in log.columns and log["org_group"].notna().any():
-        grp = log["org_group"].astype(str)
-        if grp.nunique() <= max_resources:
-            return grp, True
-    top = res.value_counts().head(max_resources - 1).index
-    return res.where(res.isin(top), other="other"), True
 
 
 def _floor_window(ts: pd.Series, minutes: int) -> pd.Series:
@@ -52,7 +33,6 @@ def _handover_counts(log: pd.DataFrame, resources: list[str]) -> pd.DataFrame:
     """Count r→r' handovers within each window."""
     df = log.sort_values(["case_id", "timestamp"]).copy()
     df["prev_res"] = df.groupby("case_id")["__res__"].shift(1)
-    df["prev_win"] = df.groupby("case_id")["__win__"].shift(1)
     crossings = df.dropna(subset=["prev_res"]).query("prev_res != __res__")
     cols = [f"ho:{a}→{b}" for a in resources for b in resources if a != b]
     out = pd.DataFrame(0, index=df["__win__"].unique(), columns=cols, dtype=float)
@@ -66,15 +46,33 @@ def _handover_counts(log: pd.DataFrame, resources: list[str]) -> pd.DataFrame:
     return out.sort_index()
 
 
+def _resource_mean_wait(
+    df: pd.DataFrame, resources: list[str], win_index: pd.DatetimeIndex
+) -> pd.DataFrame:
+    """For each window and resource r, mean ln-minutes wait into r within the window."""
+    df = df.sort_values(["case_id", "timestamp"]).copy()
+    df["prev_res"] = df.groupby("case_id")["__res__"].shift(1)
+    df["prev_ts"] = df.groupby("case_id")["timestamp"].shift(1)
+    crossings = df.dropna(subset=["prev_res"]).query("prev_res != __res__").copy()
+    crossings["wait_s"] = (crossings["timestamp"] - crossings["prev_ts"]).dt.total_seconds()
+    crossings["wait_lnmin"] = _zlog_minutes(crossings["wait_s"].to_numpy())
+    pivot = (
+        crossings.groupby(["__win__", "__res__"])["wait_lnmin"].mean().unstack(fill_value=0)
+        if not crossings.empty
+        else pd.DataFrame(0.0, index=win_index, columns=resources)
+    )
+    pivot = pivot.reindex(win_index, fill_value=0).reindex(columns=resources, fill_value=0)
+    pivot.columns = [f"wait:{r}" for r in resources]
+    return pivot
+
+
 @st.cache_data(show_spinner=False)
-def build_features(
-    log: pd.DataFrame, window_minutes: int = 60, max_resources: int | None = None
-) -> tuple[pd.DataFrame, ResourceSpec]:
+def build_features(log: pd.DataFrame, window_minutes: int = 60) -> tuple[pd.DataFrame, ResourceSpec]:
     """Build per-window resource workload features. Returns (DataFrame, spec)."""
     if "resource" not in log.columns:
         raise ValueError("No 'resource' column in the log")
     df = log.copy()
-    df["__res__"], aggregated = _maybe_aggregate(df, max_resources)
+    df["__res__"] = df["resource"].astype(str)
     df["__win__"] = _floor_window(df["timestamp"], window_minutes)
     resources = sorted(df["__res__"].dropna().unique().tolist())
 
@@ -104,28 +102,7 @@ def build_features(
         columns=matrix.columns.tolist(),
         groups=groups,
         resources=resources,
-        aggregated=aggregated,
         window_minutes=window_minutes,
         window_starts=pd.DatetimeIndex(matrix.index),
     )
     return matrix.reset_index(), spec
-
-
-def _resource_mean_wait(
-    df: pd.DataFrame, resources: list[str], win_index: pd.DatetimeIndex
-) -> pd.DataFrame:
-    """For each window and resource r, mean ln-minutes wait into r within the window."""
-    df = df.sort_values(["case_id", "timestamp"]).copy()
-    df["prev_res"] = df.groupby("case_id")["__res__"].shift(1)
-    df["prev_ts"] = df.groupby("case_id")["timestamp"].shift(1)
-    crossings = df.dropna(subset=["prev_res"]).query("prev_res != __res__").copy()
-    crossings["wait_s"] = (crossings["timestamp"] - crossings["prev_ts"]).dt.total_seconds()
-    crossings["wait_lnmin"] = _zlog_minutes(crossings["wait_s"].to_numpy())
-    pivot = (
-        crossings.groupby(["__win__", "__res__"])["wait_lnmin"].mean().unstack(fill_value=0)
-        if not crossings.empty
-        else pd.DataFrame(0.0, index=win_index, columns=resources)
-    )
-    pivot = pivot.reindex(win_index, fill_value=0).reindex(columns=resources, fill_value=0)
-    pivot.columns = [f"wait:{r}" for r in resources]
-    return pivot
