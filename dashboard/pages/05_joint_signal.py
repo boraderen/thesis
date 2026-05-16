@@ -5,7 +5,7 @@ import pandas as pd
 import streamlit as st
 
 from core.drift import intra_state_distribution, joint_signal
-from viz.drift_signal import stacked_area_intra, state_index_line
+from viz.drift_signal import add_window_boundaries, stacked_area_intra, state_index_line
 
 st.set_page_config(page_title="Joint drift signal", layout="wide")
 st.title("5 — Joint drift signal")
@@ -39,32 +39,29 @@ if "inter_matrix" in st.session_state:
 joint = joint_signal(intra_dist, resource_states, inter_states)
 
 st.subheader("Intra-case state fractions over time")
-st.plotly_chart(
-    stacked_area_intra(joint, intra_cols, intra_som.cell_labels),
-    width="stretch",
-)
+intra_fig = stacked_area_intra(joint, intra_cols, intra_som.cell_labels)
+add_window_boundaries(intra_fig, joint["window_start"])
+st.plotly_chart(intra_fig, width="stretch")
 
-col_l, col_r = st.columns(2)
-with col_l:
-    st.subheader("Resource state")
-    if resource_states is None:
-        st.info("Open the **Resource SOM** page to populate this trace.")
-    else:
-        labels = st.session_state["resource_som"].cell_labels
-        st.plotly_chart(
-            state_index_line(joint, "resource_state", labels, title=f"W={window_minutes} min"),
-            width="stretch",
-        )
-with col_r:
-    st.subheader("Inter-case state")
-    if inter_states is None:
-        st.info("Open the **Inter-case SOM** page to populate this trace.")
-    else:
-        labels = st.session_state["inter_som"].cell_labels
-        st.plotly_chart(
-            state_index_line(joint, "inter_state", labels, title=f"W={window_minutes} min"),
-            width="stretch",
-        )
+st.subheader("Resource state")
+if resource_states is None:
+    st.info("Open the **Resource SOM** page to populate this trace.")
+else:
+    labels = st.session_state["resource_som"].cell_labels
+    res_fig = state_index_line(joint, "resource_state", labels, title=f"W={window_minutes} min")
+    n_res = st.session_state["resource_som"].grid_h * st.session_state["resource_som"].grid_w
+    add_window_boundaries(res_fig, joint["window_start"], y_min=-0.5, y_max=n_res - 0.5)
+    st.plotly_chart(res_fig, width="stretch")
+
+st.subheader("Inter-case state")
+if inter_states is None:
+    st.info("Open the **Inter-case SOM** page to populate this trace.")
+else:
+    labels = st.session_state["inter_som"].cell_labels
+    inter_fig = state_index_line(joint, "inter_state", labels, title=f"W={window_minutes} min")
+    n_inter = st.session_state["inter_som"].grid_h * st.session_state["inter_som"].grid_w
+    add_window_boundaries(inter_fig, joint["window_start"], y_min=-0.5, y_max=n_inter - 0.5)
+    st.plotly_chart(inter_fig, width="stretch")
 
 st.caption(
     "A sustained shift in band proportions indicates concept drift. "

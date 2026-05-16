@@ -10,7 +10,7 @@ from core.pca import fit_pca
 from core.som import train_som
 from core.transitions import find_transitions
 from core.windows import window_minute_choices, window_minute_label
-from viz.drift_signal import stacked_area_intra
+from viz.drift_signal import add_window_boundaries, stacked_area_intra
 from viz.som_grid import som_heatmap
 from viz.tables import styled_feature_table
 from viz.trajectory import add_transition_markers, pca_variance_plot, state_timeline
@@ -115,24 +115,11 @@ with col_r:
     )
     fig = state_timeline(
         sub["timestamp"], sub["state_id"].to_numpy(), som.cell_labels,
-        title=f"Case {chosen}", cell_dominant=som.cell_dominant,
+        title=f"Case {chosen}", cell_dominant=som.cell_dominant, xgap=0,
     )
     if not transitions.empty:
         add_transition_markers(fig, transitions["boundary"])
     st.plotly_chart(fig, width="stretch")
-
-st.subheader("State frequency distribution over time")
-n_states = som.grid_h * som.grid_w
-intra_dist = intra_state_distribution(feat, n_states=n_states, window_minutes=distribution_W)
-st.caption(
-    f"Per {window_minute_label(distribution_W)} window — what fraction of events landed in each state. "
-    f"{len(intra_dist):,} windows across all {feat['case_id'].nunique():,} cases."
-)
-intra_cols = [f"intra_S{i}" for i in range(n_states)]
-st.plotly_chart(
-    stacked_area_intra(intra_dist, intra_cols, som.cell_labels),
-    width="stretch",
-)
 
 st.subheader("Transitions")
 if transitions.empty:
@@ -143,3 +130,15 @@ else:
         transitions[["timestamp", "from", "to", "top_changes"]],
         width="stretch", height=min(420, 60 + 36 * len(transitions)),
     )
+
+st.subheader("State frequency distribution over time")
+n_states = som.grid_h * som.grid_w
+intra_dist = intra_state_distribution(feat, n_states=n_states, window_minutes=distribution_W)
+st.caption(
+    f"Per {window_minute_label(distribution_W)} window — what fraction of events landed in each state. "
+    f"{len(intra_dist):,} windows across all {feat['case_id'].nunique():,} cases."
+)
+intra_cols = [f"intra_S{i}" for i in range(n_states)]
+freq_fig = stacked_area_intra(intra_dist, intra_cols, som.cell_labels)
+add_window_boundaries(freq_fig, intra_dist["window_start"])
+st.plotly_chart(freq_fig, width="stretch")

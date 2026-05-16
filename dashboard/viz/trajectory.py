@@ -15,13 +15,14 @@ def state_timeline(
     title: str = "",
     height: int = 180,
     cell_dominant: list[str] | None = None,
+    xgap: int = 2,
 ) -> go.Figure:
     """Render a state trajectory as a single coloured-strip Heatmap (one trace).
 
     Plotly's heatmap centers each cell on its event/window timestamp, so a
     cell's visible boundary sits at the midpoint between successive units.
-    `xgap=2` adds a thin gap between cells so each observation is visibly
-    delimited.
+    `xgap` adds a thin gap between cells; set to 0 to hide observation
+    boundaries (useful when observations aren't calendar-aligned).
     """
     fig = go.Figure()
     if len(state_ids) == 0:
@@ -40,7 +41,7 @@ def state_timeline(
         text=[hover], hoverinfo="x+text",
         colorscale=colorscale, showscale=False,
         zmin=0, zmax=max(1, n_states - 1),
-        xgap=2,
+        xgap=xgap,
     ))
     fig.update_layout(
         title=title,
