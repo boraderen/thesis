@@ -129,6 +129,6 @@ if transitions.empty:
 else:
     st.caption(f"{len(transitions)} transitions detected.")
     st.dataframe(
-        transitions[["timestamp", "from", "to", "top_changes"]].head(500),
+        transitions[["boundary", "from", "to", "top_changes"]].head(500).rename(columns={"boundary": "at"}),
         width="stretch", height=min(420, 60 + 36 * len(transitions)),
     )
