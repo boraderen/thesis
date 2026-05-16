@@ -37,7 +37,7 @@ def _label_cells(
         if annotations and counts[cell_id] > 0:
             picked = [annotations[i] for i in np.where(mask)[0]]
             vals, c = np.unique(picked, return_counts=True)
-            labels[cell_id] = str(vals[c.argmax()])
+            labels[cell_id] = f"S{cell_id} · {vals[c.argmax()]}"
         else:
             labels[cell_id] = f"S{cell_id}"
     return labels, counts

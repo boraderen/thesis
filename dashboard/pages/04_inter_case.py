@@ -93,7 +93,7 @@ for cell_id in range(som.grid_h * som.grid_w):
     mask = som.state_ids == cell_id
     if mask.any():
         centroids[cell_id] = mat[mask].mean(axis=0)
-descriptive = describe_cells(centroids, selected_cols)
+descriptive = [f"S{i} · {d}" for i, d in enumerate(describe_cells(centroids, selected_cols))]
 som = som.__class__(
     grid_h=som.grid_h, grid_w=som.grid_w,
     bmus=som.bmus, state_ids=som.state_ids,
