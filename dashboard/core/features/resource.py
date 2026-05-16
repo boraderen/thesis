@@ -7,8 +7,6 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 
-MAX_RESOURCES = 8
-
 
 @dataclass(frozen=True)
 class ResourceSpec:
@@ -22,21 +20,21 @@ class ResourceSpec:
     window_starts: pd.DatetimeIndex
 
 
-def _maybe_aggregate(log: pd.DataFrame) -> tuple[pd.Series, bool]:
-    """Return a resource series, possibly aggregated to keep at most MAX_RESOURCES buckets.
+def _maybe_aggregate(log: pd.DataFrame, max_resources: int | None) -> tuple[pd.Series, bool]:
+    """Return a resource series, optionally aggregated to keep at most max_resources buckets.
 
-    Preference order: (1) keep as-is if already small enough; (2) use org:group if it
-    yields at most MAX_RESOURCES distinct groups; (3) keep the top-(MAX_RESOURCES-1)
-    busiest individual resources and lump the rest as 'other'.
+    If `max_resources` is None or already accommodates the log, the original resources are
+    used. Otherwise prefer org:group if it fits, else keep the top-(max_resources-1) busiest
+    resources and lump the rest as 'other'.
     """
     res = log["resource"].astype(str)
-    if res.nunique() <= MAX_RESOURCES:
+    if max_resources is None or res.nunique() <= max_resources:
         return res, False
     if "org_group" in log.columns and log["org_group"].notna().any():
         grp = log["org_group"].astype(str)
-        if grp.nunique() <= MAX_RESOURCES:
+        if grp.nunique() <= max_resources:
             return grp, True
-    top = res.value_counts().head(MAX_RESOURCES - 1).index
+    top = res.value_counts().head(max_resources - 1).index
     return res.where(res.isin(top), other="other"), True
 
 
@@ -69,12 +67,14 @@ def _handover_counts(log: pd.DataFrame, resources: list[str]) -> pd.DataFrame:
 
 
 @st.cache_data(show_spinner=False)
-def build_features(log: pd.DataFrame, window_minutes: int = 60) -> tuple[pd.DataFrame, ResourceSpec]:
+def build_features(
+    log: pd.DataFrame, window_minutes: int = 60, max_resources: int | None = None
+) -> tuple[pd.DataFrame, ResourceSpec]:
     """Build per-window resource workload features. Returns (DataFrame, spec)."""
     if "resource" not in log.columns:
         raise ValueError("No 'resource' column in the log")
     df = log.copy()
-    df["__res__"], aggregated = _maybe_aggregate(df)
+    df["__res__"], aggregated = _maybe_aggregate(df, max_resources)
     df["__win__"] = _floor_window(df["timestamp"], window_minutes)
     resources = sorted(df["__res__"].dropna().unique().tolist())
 
