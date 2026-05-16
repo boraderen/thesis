@@ -5,12 +5,12 @@ import pandas as pd
 import streamlit as st
 
 from core.drift import intra_state_distribution
-from core.drift_scores import per_window_scores
 from core.features.inter_case import build_features as build_inter
 from core.features.resource import build_features as build_resource
 from core.loader import span_label
 from core.pca import fit_pca
 from core.som import train_som
+from core.state_attribution import intra_state_shift, state_id_shift
 from core.windows import window_minute_choices, window_minute_label
 from viz.drift_scores import score_line
 from viz.drift_signal import add_window_boundaries, stacked_area_intra, state_index_line
@@ -82,27 +82,6 @@ else:
     inter_som = None
     inter_states_df = None
 
-st.subheader("Per-perspective drift attribution")
-st.caption(
-    "Each line is the divergence of one perspective's per-window distribution from "
-    "the full-log baseline. Whichever line spikes is the perspective that drifted; "
-    "the others should stay near zero. All four scores share the intra-case window "
-    f"({window_minute_label(intra_W)})."
-)
-score_numeric = tuple(st.session_state.get("case_numeric_attrs", []))
-score_categorical = tuple(st.session_state.get("case_categorical_attrs", []))
-scores = per_window_scores(log, intra_W, numeric_attrs=score_numeric, categorical_attrs=score_categorical)
-for col, title in [
-    ("cf_score", "Control-flow — KL(activity dist || baseline)"),
-    ("resource_score", "Resource — mean KL(per-activity resource dist || baseline)"),
-    ("inter_score", "Inter-case — |z(events in window)| vs. baseline mean/std"),
-    ("data_score", "Data attributes — mean(|z(numeric)| + KL(categorical))"),
-]:
-    fig = score_line(scores, col, title=title)
-    y_max = float(scores[col].max()) if not scores.empty else 1.0
-    add_window_boundaries(fig, scores["window_start"], y_min=0, y_max=max(y_max, 1e-9))
-    st.plotly_chart(fig, width="stretch")
-
 st.subheader(f"Intra-case state fractions over time (W = {window_minute_label(intra_W)})")
 intra_fig = stacked_area_intra(intra_dist, intra_cols, intra_som.cell_labels)
 add_window_boundaries(intra_fig, intra_dist["window_start"])
@@ -134,3 +113,44 @@ st.caption(
     "Each W can be tuned independently — coarser windows smooth the signal; finer ones expose short events. "
     "Grid size and PCA components are inherited from the per-stream pages."
 )
+
+st.divider()
+st.subheader("State-based perspective attribution")
+st.caption(
+    "How much each SOM's state distribution shifts away from its own full-log "
+    "baseline, per window. Stays within the state-based method: no raw activity / "
+    "resource / attribute distributions are consulted here. The SOM with the "
+    "highest spike is the perspective that drove the drift. Cross-talk between "
+    "SOMs is still possible — see the **Statistical drift detection** page for "
+    "a perspective-isolated reference."
+)
+
+intra_shift = intra_state_shift(intra_dist)
+intra_shift_fig = score_line(intra_shift, "score", title="Intra-case SOM — KL(window state dist || baseline)")
+if not intra_shift.empty:
+    y_max = float(intra_shift["score"].max())
+    add_window_boundaries(intra_shift_fig, intra_shift["window_start"], y_min=0, y_max=max(y_max, 1e-9))
+st.plotly_chart(intra_shift_fig, width="stretch")
+
+if resource_pack is not None:
+    res_states, res_som, res_grid = resource_pack
+    res_shift = state_id_shift(
+        res_states.rename(columns={"resource_state": "state_id"}),
+        n_states=res_grid[0] * res_grid[1],
+    )
+    res_shift_fig = score_line(res_shift, "score", title="Resource SOM — rolling KL(state mix || baseline)")
+    if not res_shift.empty:
+        y_max = float(res_shift["score"].max())
+        add_window_boundaries(res_shift_fig, res_shift["window_start"], y_min=0, y_max=max(y_max, 1e-9))
+    st.plotly_chart(res_shift_fig, width="stretch")
+
+if inter_states_df is not None:
+    inter_shift = state_id_shift(
+        inter_states_df.rename(columns={"inter_state": "state_id"}),
+        n_states=inter_grid[0] * inter_grid[1],
+    )
+    inter_shift_fig = score_line(inter_shift, "score", title="Inter-case SOM — rolling KL(state mix || baseline)")
+    if not inter_shift.empty:
+        y_max = float(inter_shift["score"].max())
+        add_window_boundaries(inter_shift_fig, inter_shift["window_start"], y_min=0, y_max=max(y_max, 1e-9))
+    st.plotly_chart(inter_shift_fig, width="stretch")
