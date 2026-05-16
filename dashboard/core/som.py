@@ -43,23 +43,29 @@ def _label_cells(
     return labels, counts, dominants
 
 
+def _iteration_budget(n_samples: int, epochs: int = 5, cap: int = 50_000, floor: int = 500) -> int:
+    """Number of single-sample weight updates: ~epochs full passes, capped for big logs."""
+    return max(floor, min(cap, epochs * n_samples))
+
+
 @st.cache_data(show_spinner=False)
 def train_som(
     matrix: np.ndarray,
     grid_h: int = 3,
     grid_w: int = 3,
-    iterations: int = 500,
+    epochs: int = 5,
     seed: int = 7,
     annotations: tuple[str, ...] | None = None,
 ) -> SOMResult:
-    """Train a SOM and return BMU assignments + cells labelled as 'S{id} · {dominant}'."""
+    """Train a SOM for ~`epochs` random-order passes; return BMU assignments + cell labels."""
     if matrix.size == 0:
         raise ValueError("Empty matrix")
     dim = matrix.shape[1]
     sigma = max(1.0, min(grid_h, grid_w) / 2.0)
     som = MiniSom(grid_h, grid_w, dim, sigma=sigma, learning_rate=0.5, random_seed=seed)
     som.random_weights_init(matrix)
-    som.train(matrix, iterations, verbose=False)
+    n_iter = _iteration_budget(matrix.shape[0], epochs=epochs)
+    som.train(matrix, n_iter, random_order=True, verbose=False)
     bmus = np.array([som.winner(x) for x in matrix], dtype=int)
     labels, counts, dominants = _label_cells(grid_h, grid_w, bmus, annotations)
     state_ids = bmus[:, 0] * grid_w + bmus[:, 1]
