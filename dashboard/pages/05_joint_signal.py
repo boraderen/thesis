@@ -5,12 +5,14 @@ import pandas as pd
 import streamlit as st
 
 from core.drift import intra_state_distribution
+from core.drift_scores import per_window_scores
 from core.features.inter_case import build_features as build_inter
 from core.features.resource import build_features as build_resource
 from core.loader import span_label
 from core.pca import fit_pca
 from core.som import train_som
 from core.windows import window_minute_choices, window_minute_label
+from viz.drift_scores import score_line
 from viz.drift_signal import add_window_boundaries, stacked_area_intra, state_index_line
 
 st.set_page_config(page_title="Joint drift signal", layout="wide")
@@ -79,6 +81,37 @@ if len(inter_matrix) >= 2:
 else:
     inter_som = None
     inter_states_df = None
+
+st.subheader("Per-perspective drift attribution")
+st.caption(
+    "Each line is the divergence of one perspective's per-window distribution from "
+    "the full-log baseline. Whichever line spikes is the perspective that drifted; "
+    "the others should stay near zero. All four scores share the intra-case window "
+    f"({window_minute_label(intra_W)})."
+)
+score_numeric = tuple(st.session_state.get("case_numeric_attrs", []))
+score_categorical = tuple(st.session_state.get("case_categorical_attrs", []))
+scores = per_window_scores(log, intra_W, numeric_attrs=score_numeric, categorical_attrs=score_categorical)
+st.plotly_chart(
+    score_line(scores, "cf_score",
+               title="Control-flow — KL(activity dist || baseline)"),
+    width="stretch",
+)
+st.plotly_chart(
+    score_line(scores, "resource_score",
+               title="Resource — mean KL(per-activity resource dist || baseline)"),
+    width="stretch",
+)
+st.plotly_chart(
+    score_line(scores, "inter_score",
+               title="Inter-case — |z(events in window)| vs. baseline mean/std"),
+    width="stretch",
+)
+st.plotly_chart(
+    score_line(scores, "data_score",
+               title="Data attributes — mean(|z(numeric)| + KL(categorical))"),
+    width="stretch",
+)
 
 st.subheader(f"Intra-case state fractions over time (W = {window_minute_label(intra_W)})")
 intra_fig = stacked_area_intra(intra_dist, intra_cols, intra_som.cell_labels)
