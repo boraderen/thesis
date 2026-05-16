@@ -14,53 +14,50 @@ from scripts.driftify.script_api import run_generation
 # Output
 OUTPUT_PATH = "data/control-flow/"
 NUM_LOGS = 1
-GLOBAL_SEED = 42
+GLOBAL_SEED = 7
 
-# Log size
-NUM_TRACES = 1000
-MIN_TRACE_LENGTH = 3
-MAX_TRACE_LENGTH = 6
-AVG_TRACE_LENGTH = 5
+# Big and long log; keep variants bounded with a simple, sequence-heavy tree.
+NUM_TRACES = 6000
+MIN_TRACE_LENGTH = 4
+MAX_TRACE_LENGTH = 8
+AVG_TRACE_LENGTH = 6
 TRACE_LENGTH_VARIANCE = 25
 
-# Time horizon (auto-scaled to event count)
-HORIZON_MIN_DAYS = 270
+HORIZON_MIN_DAYS = 300
 HORIZON_MAX_DAYS = 365
 
-# Process complexity
-MIN_ACTIVITIES = 4
-MAX_ACTIVITIES = 5
+# Process complexity — sequence-dominated so structural mutations stand out
+# without inflating the number of trace variants.
+MIN_ACTIVITIES = 5
+MAX_ACTIVITIES = 6
 TREE_DEPTH_MIN = 2
-TREE_DEPTH_MAX = 3
-SEQUENCE_WEIGHT = 0.70
+TREE_DEPTH_MAX = 2
+SEQUENCE_WEIGHT = 0.85
 CHOICE_WEIGHT = 0.10
-PARALLEL_WEIGHT = 0.05
-LOOP_WEIGHT = 0.05
-OR_WEIGHT = 0.05
-SILENT_TRANSITION_PROB = 0.005
+PARALLEL_WEIGHT = 0.01
+LOOP_WEIGHT = 0.0
+OR_WEIGHT = 0.01
+SILENT_TRANSITION_PROB = 0.0
 DUPLICATE_ACTIVITY_PROB = 0.0
 
-# Resources
-NUM_RESOURCES = 5
-NUM_ROLES = 2
+NUM_RESOURCES = 10
+NUM_ROLES = 3
 NUM_CASE_TYPES = 3
 REGIONS = ["DE-NRW", "DE-BY", "DE-HE", "DE-BW", "DE-BE"]
 
-# Timing model
-INTER_ARRIVAL_MEAN_MIN = 5
-SERVICE_TIME_MEAN_MIN = 10
-SERVICE_TIME_STD_MIN = 5
+INTER_ARRIVAL_MEAN_MIN = 30
+SERVICE_TIME_MEAN_MIN = 15
+SERVICE_TIME_STD_MIN = 7
 
-# Noise
 NOISE_PROBABILITY = 0
 NOISE_SIMILAR_VS_RANDOM = 0
 
-# Drift configuration
+# Two sudden tree mutations → three clear regimes in the trace variant
+# distribution. Stacking more starts thrashing the tree-search step on small
+# activity pools, so we keep it at two.
 DRIFTS = [
-    {"subtype": "tree_mutation", "drift_type": "sudden", "change_proportion": 0.20},
-    #{"subtype": "tree_mutation", "drift_type": "gradual_linear"},
-    #{"subtype": "tree_mutation", "drift_type": "incremental"},
-    #{"subtype": "tree_mutation", "drift_type": "recurring"},
+    {"subtype": "tree_mutation", "drift_type": "sudden", "change_proportion": 0.2},
+    {"subtype": "tree_mutation", "drift_type": "sudden", "change_proportion": 0.2},
 ]
 
 

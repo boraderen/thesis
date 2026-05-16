@@ -12,54 +12,51 @@ from scripts.driftify.script_api import run_generation
 
 
 # Output
-OUTPUT_PATH = "data/generated/"
-NUM_LOGS = 10
-GLOBAL_SEED = 42
+OUTPUT_PATH = "data/timing-arrival/"
+NUM_LOGS = 1
+GLOBAL_SEED = 7
 
-# Log size
-NUM_TRACES = 2000
-MIN_TRACE_LENGTH = 5
-MAX_TRACE_LENGTH = 50
-AVG_TRACE_LENGTH = 15
+# Big and long; simple tree so the timing/case-mix signal isn't drowned
+# out by control-flow variation.
+NUM_TRACES = 6000
+MIN_TRACE_LENGTH = 4
+MAX_TRACE_LENGTH = 8
+AVG_TRACE_LENGTH = 6
 TRACE_LENGTH_VARIANCE = 25
 
-# Time horizon (auto-scaled to event count)
-HORIZON_MIN_DAYS = 30
+HORIZON_MIN_DAYS = 300
 HORIZON_MAX_DAYS = 365
 
-# Process complexity
-MIN_ACTIVITIES = 6
-MAX_ACTIVITIES = 20
-TREE_DEPTH_MIN = 3
-TREE_DEPTH_MAX = 6
-SEQUENCE_WEIGHT = 0.70
-CHOICE_WEIGHT = 0.20
-PARALLEL_WEIGHT = 0.07
-LOOP_WEIGHT = 0.02
+MIN_ACTIVITIES = 5
+MAX_ACTIVITIES = 6
+TREE_DEPTH_MIN = 2
+TREE_DEPTH_MAX = 2
+SEQUENCE_WEIGHT = 0.85
+CHOICE_WEIGHT = 0.10
+PARALLEL_WEIGHT = 0.01
+LOOP_WEIGHT = 0.0
 OR_WEIGHT = 0.01
-SILENT_TRANSITION_PROB = 0.05
+SILENT_TRANSITION_PROB = 0.0
 DUPLICATE_ACTIVITY_PROB = 0.0
 
-# Resources
-NUM_RESOURCES = 20
-NUM_ROLES = 5
+NUM_RESOURCES = 10
+NUM_ROLES = 3
 NUM_CASE_TYPES = 3
 REGIONS = ["DE-NRW", "DE-BY", "DE-HE", "DE-BW", "DE-BE"]
 
-# Timing model
-INTER_ARRIVAL_MEAN_MIN = 5
-SERVICE_TIME_MEAN_MIN = 10
-SERVICE_TIME_STD_MIN = 5
+INTER_ARRIVAL_MEAN_MIN = 30
+SERVICE_TIME_MEAN_MIN = 15
+SERVICE_TIME_STD_MIN = 7
 
-# Noise
-NOISE_PROBABILITY = 0.05
-NOISE_SIMILAR_VS_RANDOM = 0.5
+NOISE_PROBABILITY = 0
+NOISE_SIMILAR_VS_RANDOM = 0
 
-# Drift configuration
+# Three sudden timing shifts (arrival rate, burstiness, concurrency) and a
+# case-mix change. All sudden so the change points are easy to read.
 DRIFTS = [
     {"subtype": "arrival_rate", "drift_type": "sudden"},
-    {"subtype": "burstiness", "drift_type": "gradual_exponential"},
-    {"subtype": "case_mix", "drift_type": "incremental"},
+    {"subtype": "burstiness", "drift_type": "sudden"},
+    {"subtype": "case_mix", "drift_type": "sudden"},
     {"subtype": "concurrency", "drift_type": "sudden"},
 ]
 
