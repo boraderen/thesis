@@ -52,7 +52,7 @@ def train_som(
     seed: int = 7,
     annotations: tuple[str, ...] | None = None,
 ) -> SOMResult:
-    """Train a SOM and return BMU assignments + labelled cells."""
+    """Train a SOM and return BMU assignments + cells labelled as 'S{id} · {dominant}'."""
     if matrix.size == 0:
         raise ValueError("Empty matrix")
     dim = matrix.shape[1]
