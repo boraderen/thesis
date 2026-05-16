@@ -14,23 +14,33 @@ def state_timeline(
     cell_labels: list[str],
     title: str = "",
     height: int = 180,
+    cell_dominant: list[str] | None = None,
 ) -> go.Figure:
     """Render a state trajectory as a single coloured-strip Heatmap (one trace).
 
-    Plotly's heatmap centers each cell on its event timestamp, so a cell's
-    visible boundary sits at the midpoint between successive events.
+    Plotly's heatmap centers each cell on its event/window timestamp, so a
+    cell's visible boundary sits at the midpoint between successive units.
+    `xgap=2` adds a thin gap between cells so each observation is visibly
+    delimited.
     """
     fig = go.Figure()
     if len(state_ids) == 0:
         return fig
     n_states = max(len(cell_labels), int(state_ids.max()) + 1) if len(state_ids) else 1
     colorscale = [[i / max(1, n_states - 1), state_bg(i)] for i in range(n_states)]
-    hover = np.array([cell_labels[int(s)] if int(s) < len(cell_labels) else f"S{int(s)}" for s in state_ids])
+
+    def _hover(sid: int) -> str:
+        label = cell_labels[sid] if sid < len(cell_labels) else f"S{sid}"
+        dom = (cell_dominant[sid] if cell_dominant and sid < len(cell_dominant) else "") or "—"
+        return f"{label}<br>dominant: {dom}"
+
+    hover = np.array([_hover(int(s)) for s in state_ids])
     fig.add_trace(go.Heatmap(
         x=x, y=["state"], z=[state_ids],
         text=[hover], hoverinfo="x+text",
         colorscale=colorscale, showscale=False,
         zmin=0, zmax=max(1, n_states - 1),
+        xgap=2,
     ))
     fig.update_layout(
         title=title,

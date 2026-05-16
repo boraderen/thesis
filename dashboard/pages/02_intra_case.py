@@ -98,7 +98,11 @@ col_l, col_r = st.columns([1, 1])
 with col_l:
     st.subheader("SOM grid")
     st.plotly_chart(
-        som_heatmap(som.grid_h, som.grid_w, som.cell_counts, som.cell_labels, title="States by dominant last activity"),
+        som_heatmap(
+            som.grid_h, som.grid_w, som.cell_counts, som.cell_labels,
+            title="States (hover for dominant last activity)",
+            dominants=som.cell_dominant,
+        ),
         width="stretch",
     )
 with col_r:
@@ -109,7 +113,10 @@ with col_r:
     transitions = find_transitions(
         sub["timestamp"], sub["state_id"].to_numpy(), som.cell_labels, sub[selected_cols]
     )
-    fig = state_timeline(sub["timestamp"], sub["state_id"].to_numpy(), som.cell_labels, title=f"Case {chosen}")
+    fig = state_timeline(
+        sub["timestamp"], sub["state_id"].to_numpy(), som.cell_labels,
+        title=f"Case {chosen}", cell_dominant=som.cell_dominant,
+    )
     if not transitions.empty:
         add_transition_markers(fig, transitions["boundary"])
     st.plotly_chart(fig, width="stretch")

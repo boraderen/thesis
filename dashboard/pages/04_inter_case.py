@@ -93,11 +93,12 @@ for cell_id in range(som.grid_h * som.grid_w):
     mask = som.state_ids == cell_id
     if mask.any():
         centroids[cell_id] = mat[mask].mean(axis=0)
-descriptive = [f"S{i} · {d}" for i, d in enumerate(describe_cells(centroids, selected_cols))]
+descriptive = describe_cells(centroids, selected_cols)
 som = som.__class__(
     grid_h=som.grid_h, grid_w=som.grid_w,
     bmus=som.bmus, state_ids=som.state_ids,
-    cell_labels=descriptive, cell_counts=som.cell_counts,
+    cell_labels=som.cell_labels, cell_counts=som.cell_counts,
+    cell_dominant=descriptive,
 )
 matrix_df = matrix_df.assign(state_id=som.state_ids)
 st.session_state["inter_matrix"] = matrix_df
@@ -108,7 +109,10 @@ col_l, col_r = st.columns([1, 1])
 with col_l:
     st.subheader("SOM grid")
     st.plotly_chart(
-        som_heatmap(som.grid_h, som.grid_w, som.cell_counts, som.cell_labels, title="System-level states"),
+        som_heatmap(
+            som.grid_h, som.grid_w, som.cell_counts, som.cell_labels,
+            title="System-level states", dominants=som.cell_dominant,
+        ),
         width="stretch",
     )
 with col_r:
@@ -119,6 +123,7 @@ with col_r:
     fig = state_timeline(
         matrix_df["window_start"], som.state_ids, som.cell_labels,
         title=f"State per {spec.window_minutes}-min window",
+        cell_dominant=som.cell_dominant,
     )
     if not transitions.empty:
         add_transition_markers(fig, transitions["boundary"])

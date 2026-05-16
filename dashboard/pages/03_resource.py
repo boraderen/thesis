@@ -103,7 +103,10 @@ col_l, col_r = st.columns([1, 1])
 with col_l:
     st.subheader("SOM grid")
     st.plotly_chart(
-        som_heatmap(som.grid_h, som.grid_w, som.cell_counts, som.cell_labels, title="Window states"),
+        som_heatmap(
+            som.grid_h, som.grid_w, som.cell_counts, som.cell_labels,
+            title="Window states", dominants=som.cell_dominant,
+        ),
         width="stretch",
     )
 with col_r:
@@ -114,6 +117,7 @@ with col_r:
     fig = state_timeline(
         matrix_df["window_start"], som.state_ids, som.cell_labels,
         title=f"State per {spec.window_minutes}-min window",
+        cell_dominant=som.cell_dominant,
     )
     if not transitions.empty:
         add_transition_markers(fig, transitions["boundary"])

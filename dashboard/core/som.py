@@ -17,8 +17,9 @@ class SOMResult:
     grid_w: int
     bmus: np.ndarray  # shape (n_samples, 2) row, col
     state_ids: np.ndarray  # 1D index = row * grid_w + col
-    cell_labels: list[str]  # length grid_h * grid_w
+    cell_labels: list[str]  # length grid_h * grid_w — log-agnostic enumeration "S{id}"
     cell_counts: np.ndarray  # 1D length grid_h * grid_w
+    cell_dominant: list[str]  # length grid_h * grid_w — descriptive overlay for tooltips
 
 
 def _label_cells(
@@ -26,10 +27,11 @@ def _label_cells(
     grid_w: int,
     bmus: np.ndarray,
     annotations: Iterable[str] | None,
-) -> tuple[list[str], np.ndarray]:
-    """Name each cell with the most-common annotation falling on it."""
+) -> tuple[list[str], np.ndarray, list[str]]:
+    """Return labels, counts, and the most-common annotation per cell (separately)."""
     counts = np.zeros(grid_h * grid_w, dtype=int)
-    labels = [""] * (grid_h * grid_w)
+    labels = [f"S{i}" for i in range(grid_h * grid_w)]
+    dominants = [""] * (grid_h * grid_w)
     annotations = list(annotations) if annotations is not None else None
     for cell_id in range(grid_h * grid_w):
         mask = (bmus[:, 0] * grid_w + bmus[:, 1]) == cell_id
@@ -37,10 +39,8 @@ def _label_cells(
         if annotations and counts[cell_id] > 0:
             picked = [annotations[i] for i in np.where(mask)[0]]
             vals, c = np.unique(picked, return_counts=True)
-            labels[cell_id] = f"S{cell_id} · {vals[c.argmax()]}"
-        else:
-            labels[cell_id] = f"S{cell_id}"
-    return labels, counts
+            dominants[cell_id] = str(vals[c.argmax()])
+    return labels, counts, dominants
 
 
 @st.cache_data(show_spinner=False)
@@ -61,7 +61,7 @@ def train_som(
     som.random_weights_init(matrix)
     som.train(matrix, iterations, verbose=False)
     bmus = np.array([som.winner(x) for x in matrix], dtype=int)
-    labels, counts = _label_cells(grid_h, grid_w, bmus, annotations)
+    labels, counts, dominants = _label_cells(grid_h, grid_w, bmus, annotations)
     state_ids = bmus[:, 0] * grid_w + bmus[:, 1]
     return SOMResult(
         grid_h=grid_h,
@@ -70,4 +70,5 @@ def train_som(
         state_ids=state_ids,
         cell_labels=labels,
         cell_counts=counts,
+        cell_dominant=dominants,
     )
