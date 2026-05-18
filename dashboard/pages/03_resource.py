@@ -136,7 +136,7 @@ with col_r:
         cell_dominant=som.cell_dominant,
     )
     if not transitions.empty:
-        add_transition_markers(fig, transitions["boundary"])
+        add_transition_markers(fig, transitions["timestamp"])
     st.plotly_chart(fig, width="stretch")
 
 st.subheader("Transitions")
@@ -145,6 +145,6 @@ if transitions.empty:
 else:
     st.caption(f"{len(transitions)} transitions detected.")
     st.dataframe(
-        transitions[["boundary", "from", "to", "top_changes"]].head(500).rename(columns={"boundary": "at"}),
+        transitions[["timestamp", "from", "to", "top_changes"]].head(500).rename(columns={"timestamp": "at"}),
         width="stretch", height=min(420, 60 + 36 * len(transitions)),
     )

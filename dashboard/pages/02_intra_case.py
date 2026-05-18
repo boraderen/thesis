@@ -132,7 +132,7 @@ with col_r:
         title=f"Case {chosen}", cell_dominant=som.cell_dominant, xgap=0,
     )
     if not transitions.empty:
-        add_transition_markers(fig, transitions["boundary"])
+        add_transition_markers(fig, transitions["timestamp"])
     st.plotly_chart(fig, width="stretch")
 
 st.subheader("Transitions")
@@ -141,7 +141,7 @@ if transitions.empty:
 else:
     st.caption(f"{len(transitions)} transitions in case {chosen}.")
     st.dataframe(
-        transitions[["boundary", "from", "to", "top_changes"]].rename(columns={"boundary": "at"}),
+        transitions[["timestamp", "from", "to", "top_changes"]].rename(columns={"timestamp": "at"}),
         width="stretch", height=min(420, 60 + 36 * len(transitions)),
     )
 
