@@ -17,7 +17,7 @@ NUM_LOGS = 1
 GLOBAL_SEED = 7
 
 # Log size — very big and long so drift regimes are unmistakable.
-NUM_TRACES = 8000
+NUM_TRACES = 1000
 MIN_TRACE_LENGTH = 4
 MAX_TRACE_LENGTH = 8
 AVG_TRACE_LENGTH = 6
@@ -42,8 +42,8 @@ SILENT_TRANSITION_PROB = 0.0
 DUPLICATE_ACTIVITY_PROB = 0.0
 
 # Resources
-NUM_RESOURCES = 20
-NUM_ROLES = 5
+NUM_RESOURCES = 8
+NUM_ROLES = 2
 NUM_CASE_TYPES = 3
 REGIONS = ["DE-NRW", "DE-BY", "DE-HE", "DE-BW", "DE-BE"]
 
@@ -62,12 +62,8 @@ NOISE_SIMILAR_VS_RANDOM = 0
 # the post-drift dominance at 0.8, so the cumulative shift in per-activity
 # resource probabilities is extreme.
 DRIFTS = [
-    {"subtype": "reassignment", "drift_type": "sudden"},
-    {"subtype": "reassignment", "drift_type": "sudden"},
-    {"subtype": "pool_size", "drift_type": "sudden"},
-    {"subtype": "reassignment", "drift_type": "sudden"},
-    {"subtype": "reassignment", "drift_type": "sudden"},
-    {"subtype": "pool_size", "drift_type": "sudden"},
+    {"subtype": "reassignment", "drift_type": "sudden", "change_proportion": 0.4},
+    {"subtype": "pool_size", "drift_type": "sudden", "change_proportion": 0.4},
 ]
 
 
