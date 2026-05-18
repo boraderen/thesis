@@ -19,7 +19,6 @@ htmlcov/
 .ipynb_checkpoints/
 
 # Data directory
-/data/
 .vscode/
 /pm4py
 AGENTS.md

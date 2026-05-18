@@ -10,10 +10,11 @@ from scripts.driftify.drift.resource import build_resource_runtime
 @pytest.mark.parametrize(
     "subtype,expected_key",
     [
-        ("reassignment", "new_dominant_resource"),
+        ("reassignment", "reassignments"),
         ("pool_size", "new_pool_size"),
         ("handover", "new_dominant_target"),
         ("workload_distribution", "heavy_resources"),
+        ("service_time", "multiplier_changes"),
     ],
 )
 def test_resource_drift_subtypes_change_state(small_config, rng, subtype, expected_key):
@@ -55,3 +56,29 @@ def test_resource_gradual_runtime_samples_both_versions(small_config, rng):
     }
 
     assert {old_size, new_size}.issubset(sampled_sizes)
+
+
+def test_workload_distribution_targets_selected_resources(small_config, rng):
+    resources = small_config.resources[:2]
+    start, end = sample_horizon(small_config, rng)
+    plans = sample_drift_plans(
+        [{
+            "subtype": "workload_distribution",
+            "drift_type": "sudden",
+            "change_point": 0.5,
+            "resources": resources,
+        }],
+        config=small_config,
+        horizon_start=start,
+        horizon_end=end,
+        rng=rng,
+        default_perspective="resource",
+    )
+    runtime = build_resource_runtime(small_config, plans, small_config.activity_pool[:5], rng)
+    final_state = runtime.drifts[0].final_state
+    target_indices = [final_state.resources.index(resource) for resource in resources]
+
+    assert runtime.drifts[0].details["affected_resources"] == resources
+    assert runtime.drifts[0].details["heavy_resources"] == resources
+    for probs in final_state.activity_probs.values():
+        assert sum(probs[index] for index in target_indices) == pytest.approx(0.7)

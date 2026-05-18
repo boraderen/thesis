@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
@@ -35,7 +36,7 @@ from scripts.driftify.noise import inject_noise
 from scripts.driftify.playout import play_trace_pool, sample_from_pool
 from scripts.driftify.process_tree import activities_in_tree
 from scripts.driftify.resource_assignment import assign_resource_and_role
-from scripts.driftify.timestamp_assignment import assign_event_times
+from scripts.driftify.timestamp_assignment import sample_service_duration_min
 from scripts.driftify.xes_writer import write_xes_with_metadata
 
 
@@ -84,19 +85,32 @@ def generate_log(
         case_type = inter_case_runtime.sample_case_type(case_start, rng)
         amount, region = data_runtime.sample_amount_region(case_start, rng)
         previous_resource: str | None = None
-        for event_index, (activity, event_time) in enumerate(
-            zip(trace, assign_event_times(case_start, len(trace), config, rng)),
-            start=1,
-        ):
-            start_timestamp, timestamp, duration = event_time
+        cursor = case_start
+        for event_index, activity in enumerate(trace, start=1):
+            # generate base (unscaled) wait and processing time
+            base_wait_min = float(rng.exponential(1.0))
+            base_duration_min = sample_service_duration_min(config, rng)
+            base_start = cursor + timedelta(minutes=base_wait_min)
+            base_end = base_start + timedelta(minutes=base_duration_min)
+
+            # assign resource using the base completion timestamp
             resource, role = assign_resource_and_role(
                 resource_runtime,
                 str(activity),
                 previous_resource,
-                timestamp,
+                base_end,
                 rng,
             )
             previous_resource = resource
+
+            # scale both wait and processing time by the resource's speed multiplier
+            speed = resource_runtime.speed_for(resource, base_end, rng)
+            wait_min = base_wait_min * speed
+            duration_min = base_duration_min * speed
+            start_timestamp = cursor + timedelta(minutes=wait_min)
+            timestamp = start_timestamp + timedelta(minutes=duration_min)
+            cursor = timestamp
+
             rows.append(
                 {
                     EVENT_ID_KEY: "",
@@ -104,7 +118,7 @@ def generate_log(
                     ACTIVITY_KEY: str(activity),
                     START_TIMESTAMP_KEY: start_timestamp,
                     TIMESTAMP_KEY: timestamp,
-                    DURATION_KEY: duration,
+                    DURATION_KEY: duration_min,
                     RESOURCE_KEY: resource,
                     ROLE_KEY: role,
                     CASE_TYPE_KEY: case_type,

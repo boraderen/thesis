@@ -12,7 +12,7 @@ from scripts.driftify.script_api import run_generation
 
 
 # Output
-OUTPUT_PATH = "data/timing-arrival/"
+OUTPUT_PATH = "data/inter-case/"
 NUM_LOGS = 1
 GLOBAL_SEED = 7
 

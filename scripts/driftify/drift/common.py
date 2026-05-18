@@ -30,8 +30,6 @@ def normalize_perspective_drifts(
         enriched = dict(drift)
         enriched.setdefault("perspective", default_perspective)
         result.append(enriched)
-    if len(result) > 6:
-        raise ValueError("At most 6 drifts per log are supported.")
     return result
 
 

@@ -25,6 +25,7 @@ class ResourceState:
     activity_probs: dict[str, np.ndarray]
     workload_probs: np.ndarray
     handover_probs: dict[str, np.ndarray]
+    resource_speed: dict[str, float]  # multiplier per resource: >1 slower, <1 faster
 
     def clone(self) -> "ResourceState":
         return copy.deepcopy(self)
@@ -96,6 +97,10 @@ class ResourceRuntime:
         resource = str(rng.choice(state.resources, p=probs))
         return resource, state.role_by_resource[resource]
 
+    def speed_for(self, resource: str, timestamp: datetime, rng: np.random.Generator) -> float:
+        state = self.state_for(timestamp, rng)
+        return state.resource_speed.get(resource, 1.0)
+
 
 def build_resource_runtime(
     config: GeneratorConfig,
@@ -139,6 +144,7 @@ def _initial_state(
         activity_probs=activity_probs,
         workload_probs=base,
         handover_probs={resource: base.copy() for resource in resources},
+        resource_speed={resource: 1.0 for resource in resources},
     )
 
 
@@ -155,7 +161,7 @@ def _build_resource_drift(
         versions = [current]
         changes: list[dict[str, object]] = []
         for _ in range(version_count - 1):
-            new_state, details = _mutate_state(config, plan.subtype, versions[-1], activities, rng)
+            new_state, details = _mutate_state(config, plan.subtype, versions[-1], activities, plan, rng)
             versions.append(new_state)
             changes.append(details)
         details = {
@@ -166,7 +172,7 @@ def _build_resource_drift(
             ],
         }
     else:
-        new_state, details = _mutate_state(config, plan.subtype, current, activities, rng)
+        new_state, details = _mutate_state(config, plan.subtype, current, activities, plan, rng)
         versions = [current, new_state]
     drift = ResourceDrift(plan=plan, versions=versions, details=details)
     meta = DriftMetadata(
@@ -188,37 +194,159 @@ def _mutate_state(
     subtype: str,
     state: ResourceState,
     activities: list[str],
+    plan: DriftPlan,
     rng: np.random.Generator,
 ) -> tuple[ResourceState, dict[str, object]]:
     if subtype == "pool_size":
         return _pool_size_drift(state, rng)
     if subtype == "handover":
         return _handover_drift(state, rng)
+    if subtype == "service_time":
+        return _service_time_drift(state, plan.spec, rng)
     if subtype == "workload_distribution":
-        return _workload_drift(state, rng)
-    return _reassignment_drift(state, activities, rng)
+        return _workload_distribution_drift(state, activities, plan.spec, rng)
+    return _reassignment_drift(state, activities, plan.spec, rng)
 
 
 def _reassignment_drift(
     state: ResourceState,
     activities: list[str],
+    spec: dict,
     rng: np.random.Generator,
 ) -> tuple[ResourceState, dict[str, object]]:
+    activities_spec = spec.get("activities", "all")
+    targets = activities if activities_spec == "all" else [a for a in activities_spec if a in activities]
     new_state = state.clone()
-    activity = str(rng.choice(activities))
-    old_probs = new_state.activity_probs.get(activity, new_state.workload_probs)
-    old_resource = new_state.resources[int(np.argmax(old_probs))]
-    choices = [resource for resource in new_state.active_resources if resource != old_resource]
-    new_resource = str(rng.choice(choices or new_state.active_resources))
-    probs = np.ones(len(new_state.resources), dtype=float) * 0.2 / max(1, len(new_state.resources) - 1)
-    probs[new_state.resources.index(new_resource)] = 0.8
-    new_state.activity_probs[activity] = probs / probs.sum()
+    reassignments = []
+    for activity in targets:
+        old_probs = new_state.activity_probs.get(activity, new_state.workload_probs)
+        old_resource = new_state.resources[int(np.argmax(old_probs))]
+        choices = [resource for resource in new_state.active_resources if resource != old_resource]
+        new_resource = str(rng.choice(choices or new_state.active_resources))
+        probs = np.ones(len(new_state.resources), dtype=float) * 0.2 / max(1, len(new_state.resources) - 1)
+        probs[new_state.resources.index(new_resource)] = 0.8
+        new_state.activity_probs[activity] = probs / probs.sum()
+        reassignments.append({
+            "activity": activity,
+            "old_dominant_resource": old_resource,
+            "new_dominant_resource": new_resource,
+            "post_drift_probability": 0.8,
+        })
+    return new_state, {"activities": activities_spec, "reassignments": reassignments}
+
+
+def _service_time_drift(
+    state: ResourceState,
+    spec: dict,
+    rng: np.random.Generator,
+) -> tuple[ResourceState, dict[str, object]]:
+    resources_spec = spec.get("resources", "all")
+    targets = (
+        state.active_resources
+        if resources_spec == "all"
+        else [r for r in resources_spec if r in state.resources]
+    )
+    new_state = state.clone()
+    changes = {}
+    for resource in targets:
+        old = new_state.resource_speed.get(resource, 1.0)
+        # sample a new multiplier clearly different from the current one
+        new_mult = float(rng.uniform(0.3, 3.0))
+        new_state.resource_speed[resource] = new_mult
+        changes[resource] = {"old_multiplier": round(old, 4), "new_multiplier": round(new_mult, 4)}
     return new_state, {
-        "activity": activity,
-        "old_dominant_resource": old_resource,
-        "new_dominant_resource": new_resource,
-        "post_drift_probability": 0.8,
+        "resources": resources_spec,
+        "multiplier_changes": changes,
+        "note": "multiplier > 1.0 means slower (longer wait + processing), < 1.0 means faster",
     }
+
+
+def _workload_distribution_drift(
+    state: ResourceState,
+    activities: list[str],
+    spec: dict,
+    rng: np.random.Generator,
+) -> tuple[ResourceState, dict[str, object]]:
+    resources_spec = spec.get("resources", "all")
+    affected = _target_resources(state, resources_spec)
+    if resources_spec == "all":
+        heavy = _sample_heavy_resources(affected, rng)
+    else:
+        heavy = affected
+
+    new_state = state.clone()
+    if not affected:
+        return new_state, {
+            "resources": resources_spec,
+            "affected_resources": [],
+            "heavy_resources": [],
+            "heavy_resource_share": 0.0,
+            "probability_changes": {},
+        }
+
+    new_probs = _event_count_probs(new_state, heavy)
+    old_probs = _mean_activity_probs(state, activities)
+    new_state.workload_probs = new_probs
+    for activity in list(new_state.activity_probs):
+        new_state.activity_probs[activity] = new_probs.copy()
+
+    changes = {
+        resource: {
+            "old_probability": round(float(old_probs[new_state.resources.index(resource)]), 4),
+            "new_probability": round(float(new_probs[new_state.resources.index(resource)]), 4),
+        }
+        for resource in new_state.active_resources
+    }
+    heavy_indices = [new_state.resources.index(resource) for resource in heavy]
+    return new_state, {
+        "resources": resources_spec,
+        "affected_resources": affected,
+        "heavy_resources": heavy,
+        "heavy_resource_share": round(float(new_probs[heavy_indices].sum()), 4) if heavy else 0.0,
+        "probability_changes": changes,
+    }
+
+
+def _target_resources(state: ResourceState, resources_spec: object) -> list[str]:
+    if resources_spec == "all":
+        return list(state.active_resources)
+    if not isinstance(resources_spec, list):
+        return []
+    return [str(resource) for resource in resources_spec if str(resource) in state.active_resources]
+
+
+def _sample_heavy_resources(resources: list[str], rng: np.random.Generator) -> list[str]:
+    if len(resources) <= 1:
+        return list(resources)
+    heavy_count = max(1, min(len(resources) - 1, int(round(len(resources) * 0.35))))
+    return sorted(str(resource) for resource in rng.choice(resources, size=heavy_count, replace=False))
+
+
+def _event_count_probs(state: ResourceState, heavy_resources: list[str]) -> np.ndarray:
+    active = list(state.active_resources)
+    heavy = [resource for resource in heavy_resources if resource in active]
+    if not heavy:
+        return state.active_masked_probs(state.workload_probs)
+
+    probs = np.zeros(len(state.resources), dtype=float)
+    light = [resource for resource in active if resource not in set(heavy)]
+    heavy_share = 1.0 if not light else 0.7
+    light_share = 1.0 - heavy_share
+    for resource in heavy:
+        probs[state.resources.index(resource)] = heavy_share / len(heavy)
+    for resource in light:
+        probs[state.resources.index(resource)] = light_share / len(light)
+    return probs / probs.sum()
+
+
+def _mean_activity_probs(state: ResourceState, activities: list[str]) -> np.ndarray:
+    vectors = [
+        state.active_masked_probs(state.activity_probs.get(activity, state.workload_probs))
+        for activity in activities
+    ]
+    if not vectors:
+        return state.active_masked_probs(state.workload_probs)
+    return np.mean(vectors, axis=0)
 
 
 def _pool_size_drift(
@@ -261,25 +389,6 @@ def _handover_drift(
         "post_drift_probability": 0.8,
     }
 
-
-def _workload_drift(
-    state: ResourceState,
-    rng: np.random.Generator,
-) -> tuple[ResourceState, dict[str, object]]:
-    new_state = state.clone()
-    heavy = list(rng.choice(new_state.active_resources, size=min(2, len(new_state.active_resources)), replace=False))
-    probs = np.ones(len(new_state.resources), dtype=float) * 0.3 / max(1, len(new_state.resources) - len(heavy))
-    for resource in heavy:
-        probs[new_state.resources.index(str(resource))] = 0.7 / len(heavy)
-    new_state.workload_probs = probs / probs.sum()
-    for activity in list(new_state.activity_probs):
-        new_state.activity_probs[activity] = new_state.workload_probs.copy()
-    return new_state, {
-        "old_distribution": "activity-specialized",
-        "new_distribution": "skewed",
-        "heavy_resources": [str(resource) for resource in heavy],
-        "heavy_resource_share": 0.7,
-    }
 
 
 def _mini_change_points(plan: DriftPlan, version_count: int) -> list[datetime]:

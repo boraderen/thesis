@@ -61,8 +61,18 @@ if len(matrix_df) < 2:
 KIND_LABELS = {
     "events": "Events per resource",
     "active": "Active cases per resource",
+    "duration": "Mean event duration per resource",
     "wait": "Mean wait into resource",
+    "activity_events": "Activity-resource event counts",
     "ho": "Handover counts",
+}
+KIND_DESCRIPTIONS = {
+    "events": "Number of events assigned to each resource in the calendar window.",
+    "active": "Number of distinct cases touched by each resource in the window.",
+    "duration": "Mean event duration in minutes for each resource in the window.",
+    "wait": "Mean log-minutes between the previous event and this resource's event, counted only when the resource changes.",
+    "activity_events": "Number of events for each activity-resource pair in the window, such as activity a performed by res_001.",
+    "ho": "Number of within-case handovers from one resource to another inside the window.",
 }
 kind_groups = {k: [c for c in spec.columns if c.startswith(f"{k}:")] for k in KIND_LABELS}
 
@@ -79,19 +89,41 @@ with st.sidebar:
         options=spec.resources,
         default=spec.resources,
     )
+    picked_activities = st.multiselect(
+        "Activities",
+        options=spec.activities,
+        default=spec.activities,
+        help="Used by activity-resource event count features.",
+    )
+    with st.expander("Feature glossary"):
+        for kind, label in KIND_LABELS.items():
+            st.markdown(f"**{label}.** {KIND_DESCRIPTIONS[kind]}")
 
-selected_cols = [
-    c for k in picked_kinds for c in kind_groups[k]
-    if k == "ho" or any(c.endswith(f":{r}") for r in picked_resources)
-]
-if "ho" in picked_kinds:
-    selected_cols = [
-        c for c in selected_cols
-        if not c.startswith("ho:")
-        or any(f"ho:{a}→{b}" == c for a in picked_resources for b in picked_resources if a != b)
-    ]
+def _matches_resource(column: str) -> bool:
+    return any(column.endswith(f":{resource}") for resource in picked_resources)
+
+
+def _matches_activity_resource(column: str) -> bool:
+    return any(
+        column.startswith(f"activity_events:{activity}:") and column.endswith(f":{resource}")
+        for activity in picked_activities
+        for resource in picked_resources
+    )
+
+
+selected_cols = []
+for kind in picked_kinds:
+    if kind == "ho":
+        selected_cols.extend(
+            c for c in kind_groups[kind]
+            if any(f"ho:{a}→{b}" == c for a in picked_resources for b in picked_resources if a != b)
+        )
+    elif kind == "activity_events":
+        selected_cols.extend(c for c in kind_groups[kind] if _matches_activity_resource(c))
+    else:
+        selected_cols.extend(c for c in kind_groups[kind] if _matches_resource(c))
 if not selected_cols:
-    st.warning("Select at least one feature kind and one resource.")
+    st.warning("Select at least one feature kind, one resource, and one activity when using activity-resource features.")
     st.stop()
 
 st.subheader("Feature matrix")

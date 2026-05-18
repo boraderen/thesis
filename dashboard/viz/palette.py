@@ -22,6 +22,7 @@ GROUP_TINTS: dict[str, str] = {
     "resource_a": "#FAEEDA",
     "resource_b": "#E1F5EE",
     "resource_c": "#EEEDFE",
+    "activity_resource": "#E7F0FA",
     "handover": "#FFF6CC",
     "counts": "#E1F5EE",
     "rates": "#EEEDFE",
