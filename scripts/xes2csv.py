@@ -2,7 +2,7 @@ import pm4py
 import pandas as pd
 
 XES_PATH = "data/resource/resource_001.xes"
-CSV_PATH = "data/resource/template.csv"
+CSV_PATH = "data/resource/resource_001.csv"
 
 log = pm4py.read_xes(XES_PATH)
 

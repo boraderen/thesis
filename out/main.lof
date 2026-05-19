@@ -1,0 +1,16 @@
+\babel@toc {USenglish}{}\relax 
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {5.1}{\ignorespaces Approximate relation between drift perspectives and the three state types. Solid arrows show the primary state view; dashed arrows indicate common secondary effects.}}{12}{figure.caption.8}%
+\contentsline {figure}{\numberline {5.2}{\ignorespaces Visual feature map from drift subtypes to the feature families used by the three state views.}}{13}{figure.caption.9}%
+\addvspace {10\p@ }
+\contentsline {figure}{\numberline {6.1}{\ignorespaces Pipelines for the four state-based concept drift detection approaches. Each approach combines a dimensionality reduction step (PCA or autoencoder) with a clustering step (SOM or k-means / similar) to produce discrete states from per-state-type feature vectors.}}{16}{figure.caption.10}%
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\addvspace {10\p@ }
+\providecommand \tocbasic@end@toc@file {}\tocbasic@end@toc@file 

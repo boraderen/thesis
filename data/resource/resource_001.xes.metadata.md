@@ -1,8 +1,8 @@
 # Driftify log: `resource_001`
 
-- **Events:** 24,000
-- **Cases:** 4,000
-- **Time horizon:** 2020-01-01T00:00:00+00:00 → 2020-10-19T00:00:00+00:00
+- **Events:** 6,000
+- **Cases:** 1,000
+- **Time horizon:** 2020-01-01T00:00:00+00:00 → 2020-03-14T00:00:00+00:00
 - **Injected drifts:** 5
 
 ## Injected drifts
@@ -10,7 +10,7 @@
 ### #1 · sudden pool_size (resource)
 
 - **Drift id:** `d01`
-- **Change point:** 2020-05-26T00:00:00+00:00
+- **Change point:** 2020-02-06T12:00:00+00:00
 - **Affected columns:** org:resource, org:role
 - **active_resources:** ['res_001', 'res_002', 'res_003', 'res_005', 'res_006']
 - **new_pool_size:** 5
@@ -19,7 +19,7 @@
 ### #2 · sudden workload_distribution (resource)
 
 - **Drift id:** `d02`
-- **Change point:** 2020-05-26T00:00:00+00:00
+- **Change point:** 2020-02-06T12:00:00+00:00
 - **Affected columns:** org:resource, org:role
 - **affected_resources:** ['res_001', 'res_002', 'res_003', 'res_005', 'res_006']
 - **heavy_resource_share:** 0.7
@@ -30,7 +30,7 @@
 ### #3 · sudden reassignment (resource)
 
 - **Drift id:** `d03`
-- **Change point:** 2020-05-26T00:00:00+00:00
+- **Change point:** 2020-02-06T12:00:00+00:00
 - **Affected columns:** org:resource, org:role
 - **activities:** ['a', 'c']
 - **reassignments:** [{'activity': 'a', 'old_dominant_resource': 'res_002', 'new_dominant_resource': 'res_001', 'post_drift_probability': 0.8}, {'activity': 'c', 'old_dominant_resource': 'res_002', 'new_dominant_resource': 'res_005', 'post_drift_probability': 0.8}]
@@ -38,7 +38,7 @@
 ### #4 · sudden service_time (resource)
 
 - **Drift id:** `d04`
-- **Change point:** 2020-05-26T00:00:00+00:00
+- **Change point:** 2020-02-06T12:00:00+00:00
 - **Affected columns:** org:resource, org:role
 - **multiplier_changes:** {'res_001': {'old_multiplier': 1.0, 'new_multiplier': 2.5873}, 'res_002': {'old_multiplier': 1.0, 'new_multiplier': 2.0272}, 'res_003': {'old_multiplier': 1.0, 'new_multiplier': 2.3028}, 'res_005': {'old_multiplier': 1.0, 'new_multiplier': 0.547}, 'res_006': {'old_multiplier': 1.0, 'new_multiplier': 1.7611}}
 - **note:** multiplier > 1.0 means slower (longer wait + processing), < 1.0 means faster
@@ -47,7 +47,7 @@
 ### #5 · sudden handover (resource)
 
 - **Drift id:** `d05`
-- **Change point:** 2020-05-26T00:00:00+00:00
+- **Change point:** 2020-02-06T12:00:00+00:00
 - **Affected columns:** org:resource, org:role
 - **new_dominant_target:** res_005
 - **old_dominant_target:** res_001
@@ -58,14 +58,14 @@
 
 | Setting | Value |
 | --- | --- |
-| actual_num_events | 24000 |
-| actual_num_traces | 4000 |
+| actual_num_events | 6000 |
+| actual_num_traces | 1000 |
 | avg_trace_length | 6 |
 | choice_weight | 0.1 |
 | duplicate_activity_prob | 0.0 |
 | global_seed | 7 |
 | gradual_overlap_fraction | 0.1 |
-| horizon_end | 2020-10-19T00:00:00+00:00 |
+| horizon_end | 2020-03-14T00:00:00+00:00 |
 | horizon_max_days | 365 |
 | horizon_min_days | 365 |
 | horizon_start | 2020-01-01T00:00:00+00:00 |
@@ -83,7 +83,7 @@
 | num_roles | 2 |
 | num_trace_variants | 1 |
 | num_trace_variants_before_noise | 1 |
-| num_traces | 4000 |
+| num_traces | 1000 |
 | or_weight | 0.01 |
 | output_path | data/resource/ |
 | parallel_weight | 0.02 |

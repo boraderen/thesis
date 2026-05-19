@@ -1,14 +1,7 @@
 from __future__ import annotations
 
-from pathlib import Path
-import sys
-
-ROOT = Path(__file__).resolve().parents[1]
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
-
-from scripts.driftify.config import GeneratorConfig
-from scripts.driftify.script_api import run_generation
+from rheon.config import GeneratorConfig
+from rheon.script_api import run_generation
 
 
 # Output

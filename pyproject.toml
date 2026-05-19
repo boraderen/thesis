@@ -14,6 +14,7 @@ dependencies = [
     "streamlit>=1.56.0",
     "torch>=2.11.0",
     "cdlg-package",
+    "rheon",
     "plotly>=6.7.0",
     "pyvis>=0.3.2",
 ]
@@ -21,6 +22,7 @@ dependencies = [
 [tool.uv.sources]
 pm4py = { path = "pm4py", editable = true }
 cdlg-package = { path = "cdlg-package", editable = true }
+rheon = { path = "../rheon", editable = true }
 
 [dependency-groups]
 dev = [
@@ -29,5 +31,4 @@ dev = [
 ]
 
 [tool.pytest.ini_options]
-testpaths = ["scripts/driftify/tests"]
 python_files = ["test_*.py"]
