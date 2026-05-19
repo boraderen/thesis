@@ -3,24 +3,24 @@ name = "thesis"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
-    "matplotlib>=3.10.8",
-    "notebook>=7.5.5",
-    "numpy>=2.4.4",
-    "pandas>=3.0.2",
-    "pm4py",
-    "scikit-learn>=1.8.0",
-    "streamlit>=1.56.0",
-    "torch>=2.11.0",
     "cdlg-package",
+    "matplotlib>=3.10",
+    "minisom>=2.3.1",
+    "notebook>=7.5",
+    "numpy>=1.26",
+    "pandas>=2.0",
+    "plotly>=5.20",
+    "pm4py>=2.7",
     "rheon",
-    "plotly>=6.7.0",
-    "pyvis>=0.3.2",
+    "scikit-learn>=1.4",
+    "seaborn>=0.13",
+    "streamlit>=1.35",
+    "tabulate>=0.9",
 ]
 
 [tool.uv.sources]
-pm4py = { path = "pm4py", editable = true }
 cdlg-package = { path = "cdlg-package", editable = true }
 rheon = { path = "../rheon", editable = true }
 

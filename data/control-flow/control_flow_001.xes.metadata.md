@@ -1,6 +1,6 @@
-# Driftify log: `control_flow_001`
+# Rheon log: `control_flow_001`
 
-- **Events:** 32,669
+- **Events:** 32,627
 - **Cases:** 6,000
 - **Time horizon:** 2020-01-01T00:00:00+00:00 → 2021-02-12T18:10:43.368542+00:00
 - **Injected drifts:** 2
@@ -37,7 +37,7 @@
 
 | Setting | Value |
 | --- | --- |
-| actual_num_events | 32669 |
+| actual_num_events | 32627 |
 | actual_num_traces | 6000 |
 | avg_trace_length | 6 |
 | choice_weight | 0.1 |

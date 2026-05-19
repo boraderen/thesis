@@ -1,4 +1,4 @@
-# Driftify log: `resource_001`
+# Rheon log: `resource_001`
 
 - **Events:** 6,000
 - **Cases:** 1,000
@@ -78,14 +78,12 @@
 | noise_probability | 0 |
 | noise_similar_vs_random | 0 |
 | num_case_types | 3 |
-| num_logs | 1 |
 | num_resources | 8 |
 | num_roles | 2 |
 | num_trace_variants | 1 |
 | num_trace_variants_before_noise | 1 |
 | num_traces | 1000 |
 | or_weight | 0.01 |
-| output_path | data/resource/ |
 | parallel_weight | 0.02 |
 | recurring_period_fraction | 0.2 |
 | regions | DE-NRW, DE-BY, DE-HE, DE-BW, DE-BE |
@@ -95,8 +93,8 @@
 | silent_transition_prob | 0.0 |
 | start_timestamp | 2020-01-01T00:00:00+00:00 |
 | trace_length_variance | 9 |
-| tree_depth_max | 2 |
-| tree_depth_min | 2 |
+| tree_depth_max | 6 |
+| tree_depth_min | 3 |
 | tree_generation_attempts | 32 |
 
 ## Noise

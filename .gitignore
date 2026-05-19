@@ -1,35 +1,43 @@
-# Study / Anki material
+# Local study / Anki material
 /study/
-/study/thesis_study.apkg
-/study/media/
 
+# Local notes and agent instructions
+/AGENTS.md
+/CLAUDE.md
+/instructions.md
+/notes.md
+
+# Local editable/vendor checkouts
+/cdlg-package/
+/pm4py-docs/
+
+# Virtualenv and local config
+/.venv/
+/.claude/
+.env
+.env.*
+
+# OS/editor files
 .DS_Store
-.hypothesis/
+/.vscode/
+/.idea/
 
 # Python cache / bytecode
 __pycache__/
 *.py[cod]
+*$py.class
 
-# Testing
+# Test and tool caches
 .pytest_cache/
+.hypothesis/
+.ruff_cache/
+.mypy_cache/
 .coverage
+coverage.xml
 htmlcov/
 
 # Jupyter
 .ipynb_checkpoints/
-
-# Data directory
-.vscode/
-.idea/
-/pm4py
-AGENTS.md
-CLAUDE.md
-generate-log.py
-.venv
-instructions.md
-test.py
-/cdlg-package
-notes.md
 
 # LaTeX temp files
 thesis/*.aux
