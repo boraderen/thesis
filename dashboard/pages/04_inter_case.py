@@ -10,7 +10,14 @@ from core.loader import span_label
 from core.pca import fit_pca
 from core.som import train_som
 from core.transitions import find_transitions
-from core.windows import SOM_GRID_OPTIONS, som_grid_label, window_minute_choices, window_minute_label
+from core.windows import (
+    SOM_GRID_OPTIONS,
+    default_window_minutes,
+    log_span_minutes,
+    som_grid_label,
+    window_minute_choices,
+    window_minute_label,
+)
 from viz.som_grid import som_heatmap
 from viz.tables import styled_feature_table
 from viz.trajectory import add_transition_markers, pca_variance_plot, state_timeline
@@ -27,7 +34,7 @@ st.caption(span_label(log))
 
 with st.sidebar:
     st.header("Controls")
-    default_W = int(st.session_state.get("inter_W", 60))
+    default_W = int(st.session_state.get("inter_W", default_window_minutes(log_span_minutes(log))))
     options = window_minute_choices(default_W)
     window_minutes = st.selectbox(
         "Window W", options, index=options.index(default_W), format_func=window_minute_label

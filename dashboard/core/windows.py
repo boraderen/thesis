@@ -41,6 +41,23 @@ def window_minute_label(minutes: int) -> str:
     return f"{minutes} min"
 
 
+def default_window_minutes(span_minutes: float, cap_windows: int = 200) -> int:
+    """Pick the smallest WINDOW_MINUTE_OPTIONS value that keeps window count <= cap_windows."""
+    if span_minutes <= 0:
+        return WINDOW_MINUTE_OPTIONS[0][0]
+    for minutes, _ in WINDOW_MINUTE_OPTIONS:
+        if span_minutes / minutes <= cap_windows:
+            return minutes
+    return WINDOW_MINUTE_OPTIONS[-1][0]
+
+
+def log_span_minutes(log: pd.DataFrame) -> float:
+    """Return the time span of a log in minutes (0 if it has fewer than two timestamps)."""
+    if "timestamp" not in log.columns or len(log) < 2:
+        return 0.0
+    return (log["timestamp"].max() - log["timestamp"].min()).total_seconds() / 60.0
+
+
 def floor_to_window(ts: pd.Series, origin: pd.Timestamp, minutes: int) -> pd.Series:
     """Floor timestamps to window starts anchored at `origin` (window width = minutes)."""
     freq = pd.Timedelta(minutes=minutes)

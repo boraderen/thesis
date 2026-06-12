@@ -10,7 +10,14 @@ from core.loader import span_label
 from core.pca import fit_pca
 from core.som import train_som
 from core.transitions import find_transitions
-from core.windows import SOM_GRID_OPTIONS, som_grid_label, window_minute_choices, window_minute_label
+from core.windows import (
+    SOM_GRID_OPTIONS,
+    default_window_minutes,
+    log_span_minutes,
+    som_grid_label,
+    window_minute_choices,
+    window_minute_label,
+)
 from viz.drift_signal import add_window_boundaries, stacked_area_intra
 from viz.som_grid import som_heatmap
 from viz.tables import styled_feature_table
@@ -52,7 +59,7 @@ with st.sidebar:
         min_value=0, max_value=20, value=int(st.session_state.get("intra_pca_k", 0)), step=1,
     )
     st.session_state["intra_pca_k"] = pca_k
-    default_W = int(st.session_state.get("intra_distribution_W", 60))
+    default_W = int(st.session_state.get("intra_distribution_W", default_window_minutes(log_span_minutes(log))))
     win_options = window_minute_choices(default_W)
     distribution_W = st.selectbox(
         "Distribution window W",
