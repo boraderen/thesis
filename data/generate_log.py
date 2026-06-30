@@ -10,7 +10,7 @@ drifts = [
 
 rheon.generate_log(
     drifts,
-    "./data/res.xes",
+    "./data/example.xes",
     num_traces=2000,
     num_activities=12,
     num_resources=7,

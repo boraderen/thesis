@@ -1,4 +1,4 @@
-"""Intra-case SOM page: window features → PCA → SOM cells → per-case trajectory."""
+"""Intra-case SOM page: prefix features → PCA → SOM cells → per-case trajectory."""
 from __future__ import annotations
 
 import pandas as pd
@@ -32,88 +32,166 @@ if "log" not in st.session_state:
 
 log: pd.DataFrame = st.session_state["log"]
 st.caption(span_label(log))
-numeric_attrs = tuple(st.session_state.get("case_numeric_attrs", []))
-categorical_attrs = tuple(st.session_state.get("case_categorical_attrs", []))
 
 GROUP_LABELS = {
-    "activity": "Activity one-hot (windowed)",
-    "delta": "Δt gaps",
-    "elapsed": "Elapsed case time",
-    "case_attr": "Case attributes",
+    "activity_freq": "Activity frequency vector",
+    "bigram": "Bigram transition counts",
+    "vocab": "Distinct activity set",
+    "progress": "Progress ratio / trace length",
 }
+
+FEATURE_SCHEMA_VERSION = "intra_prefix_v1"
+
+
+def _log_signature(df: pd.DataFrame) -> tuple[object, ...]:
+    return (
+        FEATURE_SCHEMA_VERSION,
+        len(df),
+        tuple(df.columns),
+        df["case_id"].nunique(),
+        df["activity"].nunique(),
+        str(df["timestamp"].min()),
+        str(df["timestamp"].max()),
+    )
+
+
+def _available_groups() -> list[str]:
+    return list(GROUP_LABELS)
+
+
+INTRA_RESULT_KEYS = (
+    "intra_feat",
+    "intra_spec",
+    "intra_som",
+    "intra_pca",
+    "intra_selected_cols",
+    "intra_run_config",
+    "intra_log_signature",
+)
+
+current_log_signature = _log_signature(log)
+if (
+    st.session_state.get("intra_log_signature") is not None
+    and st.session_state.get("intra_log_signature") != current_log_signature
+):
+    for key in (
+        *INTRA_RESULT_KEYS,
+        "intra_selected_groups",
+    ):
+        st.session_state.pop(key, None)
 
 with st.sidebar:
     st.header("Controls")
-    window = st.slider("Window size w (events)", min_value=1, max_value=10, value=3)
-    grid_default = st.session_state.get("intra_grid", (3, 3))
-    if grid_default not in SOM_GRID_OPTIONS:
-        grid_default = (3, 3)
-    grid_h, grid_w = st.selectbox(
-        "SOM grid", SOM_GRID_OPTIONS,
-        index=SOM_GRID_OPTIONS.index(grid_default),
-        format_func=som_grid_label,
+    with st.form("intra_pipeline_controls"):
+        grid_default = st.session_state.get("intra_grid", (3, 3))
+        if grid_default not in SOM_GRID_OPTIONS:
+            grid_default = (3, 3)
+        grid_h, grid_w = st.selectbox(
+            "SOM grid",
+            SOM_GRID_OPTIONS,
+            index=SOM_GRID_OPTIONS.index(grid_default),
+            format_func=som_grid_label,
+        )
+        pca_k = st.number_input(
+            "PCA components (0 = auto/elbow)",
+            min_value=0,
+            max_value=20,
+            value=int(st.session_state.get("intra_pca_k", 0)),
+            step=1,
+        )
+        default_W = int(
+            st.session_state.get(
+                "intra_distribution_W",
+                default_window_minutes(log_span_minutes(log)),
+            )
+        )
+        win_options = window_minute_choices(default_W)
+        distribution_W = st.selectbox(
+            "Distribution window W",
+            win_options,
+            index=win_options.index(default_W),
+            format_func=window_minute_label,
+            help="Calendar window used to aggregate per-event states into frequency bands.",
+        )
+
+        st.subheader("Features for state clustering")
+        available_groups = _available_groups()
+        default_groups = st.session_state.get("intra_selected_groups", available_groups)
+        default_groups = [g for g in default_groups if g in available_groups]
+        if not default_groups:
+            default_groups = available_groups
+        picked = st.multiselect(
+            "Include groups",
+            options=available_groups,
+            default=default_groups,
+            format_func=lambda g: GROUP_LABELS[g],
+        )
+        run_pipeline = st.form_submit_button(
+            "Run intra-case pipeline",
+            width="stretch",
+        )
+
+if run_pipeline:
+    feat, spec = build_features(log)
+    selected_cols = [c for g in picked for c in spec.groups[g]]
+    if not selected_cols:
+        st.warning("Select at least one feature group that produces columns for the current settings.")
+        st.stop()
+
+    matrix = feat[selected_cols].to_numpy()
+    pca = fit_pca(matrix, force_k=int(pca_k) if pca_k else None)
+    som = train_som(
+        pca.transformed,
+        grid_h=grid_h,
+        grid_w=grid_w,
+        annotations=tuple(feat["activity"].astype(str).tolist()),
     )
+    feat = feat.assign(state_id=som.state_ids)
+
     st.session_state["intra_grid"] = (grid_h, grid_w)
-    pca_k = st.number_input(
-        "PCA components (0 = auto/elbow)",
-        min_value=0, max_value=20, value=int(st.session_state.get("intra_pca_k", 0)), step=1,
-    )
     st.session_state["intra_pca_k"] = pca_k
-    default_W = int(st.session_state.get("intra_distribution_W", default_window_minutes(log_span_minutes(log))))
-    win_options = window_minute_choices(default_W)
-    distribution_W = st.selectbox(
-        "Distribution window W",
-        win_options,
-        index=win_options.index(default_W),
-        format_func=window_minute_label,
-        help="Calendar window used to aggregate per-event states into frequency bands.",
-    )
     st.session_state["intra_distribution_W"] = distribution_W
+    st.session_state["intra_selected_groups"] = picked
+    st.session_state["intra_selected_cols"] = selected_cols
+    st.session_state["intra_feat"] = feat
+    st.session_state["intra_spec"] = spec
+    st.session_state["intra_pca"] = pca
+    st.session_state["intra_som"] = som
+    st.session_state["intra_log_signature"] = current_log_signature
+    st.session_state["intra_run_config"] = {
+        "grid_h": grid_h,
+        "grid_w": grid_w,
+        "pca_k": int(pca_k),
+        "distribution_W": distribution_W,
+        "groups": list(picked),
+    }
 
-feat, spec = build_features(
-    log, window=window, numeric_attrs=numeric_attrs, categorical_attrs=categorical_attrs
-)
-
-available_groups = [g for g in GROUP_LABELS if spec.groups.get(g)]
-with st.sidebar:
-    st.subheader("Features for state clustering")
-    picked = st.multiselect(
-        "Include groups",
-        options=available_groups,
-        default=available_groups,
-        format_func=lambda g: GROUP_LABELS[g],
-    )
-selected_cols = [c for g in picked for c in spec.groups[g]]
-if not selected_cols:
-    st.warning("Select at least one feature group to train the SOM.")
+if (
+    any(key not in st.session_state for key in INTRA_RESULT_KEYS)
+    or st.session_state.get("intra_log_signature") != current_log_signature
+):
+    st.info("Set the sidebar controls and run the intra-case pipeline.")
     st.stop()
+
+feat = st.session_state["intra_feat"]
+spec = st.session_state["intra_spec"]
+pca = st.session_state["intra_pca"]
+som = st.session_state["intra_som"]
+selected_cols = st.session_state["intra_selected_cols"]
+distribution_W = st.session_state["intra_run_config"]["distribution_W"]
 
 st.subheader("Feature matrix")
 st.caption(
     f"{len(feat):,} events × {len(selected_cols)} feature columns "
-    f"(window={spec.window}, |A|={len(spec.activities)})"
+    f"(|A|={len(spec.activities)}, |A→B|={len(spec.transitions)})"
 )
 preview_cols = ["case_id", "activity", "timestamp", *selected_cols]
 preview_groups = {g: [c for c in cols if c in selected_cols] for g, cols in spec.groups.items()}
 styled = styled_feature_table(feat[preview_cols], preview_groups, max_rows=30)
 st.dataframe(styled, width="stretch", height=380)
 
-matrix = feat[selected_cols].to_numpy()
-pca = fit_pca(matrix, force_k=int(pca_k) if pca_k else None)
-
 st.subheader("PCA")
 st.plotly_chart(pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim), width="stretch")
-
-som = train_som(
-    pca.transformed,
-    grid_h=grid_h,
-    grid_w=grid_w,
-    annotations=tuple(feat["activity"].astype(str).tolist()),
-)
-feat = feat.assign(state_id=som.state_ids)
-st.session_state["intra_feat"] = feat
-st.session_state["intra_spec"] = spec
-st.session_state["intra_som"] = som
 
 col_l, col_r = st.columns([1, 1])
 with col_l:

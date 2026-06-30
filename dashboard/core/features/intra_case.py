@@ -1,4 +1,4 @@
-"""Intra-case feature extraction: one row per event with a windowed view of the case."""
+"""Intra-case feature extraction: one row per event with a prefix view of the case."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -15,95 +15,74 @@ class IntraSpec:
     columns: list[str]
     groups: dict[str, list[str]]
     activities: list[str]
-    window: int
+    transitions: list[tuple[str, str]]
 
 
-def _zlog_minutes(seconds: np.ndarray) -> np.ndarray:
-    """Convert seconds to ln(minutes), preserving zeros."""
-    mins = np.clip(seconds / 60.0, 0, None)
-    return np.log1p(mins)
-
-
-def _windowed_blocks(df: pd.DataFrame, activities: list[str], window: int) -> tuple[np.ndarray, np.ndarray]:
-    """Fill the per-event activity one-hot and Δt gap blocks for a sorted log."""
-    n = len(df)
-    act_to_idx = {a: i for i, a in enumerate(activities)}
-    act_block = np.zeros((n, window * len(activities)), dtype=float)
-    gap_block = np.zeros((n, max(0, window - 1)), dtype=float)
+def _directly_follows_pairs(df: pd.DataFrame) -> list[tuple[str, str]]:
+    """Return the sorted directly-follows pairs observed inside cases."""
+    pairs: set[tuple[str, str]] = set()
     for _, idxs in df.groupby("case_id", sort=False).indices.items():
         acts = df["activity"].iloc[idxs].to_numpy()
-        ts = df["timestamp"].iloc[idxs].to_numpy()
+        pairs.update(zip(acts[:-1], acts[1:]))
+    return sorted(pairs)
+
+
+def _prefix_blocks(
+    df: pd.DataFrame, activities: list[str], transitions: list[tuple[str, str]]
+) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    """Fill activity frequency, bigram frequency, vocabulary, and progress blocks."""
+    n = len(df)
+    act_to_idx = {activity: i for i, activity in enumerate(activities)}
+    pair_to_idx = {pair: i for i, pair in enumerate(transitions)}
+    activity_freq = np.zeros((n, len(activities)), dtype=float)
+    bigram_freq = np.zeros((n, len(transitions)), dtype=float)
+    vocabulary = np.zeros((n, len(activities)), dtype=float)
+    progress = np.zeros((n, 1), dtype=float)
+
+    for _, idxs in df.groupby("case_id", sort=False).indices.items():
+        acts = df["activity"].iloc[idxs].to_numpy()
+        act_counts = np.zeros(len(activities), dtype=float)
+        pair_counts = np.zeros(len(transitions), dtype=float)
+        case_len = len(idxs)
+
         for pos, row_idx in enumerate(idxs):
-            for w in range(window):
-                src = pos - (window - 1 - w)
-                if src >= 0:
-                    act_block[row_idx, w * len(activities) + act_to_idx[acts[src]]] = 1.0
-            for g in range(window - 1):
-                src_next = pos - (window - 2 - g)
-                src_prev = src_next - 1
-                if src_prev < 0 or src_next < 0:
-                    continue
-                delta_s = (ts[src_next] - ts[src_prev]) / np.timedelta64(1, "s")
-                gap_block[row_idx, g] = _zlog_minutes(np.array([delta_s]))[0]
-    return act_block, gap_block
+            act_counts[act_to_idx[acts[pos]]] += 1.0
+            if pos > 0:
+                pair_counts[pair_to_idx[(acts[pos - 1], acts[pos])]] += 1.0
 
+            activity_freq[row_idx] = act_counts / float(pos + 1)
+            if pos > 0:
+                bigram_freq[row_idx] = pair_counts / float(pos)
+            vocabulary[row_idx] = (act_counts > 0).astype(float)
+            progress[row_idx, 0] = float(pos + 1) / float(case_len)
 
-def _name_window_cols(activities: list[str], window: int) -> tuple[list[str], list[str]]:
-    """Generate the column names for activity one-hot and Δt blocks."""
-    act_names = [f"act[t-{window - 1 - w}]={a}" for w in range(window) for a in activities]
-    delta_names = [f"Δt[t-{window - 2 - g}]" for g in range(window - 1)]
-    return act_names, delta_names
-
-
-def _attr_blocks(
-    df: pd.DataFrame, numeric_attrs: tuple[str, ...], categorical_attrs: tuple[str, ...]
-) -> tuple[list[np.ndarray], list[str]]:
-    """Return blocks + column names for normalised numeric and one-hot categorical case attributes."""
-    blocks: list[np.ndarray] = []
-    names: list[str] = []
-    if numeric_attrs:
-        num = df[list(numeric_attrs)].astype(float).to_numpy()
-        denom = np.where(np.ptp(num, axis=0) == 0, 1.0, np.ptp(num, axis=0))
-        blocks.append((num - num.min(axis=0)) / denom)
-        names.extend(f"num:{c}" for c in numeric_attrs)
-    if categorical_attrs:
-        dummies = pd.get_dummies(
-            df[list(categorical_attrs)].astype(str), prefix=list(categorical_attrs)
-        )
-        blocks.append(dummies.to_numpy(dtype=float))
-        names.extend(f"cat:{c}" for c in dummies.columns)
-    return blocks, names
+    return activity_freq, bigram_freq, vocabulary, progress
 
 
 @st.cache_data(show_spinner=False)
-def build_features(
-    log: pd.DataFrame,
-    window: int = 3,
-    numeric_attrs: tuple[str, ...] = (),
-    categorical_attrs: tuple[str, ...] = (),
-) -> tuple[pd.DataFrame, IntraSpec]:
-    """Return one row per event with windowed activity, gap, and case features."""
+def build_features(log: pd.DataFrame) -> tuple[pd.DataFrame, IntraSpec]:
+    """Return one row per event with prefix-based intra-case features."""
     df = log.sort_values(["case_id", "timestamp"]).reset_index(drop=True)
     activities = sorted(df["activity"].unique().tolist())
+    transitions = _directly_follows_pairs(df)
 
-    act_block, gap_block = _windowed_blocks(df, activities, window)
-    case_starts = df.groupby("case_id")["timestamp"].transform("min")
-    elapsed = _zlog_minutes((df["timestamp"] - case_starts).dt.total_seconds().to_numpy()).reshape(-1, 1)
-    attr_blocks, attr_cols = _attr_blocks(df, numeric_attrs, categorical_attrs)
-
-    act_names, delta_names = _name_window_cols(activities, window)
-    columns = act_names + delta_names + ["elapsed"] + attr_cols
+    activity_freq, bigram_freq, vocabulary, progress = _prefix_blocks(df, activities, transitions)
+    activity_cols = [f"activity_freq:{activity}" for activity in activities]
+    bigram_cols = [f"bigram:{src}→{dst}" for src, dst in transitions]
+    vocab_cols = [f"vocab:{activity}" for activity in activities]
+    progress_cols = ["progress_ratio"]
+    columns = activity_cols + bigram_cols + vocab_cols + progress_cols
     groups = {
-        "activity": list(act_names),
-        "delta": list(delta_names),
-        "elapsed": ["elapsed"],
-        "case_attr": list(attr_cols),
+        "activity_freq": activity_cols,
+        "bigram": bigram_cols,
+        "vocab": vocab_cols,
+        "progress": progress_cols,
     }
 
-    matrix = np.hstack([act_block, gap_block, elapsed, *attr_blocks])
+    matrix = np.hstack([activity_freq, bigram_freq, vocabulary, progress])
     feat = pd.DataFrame(matrix, columns=columns)
     feat.insert(0, "case_id", df["case_id"].values)
     feat.insert(1, "activity", df["activity"].values)
     feat.insert(2, "timestamp", df["timestamp"].values)
-    spec = IntraSpec(columns=columns, groups=groups, activities=activities, window=window)
+    spec = IntraSpec(columns=columns, groups=groups, activities=activities, transitions=transitions)
     return feat, spec

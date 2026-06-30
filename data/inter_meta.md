@@ -1,4 +1,4 @@
-# Rheon log: resource
+# Rheon log: inter
 
 ## General parameters
 
@@ -15,8 +15,8 @@
 | waiting_time | 15, 50 |
 | amount | 1000, 40000 |
 | seed | 42 |
-| generated_traces | 4386 |
-| generated_events | 17638 |
+| generated_traces | 7304 |
+| generated_events | 29330 |
 | num_trace_variants | 4 |
 
 ## Base distributions
@@ -43,41 +43,24 @@
 
 ## Drifts
 
-### d01 — reassignment (resource, sudden)
+### d01 — arrival_rate (inter-case, sudden)
 
 - Drift point: 0.200 (2020-03-14T00:00:00+00:00)
-- New dominant resource per activity:
-  | Activity | Resource (before → after) |
-  | --- | --- |
-  | a | res_08 → res_02 |
-  | b | res_01 → res_02 |
-  | c | res_07 → res_05 |
-  | d | res_07 → res_04 |
-  | f | res_06 → res_07 |
-  | g | res_02 → res_05 |
-  | h | res_07 → res_02 |
+- Inter-arrival mean: 131.4 → 65.7 minutes
 
-### d02 — duration (resource, sudden)
+### d02 — amount (inter-case, sudden)
 
 - Drift point: 0.450 (2020-06-13T06:00:00+00:00)
-- Affected resources: res_01, res_02
-- Processing time multiplied by 2
+- Amount mean: 1000 → 4000
+- Amount variance: 40000 → 40000
 
-### d03 — pool_size (resource, sudden)
+### d03 — waiting_time (inter-case, sudden)
 
 - Drift point: 0.650 (2020-08-25T06:00:00+00:00)
-- Pool size: 8 → 6
-- Removed resources: res_06, res_08
-- Reassigned dominant resource:
-  | Activity | Resource |
-  | --- | --- |
-  | a | res_02 |
-  | e | res_03 |
-  | g | res_05 |
-- Duration scaling factor: 1.2 (fewer resources → slower, more → faster)
+- Waiting-gap mean: 15.66 → 120
+- Waiting-gap variance: 50 → 50
 
-### d04 — workload (resource, sudden)
+### d04 — region (inter-case, sudden)
 
 - Drift point: 0.850 (2020-11-06T06:00:00+00:00)
-- Workload factor: 1.6
-- Traces added: 382, removed: 0
+- Dominant region: region_3 → region_1
