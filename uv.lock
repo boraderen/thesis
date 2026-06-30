@@ -2335,10 +2335,7 @@ requires-dist = [
 ]
 
 [package.metadata.requires-dev]
-dev = [
-    { name = "hypothesis", specifier = ">=6.148.0" },
-    { name = "pytest", specifier = ">=9.0.0" },
-]
+dev = [{ name = "pytest", specifier = ">=9.0.0" }]
 
 [[package]]
 name = "rpds-py"
