@@ -12,7 +12,7 @@ import streamlit as st
 
 from core.drift_scores import per_window_scores
 from core.loader import span_label
-from core.windows import window_minute_choices, window_minute_label
+from core.windows import default_window_minutes, log_span_minutes, window_minute_label
 from viz.drift_scores import score_line
 from viz.drift_signal import add_window_boundaries
 
@@ -32,17 +32,8 @@ st.markdown(
     "is the perspective that drifted; the others should stay near zero."
 )
 
-with st.sidebar:
-    st.header("Controls")
-    default_W = int(st.session_state.get("stat_score_W", 60 * 24 * 7))
-    options = window_minute_choices(default_W)
-    W = st.selectbox(
-        "Window W",
-        options,
-        index=options.index(default_W),
-        format_func=window_minute_label,
-    )
-    st.session_state["stat_score_W"] = W
+W = default_window_minutes(log_span_minutes(log))
+st.caption(f"Analysis window: {window_minute_label(W)} — chosen automatically from the log span.")
 
 numeric_attrs = tuple(st.session_state.get("case_numeric_attrs", []))
 categorical_attrs = tuple(st.session_state.get("case_categorical_attrs", []))

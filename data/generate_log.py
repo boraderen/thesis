@@ -8,6 +8,7 @@ drifts = [
         {"type": "workload", "mode": "sudden", "drift_point": 0.8, "workload_factor": 1.6},
     ]
 
+
 rheon.generate_log(
     drifts,
     "./data/example.xes",
