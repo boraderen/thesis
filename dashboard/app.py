@@ -27,7 +27,7 @@ st.markdown(
     **Pipeline**
 
     1. **Upload** — parse an XES or CSV event log.
-    2. **Intra-case SOM** — windowed activity features → PCA → SOM cells per event.
+    2. **Intra-case SOM** — windowed activity features → PCA or pretrained autoencoder → SOM cells per event.
     3. **Resource SOM** — per-window resource workload features → SOM cells per window.
     4. **Inter-case SOM** — arrivals, completions, stalls per window → SOM cells per window.
     5. **Joint drift signal** — stack the three views per window, look for sustained shifts.

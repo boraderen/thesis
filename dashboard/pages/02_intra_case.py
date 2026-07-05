@@ -1,9 +1,16 @@
-"""Intra-case SOM page: prefix features → PCA → SOM cells → per-case trajectory."""
+"""Intra-case SOM page: prefix features → PCA or pretrained autoencoder → SOM cells → per-case trajectory."""
 from __future__ import annotations
 
+import numpy as np
 import pandas as pd
 import streamlit as st
 
+from core.autoencoder import (
+    AE_ACTIVITIES,
+    artifacts_available,
+    encode_matrix,
+    fixed_matrix,
+)
 from core.controls import (
     INTRA_SCHEMA_VERSION,
     log_signature,
@@ -28,7 +35,12 @@ from core.windows import (
 from viz.drift_signal import add_window_boundaries, stacked_area_intra
 from viz.som_grid import som_heatmap
 from viz.tables import styled_feature_table
-from viz.trajectory import add_transition_markers, pca_variance_plot, state_timeline
+from viz.trajectory import (
+    add_transition_markers,
+    ae_error_histogram,
+    pca_variance_plot,
+    state_timeline,
+)
 
 st.set_page_config(page_title="Intra-case SOM", layout="wide")
 st.title("2 — Intra-case SOM")
@@ -53,11 +65,17 @@ GROUP_DESCRIPTIONS = {
     "progress": "Position of the event within its case as a fraction of the total case length (last event = 1).",
 }
 
+REDUCTION_LABELS = {
+    "pca": "PCA",
+    "autoencoder": "Autoencoder",
+}
+
 INTRA_RESULT_KEYS = (
     "intra_feat",
     "intra_spec",
     "intra_som",
     "intra_pca",
+    "intra_ae",
     "intra_selected_cols",
     "intra_run_config",
     "intra_log_signature",
@@ -75,6 +93,7 @@ if (
 run_cfg = st.session_state.get("intra_run_config") or {}
 available_groups = list(GROUP_LABELS)
 seed_multi("intra_groups_sel", run_cfg.get("groups", available_groups), available_groups)
+seed_choice("intra_method_sel", run_cfg.get("method", "pca"), tuple(REDUCTION_LABELS))
 seed_widget("intra_pca_k_sel", int(run_cfg.get("pca_k", 0)))
 grid_default = tuple(run_cfg.get("grid", (3, 3)))
 seed_choice(
@@ -104,9 +123,17 @@ with st.sidebar:
             )
             for group, label in GROUP_LABELS.items():
                 st.markdown(f"**{label}.** {GROUP_DESCRIPTIONS[group]}")
-        st.subheader("PCA")
+        st.subheader("Dimensionality reduction")
+        method = st.radio(
+            "Method",
+            options=tuple(REDUCTION_LABELS),
+            key="intra_method_sel",
+            format_func=lambda m: REDUCTION_LABELS[m],
+            help="The autoencoder needs all feature groups selected and a log "
+            f"with at most {len(AE_ACTIVITIES)} distinct activities.",
+        )
         pca_k = st.number_input(
-            "PCA components (0 = auto/elbow)",
+            "PCA components",
             min_value=0,
             max_value=20,
             step=1,
@@ -136,13 +163,40 @@ if run_pipeline:
     if not picked:
         st.warning("Select at least one feature group.")
         st.stop()
-    with st.spinner("Building features, fitting PCA, training SOM…"):
+    if method == "autoencoder":
+        if set(picked) != set(available_groups):
+            st.warning(
+                "The pretrained autoencoder uses the full feature space — select "
+                "**all** feature groups, or switch to PCA."
+            )
+            st.stop()
+        if not artifacts_available():
+            st.warning(
+                "No trained autoencoder found under `data/autoencoder/` — run "
+                "`notebooks/train_autoencoder.ipynb` first."
+            )
+            st.stop()
+        n_activities = int(log["activity"].nunique())
+        if n_activities > len(AE_ACTIVITIES):
+            st.warning(
+                f"The pretrained autoencoder supports at most {len(AE_ACTIVITIES)} "
+                f"distinct activities; this log has {n_activities}."
+            )
+            st.stop()
+    with st.spinner("Building features, reducing dimensions, training SOM…"):
         feat, spec = build_features(log)
         selected_cols = [c for g in picked for c in spec.groups[g]]
         matrix = feat[selected_cols].to_numpy()
-        pca = fit_pca(matrix, force_k=int(pca_k) if pca_k else None)
+        if method == "autoencoder":
+            pca = None
+            ae = encode_matrix(fixed_matrix(feat, spec))
+            reduced = ae.transformed
+        else:
+            pca = fit_pca(matrix, force_k=int(pca_k) if pca_k else None)
+            ae = None
+            reduced = pca.transformed
         som = train_som(
-            pca.transformed,
+            reduced,
             grid_h=grid_h,
             grid_w=grid_w,
             annotations=tuple(feat["activity"].astype(str).tolist()),
@@ -151,11 +205,13 @@ if run_pipeline:
     st.session_state["intra_feat"] = feat
     st.session_state["intra_spec"] = spec
     st.session_state["intra_pca"] = pca
+    st.session_state["intra_ae"] = ae
     st.session_state["intra_som"] = som
     st.session_state["intra_selected_cols"] = selected_cols
     st.session_state["intra_log_signature"] = current_log_signature
     st.session_state["intra_run_config"] = {
         "grid": (grid_h, grid_w),
+        "method": method,
         "pca_k": int(pca_k),
         "distribution_W": int(distribution_W),
         "groups": list(picked),
@@ -171,9 +227,11 @@ if (
 feat = st.session_state["intra_feat"]
 spec = st.session_state["intra_spec"]
 pca = st.session_state["intra_pca"]
+ae = st.session_state["intra_ae"]
 som = st.session_state["intra_som"]
 selected_cols = st.session_state["intra_selected_cols"]
 distribution_W = st.session_state["intra_run_config"]["distribution_W"]
+ran_method = st.session_state["intra_run_config"].get("method", "pca")
 
 st.subheader("Feature matrix")
 st.caption(
@@ -185,8 +243,28 @@ preview_groups = {g: [c for c in cols if c in selected_cols] for g, cols in spec
 styled = styled_feature_table(feat[preview_cols], preview_groups, max_rows=30)
 st.dataframe(styled, width="stretch", height=380)
 
-st.subheader("PCA")
-st.plotly_chart(pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim), width="stretch")
+if ran_method == "autoencoder":
+    st.subheader("Autoencoder")
+    st.markdown(
+        "<style>[data-testid='stMetricValue'] { font-size: 1.4rem; }</style>",
+        unsafe_allow_html=True,
+    )
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("Reduction", f"{ae.raw_dim}D → {ae.latent_dim}D")
+    m2.metric(
+        "Explained variance",
+        f"{ae.explained_variance:.1%}",
+        help="Reconstruction R² = 1 − SSE/SST on this log — same footing as PCA's "
+        "cumulative explained-variance ratio. Negative means the pretrained model "
+        "reconstructs this log worse than its per-feature means would.",
+    )
+    m3.metric("Parameters", f"{ae.n_parameters:,}")
+    m4.metric("Mean recon error", f"{ae.recon_errors.mean():.3f}")
+    m5.metric("P95 recon error", f"{np.quantile(ae.recon_errors, 0.95):.3f}")
+    st.plotly_chart(ae_error_histogram(ae.recon_errors), width="stretch")
+else:
+    st.subheader("PCA")
+    st.plotly_chart(pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim), width="stretch")
 
 col_l, col_r = st.columns([1, 1])
 with col_l:
