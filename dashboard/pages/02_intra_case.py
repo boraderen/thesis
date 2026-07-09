@@ -1,4 +1,4 @@
-"""Intra-case SOM page: prefix features → PCA or pretrained autoencoder → SOM cells → per-case trajectory."""
+"""Intra-case state page: prefix features → PCA / autoencoder → SOM or DBSCAN states → per-case trajectory."""
 from __future__ import annotations
 
 import numpy as np
@@ -15,23 +15,25 @@ from core.controls import (
     INTRA_SCHEMA_VERSION,
     log_signature,
     seed_choice,
-    seed_multi,
     seed_widget,
 )
+from core.dbscan import cluster_dbscan
 from core.drift import intra_state_distribution
 from core.features.intra_case import build_features
+from core.kmeans import cluster_kmeans
 from core.loader import span_label
 from core.pca import fit_pca
+from core.schema import INTRA_FEATURE_LABELS as GROUP_LABELS
 from core.som import train_som
+from core.state_attribution import intra_state_shift
 from core.transitions import find_transitions
 from core.windows import (
-    SOM_GRID_OPTIONS,
     default_window_minutes,
     log_span_minutes,
-    som_grid_label,
     window_minute_choices,
     window_minute_label,
 )
+from viz.drift_scores import score_line
 from viz.drift_signal import add_window_boundaries, stacked_area_intra
 from viz.som_grid import som_heatmap
 from viz.tables import styled_feature_table
@@ -42,8 +44,8 @@ from viz.trajectory import (
     state_timeline,
 )
 
-st.set_page_config(page_title="Intra-case SOM", layout="wide")
-st.title("2 — Intra-case SOM")
+st.set_page_config(page_title="Intra-case states", layout="wide")
+st.title("2 — Intra-case states")
 
 if "log" not in st.session_state:
     st.warning("Load a log on the **Upload** page first.")
@@ -52,12 +54,6 @@ if "log" not in st.session_state:
 log: pd.DataFrame = st.session_state["log"]
 st.caption(span_label(log))
 
-GROUP_LABELS = {
-    "activity_freq": "Activity frequency vector",
-    "bigram": "Bigram transition counts",
-    "vocab": "Distinct activity set",
-    "progress": "Progress ratio / trace length",
-}
 GROUP_DESCRIPTIONS = {
     "activity_freq": "One column per activity — how often the activity occurred in the case so far, divided by the number of events so far (the prefix).",
     "bigram": "One column per observed directly-follows pair A→B — how often that transition occurred in the prefix, divided by the number of transitions so far.",
@@ -68,6 +64,23 @@ GROUP_DESCRIPTIONS = {
 REDUCTION_LABELS = {
     "pca": "PCA",
     "autoencoder": "Autoencoder",
+}
+
+CLUSTERING_LABELS = {
+    "som": "SOM",
+    "dbscan": "DBSCAN",
+    "kmeans": "k-means",
+}
+
+GRID_TITLES = {
+    "som": "SOM grid",
+    "dbscan": "DBSCAN clusters",
+    "kmeans": "k-means clusters",
+}
+
+INIT_LABELS = {
+    "random": "Random samples",
+    "pca": "PCA plane",
 }
 
 INTRA_RESULT_KEYS = (
@@ -92,15 +105,19 @@ if (
 
 run_cfg = st.session_state.get("intra_run_config") or {}
 available_groups = list(GROUP_LABELS)
-seed_multi("intra_groups_sel", run_cfg.get("groups", available_groups), available_groups)
+default_groups = run_cfg.get("groups", available_groups)
+for group in GROUP_LABELS:
+    seed_widget(f"intra_group_{group}", group in default_groups)
 seed_choice("intra_method_sel", run_cfg.get("method", "pca"), tuple(REDUCTION_LABELS))
 seed_widget("intra_pca_k_sel", int(run_cfg.get("pca_k", 0)))
+seed_choice("intra_cluster_sel", run_cfg.get("clustering", "som"), tuple(CLUSTERING_LABELS))
+seed_choice("intra_init_sel", run_cfg.get("som_init", "random"), tuple(INIT_LABELS))
+seed_widget("intra_eps_sel", float(run_cfg.get("eps", 0.5)))
+seed_widget("intra_minpts_sel", int(run_cfg.get("min_samples", 5)))
+seed_widget("intra_kmeans_k_sel", int(run_cfg.get("kmeans_k", 6)))
 grid_default = tuple(run_cfg.get("grid", (3, 3)))
-seed_choice(
-    "intra_grid_sel",
-    grid_default if grid_default in SOM_GRID_OPTIONS else (3, 3),
-    SOM_GRID_OPTIONS,
-)
+seed_widget("intra_grid_h_sel", int(grid_default[0]))
+seed_widget("intra_grid_w_sel", int(grid_default[1]))
 seed_widget(
     "intra_W_sel",
     int(run_cfg.get("distribution_W", default_window_minutes(log_span_minutes(log)))),
@@ -110,19 +127,15 @@ with st.sidebar:
     st.header("Controls")
     with st.form("intra_pipeline_controls"):
         st.subheader("Features for state clustering")
-        picked = st.multiselect(
-            "Include groups",
-            options=available_groups,
-            key="intra_groups_sel",
-            format_func=lambda g: GROUP_LABELS[g],
-        )
+        st.markdown("Include groups")
+        picked = [
+            group
+            for group, label in GROUP_LABELS.items()
+            if st.checkbox(label, key=f"intra_group_{group}")
+        ]
         with st.expander("Feature glossary"):
-            st.caption(
-                "All groups are prefix-based: computed per event from the case's "
-                "events up to and including the current one."
-            )
             for group, label in GROUP_LABELS.items():
-                st.markdown(f"**{label}.** {GROUP_DESCRIPTIONS[group]}")
+                st.markdown(f"**{label}:** {GROUP_DESCRIPTIONS[group]}")
         st.subheader("Dimensionality reduction")
         method = st.radio(
             "Method",
@@ -139,12 +152,46 @@ with st.sidebar:
             step=1,
             key="intra_pca_k_sel",
         )
-        st.subheader("SOM")
-        grid_h, grid_w = st.selectbox(
-            "SOM grid",
-            SOM_GRID_OPTIONS,
-            key="intra_grid_sel",
-            format_func=som_grid_label,
+        st.subheader("Clustering")
+        clustering = st.radio(
+            "Method",
+            options=tuple(CLUSTERING_LABELS),
+            key="intra_cluster_sel",
+            format_func=lambda m: CLUSTERING_LABELS[m],
+        )
+        col_grid_h, col_grid_w = st.columns(2)
+        grid_h = col_grid_h.number_input(
+            "SOM grid height", min_value=1, max_value=50, step=1, key="intra_grid_h_sel"
+        )
+        grid_w = col_grid_w.number_input(
+            "SOM grid width", min_value=1, max_value=50, step=1, key="intra_grid_w_sel"
+        )
+        som_init = st.radio(
+            "SOM init",
+            options=tuple(INIT_LABELS),
+            key="intra_init_sel",
+            format_func=lambda i: INIT_LABELS[i],
+        )
+        eps = st.number_input(
+            "DBSCAN eps",
+            min_value=0.05,
+            max_value=100.0,
+            step=0.05,
+            key="intra_eps_sel",
+        )
+        min_samples = st.number_input(
+            "DBSCAN min samples",
+            min_value=1,
+            max_value=1000,
+            step=1,
+            key="intra_minpts_sel",
+        )
+        kmeans_k = st.number_input(
+            "k-means clusters",
+            min_value=2,
+            max_value=25,
+            step=1,
+            key="intra_kmeans_k_sel",
         )
         st.subheader("Windows")
         distribution_W = st.selectbox(
@@ -176,14 +223,14 @@ if run_pipeline:
                 "`notebooks/train_autoencoder.ipynb` first."
             )
             st.stop()
-        n_activities = int(log["activity"].nunique())
+        n_activities = int(log["concept:name"].nunique())
         if n_activities > len(AE_ACTIVITIES):
             st.warning(
                 f"The pretrained autoencoder supports at most {len(AE_ACTIVITIES)} "
                 f"distinct activities; this log has {n_activities}."
             )
             st.stop()
-    with st.spinner("Building features, reducing dimensions, training SOM…"):
+    with st.spinner("Building features, reducing dimensions, clustering states…"):
         feat, spec = build_features(log)
         selected_cols = [c for g in picked for c in spec.groups[g]]
         matrix = feat[selected_cols].to_numpy()
@@ -195,12 +242,17 @@ if run_pipeline:
             pca = fit_pca(matrix, force_k=int(pca_k) if pca_k else None)
             ae = None
             reduced = pca.transformed
-        som = train_som(
-            reduced,
-            grid_h=grid_h,
-            grid_w=grid_w,
-            annotations=tuple(feat["activity"].astype(str).tolist()),
-        )
+        annotations = tuple(feat["concept:name"].astype(str).tolist())
+        if clustering == "dbscan":
+            som = cluster_dbscan(
+                reduced, eps=float(eps), min_samples=int(min_samples), annotations=annotations
+            )
+        elif clustering == "kmeans":
+            som = cluster_kmeans(reduced, n_clusters=int(kmeans_k), annotations=annotations)
+        else:
+            som = train_som(
+                reduced, grid_h=grid_h, grid_w=grid_w, annotations=annotations, init=som_init
+            )
         feat = feat.assign(state_id=som.state_ids)
     st.session_state["intra_feat"] = feat
     st.session_state["intra_spec"] = spec
@@ -212,6 +264,11 @@ if run_pipeline:
     st.session_state["intra_run_config"] = {
         "grid": (grid_h, grid_w),
         "method": method,
+        "clustering": clustering,
+        "som_init": som_init,
+        "eps": float(eps),
+        "min_samples": int(min_samples),
+        "kmeans_k": int(kmeans_k),
         "pca_k": int(pca_k),
         "distribution_W": int(distribution_W),
         "groups": list(picked),
@@ -232,13 +289,14 @@ som = st.session_state["intra_som"]
 selected_cols = st.session_state["intra_selected_cols"]
 distribution_W = st.session_state["intra_run_config"]["distribution_W"]
 ran_method = st.session_state["intra_run_config"].get("method", "pca")
+ran_clustering = st.session_state["intra_run_config"].get("clustering", "som")
 
 st.subheader("Feature matrix")
 st.caption(
     f"{len(feat):,} events × {len(selected_cols)} feature columns "
     f"(|A|={len(spec.activities)}, |A→B|={len(spec.transitions)})"
 )
-preview_cols = ["case_id", "activity", "timestamp", *selected_cols]
+preview_cols = ["case:concept:name", "concept:name", "time:timestamp", *selected_cols]
 preview_groups = {g: [c for c in cols if c in selected_cols] for g, cols in spec.groups.items()}
 styled = styled_feature_table(feat[preview_cols], preview_groups, max_rows=30)
 st.dataframe(styled, width="stretch", height=380)
@@ -268,26 +326,31 @@ else:
 
 col_l, col_r = st.columns([1, 1])
 with col_l:
-    st.subheader("SOM grid")
+    st.subheader(GRID_TITLES.get(ran_clustering, "States"))
+    grid_view = st.radio(
+        "Grid view", ("State colors", "Frequency"),
+        horizontal=True, label_visibility="collapsed", key="intra_grid_style",
+    )
     st.plotly_chart(
         som_heatmap(
             som.grid_h, som.grid_w, som.cell_counts, som.cell_labels,
             title="States (hover for dominant last activity)",
             dominants=som.cell_dominant,
+            monochrome=grid_view == "Frequency",
         ),
         width="stretch",
     )
 with col_r:
     st.subheader("Case trajectory")
-    case_ids = feat["case_id"].drop_duplicates().tolist()
+    case_ids = feat["case:concept:name"].drop_duplicates().tolist()
     chosen = st.selectbox("Case", case_ids, index=0)
-    sub = feat[feat["case_id"] == chosen].reset_index(drop=True)
+    sub = feat[feat["case:concept:name"] == chosen].reset_index(drop=True)
     transitions = find_transitions(
-        sub["timestamp"], sub["state_id"].to_numpy(), som.cell_labels, sub[selected_cols]
+        sub["time:timestamp"], sub["state_id"].to_numpy(), som.cell_labels, sub[selected_cols]
     )
     fig = state_timeline(
-        sub["timestamp"], sub["state_id"].to_numpy(), som.cell_labels,
-        title=f"Case {chosen}", cell_dominant=som.cell_dominant, xgap=0,
+        sub["time:timestamp"], sub["state_id"].to_numpy(), som.cell_labels,
+        title=f"Case {chosen}", cell_dominant=som.cell_dominant,
     )
     if not transitions.empty:
         add_transition_markers(fig, transitions["timestamp"])
@@ -308,9 +371,21 @@ n_states = som.grid_h * som.grid_w
 intra_dist = intra_state_distribution(feat, n_states=n_states, window_minutes=distribution_W)
 st.caption(
     f"Per {window_minute_label(distribution_W)} window — what fraction of events landed in each state. "
-    f"{len(intra_dist):,} windows across all {feat['case_id'].nunique():,} cases."
+    f"{len(intra_dist):,} windows across all {feat['case:concept:name'].nunique():,} cases."
 )
 intra_cols = [f"intra_S{i}" for i in range(n_states)]
 freq_fig = stacked_area_intra(intra_dist, intra_cols, som.cell_labels)
 add_window_boundaries(freq_fig, intra_dist["window_start"])
 st.plotly_chart(freq_fig, width="stretch")
+
+st.subheader("Drift signal")
+st.caption(
+    "Per-window KL divergence of the state distribution against the full-log "
+    "baseline — spikes mark windows whose state mix departs from normal."
+)
+shift = intra_state_shift(intra_dist)
+shift_fig = score_line(shift, "score", title="KL(window state dist || baseline)")
+add_window_boundaries(
+    shift_fig, shift["window_start"], y_max=max(float(shift["score"].max()), 1e-9)
+)
+st.plotly_chart(shift_fig, width="stretch")

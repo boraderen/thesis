@@ -21,8 +21,8 @@ class IntraSpec:
 def _directly_follows_pairs(df: pd.DataFrame) -> list[tuple[str, str]]:
     """Return the sorted directly-follows pairs observed inside cases."""
     pairs: set[tuple[str, str]] = set()
-    for _, idxs in df.groupby("case_id", sort=False).indices.items():
-        acts = df["activity"].iloc[idxs].to_numpy()
+    for _, idxs in df.groupby("case:concept:name", sort=False).indices.items():
+        acts = df["concept:name"].iloc[idxs].to_numpy()
         pairs.update(zip(acts[:-1], acts[1:]))
     return sorted(pairs)
 
@@ -39,8 +39,8 @@ def _prefix_blocks(
     vocabulary = np.zeros((n, len(activities)), dtype=float)
     progress = np.zeros((n, 1), dtype=float)
 
-    for _, idxs in df.groupby("case_id", sort=False).indices.items():
-        acts = df["activity"].iloc[idxs].to_numpy()
+    for _, idxs in df.groupby("case:concept:name", sort=False).indices.items():
+        acts = df["concept:name"].iloc[idxs].to_numpy()
         act_counts = np.zeros(len(activities), dtype=float)
         pair_counts = np.zeros(len(transitions), dtype=float)
         case_len = len(idxs)
@@ -62,8 +62,8 @@ def _prefix_blocks(
 @st.cache_data(show_spinner=False)
 def build_features(log: pd.DataFrame) -> tuple[pd.DataFrame, IntraSpec]:
     """Return one row per event with prefix-based intra-case features."""
-    df = log.sort_values(["case_id", "timestamp"]).reset_index(drop=True)
-    activities = sorted(df["activity"].unique().tolist())
+    df = log.sort_values(["case:concept:name", "time:timestamp"]).reset_index(drop=True)
+    activities = sorted(df["concept:name"].unique().tolist())
     transitions = _directly_follows_pairs(df)
 
     activity_freq, bigram_freq, vocabulary, progress = _prefix_blocks(df, activities, transitions)
@@ -81,8 +81,8 @@ def build_features(log: pd.DataFrame) -> tuple[pd.DataFrame, IntraSpec]:
 
     matrix = np.hstack([activity_freq, bigram_freq, vocabulary, progress])
     feat = pd.DataFrame(matrix, columns=columns)
-    feat.insert(0, "case_id", df["case_id"].values)
-    feat.insert(1, "activity", df["activity"].values)
-    feat.insert(2, "timestamp", df["timestamp"].values)
+    feat.insert(0, "case:concept:name", df["case:concept:name"].values)
+    feat.insert(1, "concept:name", df["concept:name"].values)
+    feat.insert(2, "time:timestamp", df["time:timestamp"].values)
     spec = IntraSpec(columns=columns, groups=groups, activities=activities, transitions=transitions)
     return feat, spec

@@ -17,7 +17,7 @@ from viz.drift_scores import score_line
 from viz.drift_signal import add_window_boundaries
 
 st.set_page_config(page_title="Statistical drift detection", layout="wide")
-st.title("6 — Statistical drift detection")
+st.title("5 — Statistical drift detection")
 
 if "log" not in st.session_state:
     st.warning("Load a log on the **Upload** page first.")

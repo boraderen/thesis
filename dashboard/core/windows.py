@@ -53,9 +53,9 @@ def default_window_minutes(span_minutes: float, cap_windows: int = 200) -> int:
 
 def log_span_minutes(log: pd.DataFrame) -> float:
     """Return the time span of a log in minutes (0 if it has fewer than two timestamps)."""
-    if "timestamp" not in log.columns or len(log) < 2:
+    if "time:timestamp" not in log.columns or len(log) < 2:
         return 0.0
-    return (log["timestamp"].max() - log["timestamp"].min()).total_seconds() / 60.0
+    return (log["time:timestamp"].max() - log["time:timestamp"].min()).total_seconds() / 60.0
 
 
 def floor_to_window(ts: pd.Series, origin: pd.Timestamp, minutes: int) -> pd.Series:
@@ -69,13 +69,3 @@ def window_index(origin: pd.Timestamp, last_ts: pd.Timestamp, minutes: int) -> p
     freq = pd.Timedelta(minutes=minutes)
     last_win = origin + ((last_ts - origin) // freq) * freq
     return pd.date_range(start=origin, end=last_win, freq=freq)
-
-
-SOM_GRID_OPTIONS: list[tuple[int, int]] = [
-    (2, 2), (2, 3), (3, 2), (3, 3), (3, 4), (4, 3), (4, 4), (5, 5),
-]
-
-
-def som_grid_label(hw: tuple[int, int]) -> str:
-    """Human label for a grid size tuple."""
-    return f"{hw[0]}×{hw[1]}"

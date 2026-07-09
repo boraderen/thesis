@@ -34,7 +34,7 @@ def _dist(values: pd.Series, universe: list[str]) -> np.ndarray:
 
 def _cf_score(bucket: pd.DataFrame, activities: list[str], baseline: np.ndarray) -> float:
     """Window activity-distribution KL divergence vs. baseline."""
-    return _kl(_dist(bucket["activity"], activities), baseline)
+    return _kl(_dist(bucket["concept:name"], activities), baseline)
 
 
 def _resource_score(
@@ -44,10 +44,10 @@ def _resource_score(
     """Mean over activities of KL(resource-dist in window for a || baseline for a)."""
     scores: list[float] = []
     for a in activities:
-        sub = bucket[bucket["activity"] == a]
+        sub = bucket[bucket["concept:name"] == a]
         if len(sub) == 0:
             continue
-        scores.append(_kl(_dist(sub["resource"].astype(str), resources), baseline_by_activity[a]))
+        scores.append(_kl(_dist(sub["org:resource"].astype(str), resources), baseline_by_activity[a]))
     return float(np.mean(scores)) if scores else 0.0
 
 
@@ -77,15 +77,15 @@ def _build_baseline(
     categorical_attrs: tuple[str, ...],
 ) -> dict:
     """Pre-compute distributions and moments from the full log."""
-    activities = sorted(df["activity"].unique().tolist())
-    has_resource = "resource" in df.columns
-    resources = sorted(df["resource"].astype(str).unique().tolist()) if has_resource else []
+    activities = sorted(df["concept:name"].unique().tolist())
+    has_resource = "org:resource" in df.columns
+    resources = sorted(df["org:resource"].astype(str).unique().tolist()) if has_resource else []
     return {
         "activities": activities,
-        "cf": _dist(df["activity"], activities),
+        "cf": _dist(df["concept:name"], activities),
         "resources": resources,
         "resource_by_activity": {
-            a: _dist(df.loc[df["activity"] == a, "resource"].astype(str), resources)
+            a: _dist(df.loc[df["concept:name"] == a, "org:resource"].astype(str), resources)
             for a in activities
         } if has_resource else {},
         "num": {c: (float(df[c].mean()), float(df[c].std())) for c in numeric_attrs},
@@ -106,15 +106,15 @@ def per_window_scores(
 ) -> pd.DataFrame:
     """Return one row per window with cf/resource/inter/data scores."""
     df = log.copy()
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True)
-    origin = df["timestamp"].min()
-    df["__win__"] = floor_to_window(df["timestamp"], origin, window_minutes)
-    win_idx = window_index(origin, df["timestamp"].max(), window_minutes)
+    df["time:timestamp"] = pd.to_datetime(df["time:timestamp"], utc=True)
+    origin = df["time:timestamp"].min()
+    df["__win__"] = floor_to_window(df["time:timestamp"], origin, window_minutes)
+    win_idx = window_index(origin, df["time:timestamp"].max(), window_minutes)
     base = _build_baseline(df, numeric_attrs, categorical_attrs)
 
     counts = df.groupby("__win__").size().reindex(win_idx, fill_value=0)
     ic_mean, ic_std = float(counts.mean()), max(float(counts.std()), 1e-9)
-    has_resource = "resource" in df.columns
+    has_resource = "org:resource" in df.columns
 
     rows: list[dict] = []
     for win in win_idx:

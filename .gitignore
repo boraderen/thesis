@@ -57,6 +57,8 @@ thesis/*.idx
 thesis/*.ind
 thesis/*.ilg
 
+/paper
+
 # Event logs and generated artifacts — keep only the generator scripts
 /data/*.xes
 /data/*_meta.md

@@ -1,5 +1,16 @@
-"""Shared color palette for SOM states, kept consistent across all pages."""
+"""Shared color palette for states, kept consistent across all pages."""
 from __future__ import annotations
+
+# 25 visually distinct colors (Green-Armytage's "colour alphabet", light gray
+# dropped) — enough for the largest 5×5 grid; grid cells and trajectory
+# segments share these so a state looks the same in every plot.
+DISTINCT_COLORS = [
+    "#AA0DFE", "#3283FE", "#85660D", "#782AB6", "#565656",
+    "#1C8356", "#16FF32", "#F7E1A0", "#1CBE4F", "#C4451C",
+    "#DEA0FD", "#FE00FA", "#325A9B", "#FEAF16", "#F8A19F",
+    "#90AD1C", "#F6222E", "#1CFFCE", "#2ED9FF", "#B10DA1",
+    "#C075A6", "#FC1CBF", "#B00068", "#FBE426", "#FA0087",
+]
 
 STATE_COLORS: list[tuple[str, str]] = [
     ("#EEEDFE", "#3C3489"),  # purple
@@ -33,6 +44,13 @@ GROUP_TINTS: dict[str, str] = {
     "gaps": "#FFF6CC",
     "stall": "#FAEEDA",
 }
+
+
+def blend(light: str, dark: str, w: float) -> str:
+    """Linear blend between two hex colors: w=0 → light, w=1 → dark."""
+    a = [int(light[i:i + 2], 16) for i in (1, 3, 5)]
+    b = [int(dark[i:i + 2], 16) for i in (1, 3, 5)]
+    return "#" + "".join(f"{round(x + (y - x) * w):02X}" for x, y in zip(a, b))
 
 
 def state_color(idx: int) -> tuple[str, str]:

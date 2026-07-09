@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
-from viz.palette import state_bg, state_fg
+from viz.palette import DISTINCT_COLORS
 
 
 def _runs(state_ids: np.ndarray) -> list[tuple[int, int, int]]:
@@ -34,9 +34,10 @@ def _draw_segments(
     for start, end, sid in runs:
         x0 = x.iloc[start]
         x1 = x.iloc[end + 1] if end + 1 < len(x) else end_x
+        fill = DISTINCT_COLORS[sid % len(DISTINCT_COLORS)]
         fig.add_shape(
             type="rect", x0=x0, x1=x1, y0=0, y1=1,
-            line=dict(width=0), fillcolor=state_bg(sid), layer="below",
+            line=dict(width=0), fillcolor=fill, layer="below",
         )
         hover_x.append(x0 + (x1 - x0) / 2)
         hover_text.append(_hover_label(sid, cell_labels, cell_dominant))
@@ -47,11 +48,11 @@ def _draw_segments(
     ))
 
 
-def _draw_window_ticks(fig: go.Figure, x: pd.Series) -> None:
-    """Overlay thin vertical ticks at each observation timestamp."""
+def _draw_window_ticks(fig: go.Figure, x: pd.Series, end_x) -> None:
+    """Overlay thin solid vertical lines at each window boundary."""
     xs: list = []
     ys: list = []
-    for ts in x:
+    for ts in [*x, end_x]:
         xs.extend([ts, ts, None])
         ys.extend([0, 1, None])
     fig.add_trace(go.Scatter(
@@ -68,13 +69,13 @@ def state_timeline(
     title: str = "",
     height: int = 180,
     cell_dominant: list[str] | None = None,
-    xgap: int = 0,
+    window_ticks: bool = False,
 ) -> go.Figure:
     """Left-aligned state segments: color changes at the new event's timestamp.
 
-    Consecutive equal states are merged into one rectangle. If `xgap > 0`,
-    thin gray ticks at every observation timestamp are overlaid so individual
-    windows remain visible inside same-state runs.
+    Consecutive equal states are merged into one rectangle. If `window_ticks`
+    is true, thin solid gray lines at every window boundary are overlaid so
+    individual windows remain visible inside same-state runs.
     """
     fig = go.Figure()
     if len(state_ids) == 0:
@@ -86,8 +87,8 @@ def state_timeline(
     tail = span / max(1, len(x) - 1) if len(x) > 1 else pd.Timedelta(minutes=1)
     end_x = last_x + tail
     _draw_segments(fig, x, runs, end_x, cell_labels, cell_dominant)
-    if xgap > 0 and len(x) > 1:
-        _draw_window_ticks(fig, x)
+    if window_ticks and len(x) > 1:
+        _draw_window_ticks(fig, x, end_x)
     fig.update_layout(
         title=title, height=height,
         margin=dict(l=10, r=10, t=40 if title else 10, b=10),

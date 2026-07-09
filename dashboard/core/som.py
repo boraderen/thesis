@@ -56,14 +56,23 @@ def train_som(
     epochs: int = 5,
     seed: int = 7,
     annotations: tuple[str, ...] | None = None,
+    init: str = "random",
 ) -> SOMResult:
-    """Train a SOM for ~`epochs` random-order passes; return BMU assignments + cell labels."""
+    """Train a SOM for ~`epochs` random-order passes; return BMU assignments + cell labels.
+
+    `init` selects the weight initialization: "random" sets each cell to a
+    randomly drawn data sample; "pca" spans the grid across the first two
+    principal components (falls back to random for one-dimensional inputs).
+    """
     if matrix.size == 0:
         raise ValueError("Empty matrix")
     dim = matrix.shape[1]
     sigma = max(1.0, min(grid_h, grid_w) / 2.0)
     som = MiniSom(grid_h, grid_w, dim, sigma=sigma, learning_rate=0.5, random_seed=seed)
-    som.random_weights_init(matrix)
+    if init == "pca" and dim >= 2:
+        som.pca_weights_init(matrix)
+    else:
+        som.random_weights_init(matrix)
     n_iter = _iteration_budget(matrix.shape[0], epochs=epochs)
     som.train(matrix, n_iter, random_order=True, verbose=False)
     bmus = np.array([som.winner(x) for x in matrix], dtype=int)

@@ -1,39 +1,28 @@
-"""Upload page: pick an event log (XES / CSV) or use the synthetic demo log."""
+"""Upload page: pick an event log (XES / CSV)."""
 from __future__ import annotations
 
 import pandas as pd
 import plotly.express as px
 import streamlit as st
 
-from core.loader import (
-    case_attributes,
-    load_uploaded,
-    summary_stats,
-    synthetic_log,
-)
+from core.loader import case_attributes, load_uploaded, summary_stats
+from core.schema import render_schema_help
 
 st.set_page_config(page_title="Upload", layout="wide")
 st.title("1 — Upload event log")
-st.caption("Drop an XES or CSV file, or use the bundled synthetic log.")
+st.caption("Drop an XES or CSV file.")
 
-col_upload, col_demo = st.columns([3, 1])
-with col_upload:
-    uploaded = st.file_uploader("Event log", type=["xes", "csv"], accept_multiple_files=False)
-with col_demo:
-    use_demo = st.button("Load synthetic demo", width="stretch")
+render_schema_help()
+
+uploaded = st.file_uploader("Event log", type=["xes", "csv"], accept_multiple_files=False)
 
 log: pd.DataFrame | None = None
 if uploaded is not None:
     log = load_uploaded(uploaded.name, uploaded.read())
-elif use_demo:
-    log = synthetic_log()
 elif "log" in st.session_state:
     log = st.session_state["log"]
-else:
-    log = synthetic_log()
 
 if log is None:
-    st.info("Upload a file or click *Load synthetic demo* to continue.")
     st.stop()
 
 st.session_state["log"] = log
@@ -51,15 +40,15 @@ m5.metric("Span (h)", f"{(stats['end'] - stats['start']).total_seconds() / 3600:
 
 st.subheader("Preview (first 20 rows)")
 preview = log.head(20).copy()
-cases = preview["case_id"].unique().tolist()
+cases = preview["case:concept:name"].unique().tolist()
 color_map = {c: f"hsl({(i * 53) % 360}, 60%, 92%)" for i, c in enumerate(cases)}
 styled = preview.style.apply(
-    lambda row: [f"background-color: {color_map[row['case_id']]}"] * len(row), axis=1
+    lambda row: [f"background-color: {color_map[row['case:concept:name']]}"] * len(row), axis=1
 )
 st.dataframe(styled, width="stretch")
 
 st.subheader("Activity frequency")
-counts = log["activity"].value_counts().sort_values(ascending=True).reset_index()
+counts = log["concept:name"].value_counts().sort_values(ascending=True).reset_index()
 counts.columns = ["activity", "count"]
 fig = px.bar(counts, x="count", y="activity", orientation="h", height=max(220, 28 * len(counts)))
 fig.update_layout(margin=dict(l=10, r=10, t=10, b=10))

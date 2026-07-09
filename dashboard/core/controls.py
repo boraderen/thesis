@@ -25,10 +25,10 @@ def log_signature(df: pd.DataFrame, schema_version: str) -> tuple[object, ...]:
         schema_version,
         len(df),
         tuple(df.columns),
-        df["case_id"].nunique(),
-        df["activity"].nunique(),
-        str(df["timestamp"].min()),
-        str(df["timestamp"].max()),
+        df["case:concept:name"].nunique(),
+        df["concept:name"].nunique(),
+        str(df["time:timestamp"].min()),
+        str(df["time:timestamp"].max()),
     )
 
 

@@ -62,8 +62,8 @@ def _describe_cell(features: np.ndarray, columns: list[str]) -> str:
 
 def _delta_stats(df: pd.DataFrame, win_idx: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
     """Mean and std of ln-minute gaps between consecutive in-window events, per window."""
-    ordered = df.sort_values(["__win__", "timestamp"])
-    gap_s = ordered.groupby("__win__")["timestamp"].diff().dt.total_seconds()
+    ordered = df.sort_values(["__win__", "time:timestamp"])
+    gap_s = ordered.groupby("__win__")["time:timestamp"].diff().dt.total_seconds()
     mask = gap_s.notna()
     log_min = pd.Series(_zlog_minutes(gap_s[mask].to_numpy()), index=gap_s.index[mask])
     grouped = log_min.groupby(ordered.loc[mask, "__win__"])
@@ -75,11 +75,11 @@ def _window_counts(
     df: pd.DataFrame, win_idx: pd.DatetimeIndex, origin: pd.Timestamp, win_minutes: int
 ) -> pd.DataFrame:
     """Compute active/arrivals/completions/totals per window."""
-    first = floor_to_window(df.groupby("case_id")["timestamp"].min(), origin, win_minutes)
-    last = floor_to_window(df.groupby("case_id")["timestamp"].max(), origin, win_minutes)
+    first = floor_to_window(df.groupby("case:concept:name")["time:timestamp"].min(), origin, win_minutes)
+    last = floor_to_window(df.groupby("case:concept:name")["time:timestamp"].max(), origin, win_minutes)
     return pd.DataFrame(
         {
-            "active_cases": df.groupby("__win__")["case_id"].nunique().reindex(win_idx, fill_value=0),
+            "active_cases": df.groupby("__win__")["case:concept:name"].nunique().reindex(win_idx, fill_value=0),
             "new_arrivals": first.value_counts().reindex(win_idx, fill_value=0),
             "completions": last.value_counts().reindex(win_idx, fill_value=0),
             "total_events": df.groupby("__win__").size().reindex(win_idx, fill_value=0),
@@ -93,14 +93,14 @@ def build_features(
     log: pd.DataFrame, window_minutes: int = 60, stall_minutes: int = 60
 ) -> tuple[pd.DataFrame, InterSpec]:
     """Compute the 7 per-window inter-case features."""
-    df = log.sort_values("timestamp").copy()
-    origin = df["timestamp"].min()
-    df["__win__"] = floor_to_window(df["timestamp"], origin, window_minutes)
-    win_idx = window_index(origin, df["timestamp"].max(), window_minutes)
+    df = log.sort_values("time:timestamp").copy()
+    origin = df["time:timestamp"].min()
+    df["__win__"] = floor_to_window(df["time:timestamp"], origin, window_minutes)
+    win_idx = window_index(origin, df["time:timestamp"].max(), window_minutes)
 
     counts = _window_counts(df, win_idx, origin, window_minutes)
     deltas_mean, deltas_std = _delta_stats(df, win_idx)
-    case_last = df.groupby("case_id")["timestamp"].max()
+    case_last = df.groupby("case:concept:name")["time:timestamp"].max()
     stalled = _stalled_count(case_last, win_idx, window_minutes, stall_minutes)
 
     out = counts.assign(mean_delta_t=deltas_mean, std_delta_t=deltas_std, stalled_cases=stalled.astype(float))

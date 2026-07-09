@@ -1,7 +1,6 @@
-"""Stacked-area and line charts for the joint drift signal."""
+"""Stacked-area chart and window-boundary overlay for the drift signals."""
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
@@ -49,34 +48,5 @@ def stacked_area_intra(df: pd.DataFrame, columns: list[str], labels: list[str]) 
         yaxis=dict(title="Fraction", range=[0, 1]),
         xaxis=dict(title="Window"),
         legend=dict(orientation="h", y=-0.2),
-    )
-    return fig
-
-
-def state_index_line(df: pd.DataFrame, col: str, labels: list[str], title: str) -> go.Figure:
-    """Line plot of a single state index over windows, coloured per state."""
-    fig = go.Figure()
-    if col in df.columns:
-        values = df[col].astype(float)
-        fig.add_trace(
-            go.Scatter(
-                x=df["window_start"], y=values,
-                mode="lines+markers",
-                line=dict(color="#3C3489", width=1.2),
-                marker=dict(
-                    size=8,
-                    color=[state_bg(int(v)) if not np.isnan(v) else "#FFFFFF" for v in values],
-                    line=dict(width=1, color="#333333"),
-                ),
-                hovertext=[labels[int(v)] if not np.isnan(v) and int(v) < len(labels) else "" for v in values],
-                hovertemplate="%{x}<br>%{hovertext}<extra></extra>",
-            )
-        )
-    fig.update_layout(
-        title=title,
-        height=220,
-        margin=dict(l=10, r=10, t=40, b=10),
-        yaxis=dict(title="State idx"),
-        xaxis=dict(title="Window"),
     )
     return fig

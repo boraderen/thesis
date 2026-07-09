@@ -5,31 +5,54 @@ import streamlit as st
 
 st.set_page_config(
     page_title="State-based process monitoring",
-    page_icon=None,
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
-st.title("State-based process monitoring")
+st.title("State-based process monitoring for concept drift detection")
 st.write(
-    "A three-SOM pipeline that turns an event log into intra-case, resource, "
-    "and inter-case state trajectories, then combines them into a single drift signal."
+    "Pipelines that compute drift signals using state definitions for drifts from intra-case, resource and "
+    "inter-case perspectives from an event log."
 )
 
-if "log" in st.session_state:
-    log = st.session_state["log"]
-    st.success(f"Log loaded — {len(log):,} events across {log['case_id'].nunique():,} cases.")
-else:
-    st.info("Open **1 — Upload** in the sidebar to load a log (or use the synthetic demo).")
-
-st.markdown(
+st.graphviz_chart(
     """
-    **Pipeline**
+digraph {
+    rankdir=LR
+    bgcolor=transparent
+    node [shape=box style=rounded fontsize=11 color="#888888" fontcolor="#888888"]
+    edge [color="#888888" arrowsize=0.7]
 
-    1. **Upload** — parse an XES or CSV event log.
-    2. **Intra-case SOM** — windowed activity features → PCA or pretrained autoencoder → SOM cells per event.
-    3. **Resource SOM** — per-window resource workload features → SOM cells per window.
-    4. **Inter-case SOM** — arrivals, completions, stalls per window → SOM cells per window.
-    5. **Joint drift signal** — stack the three views per window, look for sustained shifts.
+    log [label="Event log"]
+
+    subgraph cluster_intra {
+        label="Intra-case" fontcolor="#888888" color="#bbbbbb"
+        intra_feat [label="Intra-case features" width=2.1]
+        intra_red [label="PCA / autoencoder"]
+        intra_som [label="SOM / clustering states"]
+        intra_sig [label="Drift signal"]
+        intra_feat -> intra_red -> intra_som -> intra_sig
+    }
+    subgraph cluster_resource {
+        label="Resource" fontcolor="#888888" color="#bbbbbb"
+        res_feat [label="Windowed Resource features" width=2.1]
+        res_red [label="PCA / autoencoder"]
+        res_som [label="SOM / clustering states"]
+        res_sig [label="Drift signal"]
+        res_feat -> res_red -> res_som -> res_sig
+    }
+    subgraph cluster_inter {
+        label="Inter-case" fontcolor="#888888" color="#bbbbbb"
+        inter_feat [label="Windowed inter-case features" width=2.1]
+        inter_red [label="PCA / autoencoder"]
+        inter_som [label="SOM / clustering states"]
+        inter_sig [label="Drift signal"]
+        inter_feat -> inter_red -> inter_som -> inter_sig
+    }
+
+    log -> intra_feat
+    log -> res_feat
+    log -> inter_feat
+}
     """
 )
