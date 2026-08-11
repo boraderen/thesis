@@ -128,22 +128,3 @@ def pca_variance_plot(ratios: np.ndarray, chosen_k: int, raw_dim: int) -> go.Fig
     return fig
 
 
-def ae_error_histogram(errors: np.ndarray, clip_quantile: float = 0.99) -> go.Figure:
-    """Histogram of per-event autoencoder reconstruction errors, clipped for readability."""
-    hi = float(np.quantile(errors, clip_quantile))
-    fig = go.Figure(
-        data=[
-            go.Histogram(
-                x=np.minimum(errors, hi), nbinsx=60, marker_color="#3C3489",
-                hovertemplate="error≈%{x:.3f}<br>events=%{y}<extra></extra>",
-            )
-        ]
-    )
-    fig.update_layout(
-        title=f"Per-event reconstruction error (clipped at the {int(clip_quantile * 100)}th percentile)",
-        xaxis_title="MSE (standardized feature space)",
-        yaxis_title="Events",
-        margin=dict(l=10, r=10, t=40, b=10),
-        height=260,
-    )
-    return fig

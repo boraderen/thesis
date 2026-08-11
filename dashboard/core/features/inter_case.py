@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Iterable
 
 import numpy as np
 import pandas as pd
@@ -71,6 +72,62 @@ def _delta_stats(df: pd.DataFrame, win_idx: pd.DatetimeIndex) -> tuple[np.ndarra
     return agg["mean"].to_numpy(dtype=float), agg["std"].to_numpy(dtype=float)
 
 
+def _values(df: pd.DataFrame, col: str) -> list[str]:
+    """The distinct values of a categorical attribute, in a stable order."""
+    return sorted(df[col].dropna().astype(str).unique().tolist())
+
+
+def attribute_features(
+    log: pd.DataFrame, numeric_attrs: Iterable[str], categorical_attrs: Iterable[str]
+) -> dict[str, tuple[str, list[str]]]:
+    """Selectable case-attribute features: key -> (label, matrix columns).
+
+    A numeric attribute offers its mean and its standard deviation separately.
+    A categorical one offers a single entry covering the share columns of all
+    its values, since the shares are one distribution and only mean something
+    together.
+    """
+    features: dict[str, tuple[str, list[str]]] = {}
+    for col in numeric_attrs:
+        features[f"attr_mean:{col}"] = (f"Mean {col}", [f"attr_mean:{col}"])
+        features[f"attr_std:{col}"] = (f"Std {col}", [f"attr_std:{col}"])
+    for col in categorical_attrs:
+        columns = [f"attr_share:{col}={value}" for value in _values(log, col)]
+        features[f"attr_share:{col}"] = (f"{col} value shares", columns)
+    return features
+
+
+def _attribute_columns(
+    df: pd.DataFrame,
+    win_idx: pd.DatetimeIndex,
+    numeric_attrs: Iterable[str],
+    categorical_attrs: Iterable[str],
+) -> pd.DataFrame:
+    """Per-window mean/std of numeric attributes and per-value shares of categorical ones."""
+    out = pd.DataFrame(index=win_idx)
+    for col in numeric_attrs:
+        agg = (
+            pd.to_numeric(df[col], errors="coerce")
+            .groupby(df["__win__"])
+            .agg(["mean", "std"])
+            .reindex(win_idx)
+            .fillna(0.0)
+        )
+        out[f"attr_mean:{col}"] = agg["mean"].to_numpy(dtype=float)
+        out[f"attr_std:{col}"] = agg["std"].to_numpy(dtype=float)
+    for col in categorical_attrs:
+        values = _values(df, col)
+        counts = (
+            pd.crosstab(df["__win__"], df[col].astype(str))
+            .reindex(index=win_idx, fill_value=0)
+            .reindex(columns=values, fill_value=0)
+        )
+        shares = counts.div(counts.sum(axis=1).replace(0, np.nan), axis=0).fillna(0.0)
+        for value in values:
+            out[f"attr_share:{col}={value}"] = shares[value].to_numpy(dtype=float)
+    return out
+
+
 def _window_counts(
     df: pd.DataFrame, win_idx: pd.DatetimeIndex, origin: pd.Timestamp, win_minutes: int
 ) -> pd.DataFrame:
@@ -90,9 +147,13 @@ def _window_counts(
 
 @st.cache_data(show_spinner=False)
 def build_features(
-    log: pd.DataFrame, window_minutes: int = 60, stall_minutes: int = 60
+    log: pd.DataFrame,
+    window_minutes: int = 60,
+    stall_minutes: int = 60,
+    numeric_attrs: tuple[str, ...] = (),
+    categorical_attrs: tuple[str, ...] = (),
 ) -> tuple[pd.DataFrame, InterSpec]:
-    """Compute the 7 per-window inter-case features."""
+    """Compute the 7 per-window inter-case features plus the case-attribute ones."""
     df = log.sort_values("time:timestamp").copy()
     origin = df["time:timestamp"].min()
     df["__win__"] = floor_to_window(df["time:timestamp"], origin, window_minutes)
@@ -104,12 +165,15 @@ def build_features(
     stalled = _stalled_count(case_last, win_idx, window_minutes, stall_minutes)
 
     out = counts.assign(mean_delta_t=deltas_mean, std_delta_t=deltas_std, stalled_cases=stalled.astype(float))
+    attrs = _attribute_columns(df, win_idx, numeric_attrs, categorical_attrs)
+    out = out.join(attrs)
     out.index.name = "window_start"
     groups = {
         "counts": ["active_cases", "total_events"],
         "rates": ["new_arrivals", "completions"],
         "gaps": ["mean_delta_t", "std_delta_t"],
         "stall": ["stalled_cases"],
+        "attributes": list(attrs.columns),
     }
     spec = InterSpec(
         columns=list(out.columns),

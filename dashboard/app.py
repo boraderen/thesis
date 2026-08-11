@@ -28,7 +28,7 @@ digraph {
     subgraph cluster_intra {
         label="Intra-case" fontcolor="#888888" color="#bbbbbb"
         intra_feat [label="Intra-case features" width=2.1]
-        intra_red [label="PCA / autoencoder"]
+        intra_red [label="PCA"]
         intra_som [label="SOM / clustering states"]
         intra_sig [label="Drift signal"]
         intra_feat -> intra_red -> intra_som -> intra_sig
@@ -36,7 +36,7 @@ digraph {
     subgraph cluster_resource {
         label="Resource" fontcolor="#888888" color="#bbbbbb"
         res_feat [label="Windowed Resource features" width=2.1]
-        res_red [label="PCA / autoencoder"]
+        res_red [label="PCA"]
         res_som [label="SOM / clustering states"]
         res_sig [label="Drift signal"]
         res_feat -> res_red -> res_som -> res_sig
@@ -44,7 +44,7 @@ digraph {
     subgraph cluster_inter {
         label="Inter-case" fontcolor="#888888" color="#bbbbbb"
         inter_feat [label="Windowed inter-case features" width=2.1]
-        inter_red [label="PCA / autoencoder"]
+        inter_red [label="PCA"]
         inter_som [label="SOM / clustering states"]
         inter_sig [label="Drift signal"]
         inter_feat -> inter_red -> inter_som -> inter_sig

@@ -1,13 +1,13 @@
-"""Session-state helpers for the sidebar pipeline forms.
+"""Session-state helpers for the sidebar pipeline controls.
 
-Form widgets on the pipeline pages must carry an explicit ``key``: Streamlit
+Sidebar widgets on the pipeline pages must carry an explicit ``key``: Streamlit
 identifies an unkeyed widget by hashing its construction parameters, so a
 widget whose default is read from session state that the run handler rewrites
-gets a *new identity* on the rerun after a successful run. Edits pending
-inside a form are keyed to the old identity and get dropped — the sidebar
-snaps back and the pipeline reruns with stale values. Keyed widgets are
-seeded once through these helpers and never receive value/index/default
-arguments, so their identity stays stable across runs.
+gets a *new identity* on the rerun after a successful run, and the sidebar
+snaps back to stale values. Keyed widgets are seeded once through these helpers
+and never receive value/index/default arguments, so their identity stays stable
+across runs — including across the reruns that show or hide the parameters of
+the selected clustering method.
 """
 from __future__ import annotations
 

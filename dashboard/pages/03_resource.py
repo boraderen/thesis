@@ -16,7 +16,7 @@ from core.schema import (
     feature_availability,
 )
 from core.som import train_som
-from core.state_attribution import state_id_shift
+from core.state_attribution import window_vector_shift
 from core.transitions import find_transitions
 from core.windows import (
     default_window_minutes,
@@ -40,14 +40,14 @@ if "log" not in st.session_state:
 log: pd.DataFrame = st.session_state["log"]
 st.caption(span_label(log))
 if "org:resource" not in log.columns:
-    st.error("This log has no `org:resource` column — the resource page is disabled.")
+    st.error("No resource column was mapped on the **Upload** page — this page is disabled.")
     st.stop()
 
 KIND_DESCRIPTIONS = {
     "events": "Number of events assigned to each resource in the calendar window.",
     "active": "Number of distinct cases touched by each resource in the window.",
-    "duration": "Mean event duration in minutes for each resource in the window (requires `event:duration_min`).",
-    "wait": "Computed for each resource r: mean difference between this event's and the previous case event's `time:timestamp`, in minutes, over r's events in the window — counted only for events whose previous event was executed by a different resource.",
+    "duration": "Mean event duration in minutes for each resource in the window (requires a mapped event duration column).",
+    "wait": "Computed for each resource r: mean difference between this event's and the previous case event's timestamp, in minutes, over r's events in the window — counted only for events whose previous event was executed by a different resource.",
     "activity_events": "Computed for each activity a and each resource r: the share of a's events in the window executed by r — a-events by r divided by all a-events in the window.",
     "ho": "Computed for each ordered resource pair r1→r2: the share of r1's within-case handovers in the window that go to r2 — handovers r1→r2 divided by all handovers from r1 in the window.",
 }
@@ -119,88 +119,64 @@ seed_widget(
 
 with st.sidebar:
     st.header("Controls")
-    with st.form("resource_pipeline_controls"):
-        st.subheader("Features for state clustering")
-        st.markdown("Feature kinds")
-        picked_kinds = [
-            kind
-            for kind, label in KIND_LABELS.items()
-            if st.checkbox(label, key=f"resource_kind_{kind}", disabled=kind in disabled_kinds)
-        ]
-        picked_resources = st.multiselect(
-            "Resources",
-            options=all_resources,
-            key="resource_res_sel",
-        )
-        picked_activities = st.multiselect(
-            "Activities",
-            options=all_activities,
-            key="resource_act_sel",
-            help="Used by activity-resource event count features.",
-        )
-        with st.expander("Feature glossary"):
-            for kind, label in KIND_LABELS.items():
-                st.markdown(f"**{label}:** {KIND_DESCRIPTIONS[kind]}")
-        st.subheader("PCA")
-        pca_k = st.number_input(
-            "PCA components (0 = auto/elbow)",
-            min_value=0,
-            max_value=20,
-            step=1,
-            key="resource_pca_k_sel",
-        )
-        st.subheader("Clustering")
-        clustering = st.radio(
-            "Method",
-            options=tuple(CLUSTERING_LABELS),
-            key="resource_cluster_sel",
-            format_func=lambda m: CLUSTERING_LABELS[m],
-        )
+    st.subheader("Select features")
+    picked_kinds = [
+        kind
+        for kind, label in KIND_LABELS.items()
+        if st.checkbox(label, key=f"resource_kind_{kind}", disabled=kind in disabled_kinds)
+    ]
+    with st.expander("Feature glossary"):
+        for kind, label in KIND_LABELS.items():
+            st.markdown(f"**{label}:** {KIND_DESCRIPTIONS[kind]}")
+    picked_resources = st.multiselect("Resources", options=all_resources, key="resource_res_sel")
+    picked_activities = st.multiselect("Activities", options=all_activities, key="resource_act_sel")
+
+    st.subheader("Dimensionality reduction")
+    st.number_input("PCA components (0 = auto)", min_value=0, max_value=20, step=1,
+                    key="resource_pca_k_sel")
+
+    st.subheader("Clustering")
+    clustering = st.radio(
+        "Method",
+        options=tuple(CLUSTERING_LABELS),
+        key="resource_cluster_sel",
+        format_func=lambda m: CLUSTERING_LABELS[m],
+    )
+    if clustering == "som":
         col_grid_h, col_grid_w = st.columns(2)
-        grid_h = col_grid_h.number_input(
-            "SOM grid height", min_value=1, max_value=50, step=1, key="resource_grid_h_sel"
-        )
-        grid_w = col_grid_w.number_input(
-            "SOM grid width", min_value=1, max_value=50, step=1, key="resource_grid_w_sel"
-        )
-        som_init = st.radio(
-            "SOM init",
-            options=tuple(INIT_LABELS),
-            key="resource_init_sel",
-            format_func=lambda i: INIT_LABELS[i],
-        )
-        eps = st.number_input(
-            "DBSCAN eps",
-            min_value=0.05,
-            max_value=100.0,
-            step=0.05,
-            key="resource_eps_sel",
-        )
-        min_samples = st.number_input(
-            "DBSCAN min samples",
-            min_value=1,
-            max_value=1000,
-            step=1,
-            key="resource_minpts_sel",
-        )
-        kmeans_k = st.number_input(
-            "k-means clusters",
-            min_value=2,
-            max_value=25,
-            step=1,
-            key="resource_kmeans_k_sel",
-        )
-        st.subheader("Windows")
-        window_minutes = st.selectbox(
-            "Window W",
-            window_minute_choices(st.session_state["resource_W_sel"]),
-            key="resource_W_sel",
-            format_func=window_minute_label,
-        )
-        run_pipeline = st.form_submit_button(
-            "Run resource pipeline",
-            width="stretch",
-        )
+        col_grid_h.number_input("SOM grid height", min_value=1, max_value=50, step=1,
+                                key="resource_grid_h_sel")
+        col_grid_w.number_input("SOM grid width", min_value=1, max_value=50, step=1,
+                                key="resource_grid_w_sel")
+        st.radio("SOM init", options=tuple(INIT_LABELS), key="resource_init_sel",
+                 format_func=lambda i: INIT_LABELS[i])
+    elif clustering == "dbscan":
+        st.number_input("DBSCAN eps", min_value=0.05, max_value=100.0, step=0.05,
+                        key="resource_eps_sel")
+        st.number_input("DBSCAN min samples", min_value=1, max_value=1000, step=1,
+                        key="resource_minpts_sel")
+    else:
+        st.number_input("k-means clusters", min_value=2, max_value=25, step=1,
+                        key="resource_kmeans_k_sel")
+
+    st.subheader("Windows")
+    window_minutes = st.selectbox(
+        "Window W",
+        window_minute_choices(st.session_state["resource_W_sel"]),
+        key="resource_W_sel",
+        format_func=window_minute_label,
+    )
+    run_pipeline = st.button("Run resource pipeline", width="stretch", type="primary")
+
+# The parameters of the unselected clustering methods are not rendered, so they
+# are read from their seeded slots rather than from a widget's return value.
+pca_k = int(st.session_state["resource_pca_k_sel"])
+grid_h = int(st.session_state["resource_grid_h_sel"])
+grid_w = int(st.session_state["resource_grid_w_sel"])
+som_init = st.session_state["resource_init_sel"]
+eps = float(st.session_state["resource_eps_sel"])
+min_samples = int(st.session_state["resource_minpts_sel"])
+kmeans_k = int(st.session_state["resource_kmeans_k_sel"])
 
 
 def _selected_columns(
@@ -350,13 +326,11 @@ else:
 
 st.subheader("Drift signal")
 st.caption(
-    "Rolling KL divergence of the recent state mix against the full-log "
-    "baseline — a sustained shift in the trajectory pushes the score up."
+    "Distance between each window's compressed state vector and the previous "
+    "window's — spikes mark the windows where the resource picture changed."
 )
-shift = state_id_shift(
-    matrix_df[["window_start", "state_id"]], n_states=som.grid_h * som.grid_w
-)
-shift_fig = score_line(shift, "score", title="Rolling KL(state mix || baseline)")
+shift = window_vector_shift(matrix_df["window_start"], pca.transformed)
+shift_fig = score_line(shift, "score", title="‖window i − window i−1‖")
 add_window_boundaries(
     shift_fig, shift["window_start"], y_max=max(float(shift["score"].max()), 1e-9)
 )

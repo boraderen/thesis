@@ -43,6 +43,7 @@ GROUP_TINTS: dict[str, str] = {
     "rates": "#EEEDFE",
     "gaps": "#FFF6CC",
     "stall": "#FAEEDA",
+    "attributes": "#E7F0FA",
 }
 
 

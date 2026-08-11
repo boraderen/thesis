@@ -9,13 +9,13 @@ import streamlit as st
 
 from core.controls import log_signature, seed_choice, seed_widget
 from core.dbscan import cluster_dbscan
-from core.features.inter_case import build_features, describe_cells
+from core.features.inter_case import attribute_features, build_features, describe_cells
 from core.kmeans import cluster_kmeans
 from core.loader import span_label
 from core.pca import fit_pca
 from core.schema import INTER_FEATURE_LABELS as FEATURE_LABELS
 from core.som import train_som
-from core.state_attribution import state_id_shift
+from core.state_attribution import window_vector_shift
 from core.transitions import find_transitions
 from core.windows import (
     default_window_minutes,
@@ -48,6 +48,34 @@ FEATURE_DESCRIPTIONS = {
     "std_delta_t": "Standard deviation of the gaps between consecutive events inside the window, in ln-minutes.",
     "stalled_cases": "Number of cases whose last event is older than the stall threshold τ at the window end.",
 }
+
+
+def attr_description(key: str, columns: list[str]) -> str:
+    """Glossary line for one case-attribute feature."""
+    kind, target = key.split(":", 1)
+    if kind == "attr_mean":
+        return f"Mean of {target} over the events in the window."
+    if kind == "attr_std":
+        return f"Standard deviation of {target} over the events in the window."
+    return (
+        f"One column per value of {target} ({len(columns)} in this log) — the share of the "
+        "window's events carrying that value. The values come as a set, not one by one."
+    )
+
+
+# Features contributed by the case attributes mapped on the upload page.
+numeric_attrs = tuple(st.session_state.get("case_numeric_attrs", []))
+categorical_attrs = tuple(st.session_state.get("case_categorical_attrs", []))
+ATTR_FEATURES = attribute_features(log, numeric_attrs, categorical_attrs)
+FEATURE_LABELS = {**FEATURE_LABELS, **{k: label for k, (label, _) in ATTR_FEATURES.items()}}
+FEATURE_DESCRIPTIONS = {
+    **FEATURE_DESCRIPTIONS,
+    **{k: attr_description(k, cols) for k, (_, cols) in ATTR_FEATURES.items()},
+}
+# A feature key maps to the matrix columns it selects — one each for the
+# system-level features, several for a categorical attribute's value shares.
+FEATURE_COLUMNS = {feature: [feature] for feature in FEATURE_LABELS}
+FEATURE_COLUMNS.update({k: cols for k, (_, cols) in ATTR_FEATURES.items()})
 INTER_FEATURES = list(FEATURE_LABELS)
 
 CLUSTERING_LABELS = {
@@ -78,7 +106,8 @@ INTER_RESULT_KEYS = (
     "inter_log_signature",
 )
 
-current_log_signature = log_signature(log, INTER_SCHEMA_VERSION)
+attr_columns = sorted(c for _, cols in ATTR_FEATURES.values() for c in cols)
+current_log_signature = log_signature(log, f"{INTER_SCHEMA_VERSION}:{attr_columns}")
 if (
     st.session_state.get("inter_log_signature") is not None
     and st.session_state.get("inter_log_signature") != current_log_signature
@@ -107,85 +136,64 @@ seed_widget(
 
 with st.sidebar:
     st.header("Controls")
-    with st.form("inter_pipeline_controls"):
-        st.subheader("Features for state clustering")
-        st.markdown("Include features")
-        picked = [
-            feature
-            for feature in INTER_FEATURES
-            if st.checkbox(FEATURE_LABELS.get(feature, feature), key=f"inter_feat_{feature}")
-        ]
-        stall = st.slider(
-            "Stall threshold τ (minutes)",
-            min_value=15,
-            max_value=480,
-            step=15,
-            key="inter_stall_sel",
-            help="A case counts as stalled when its last event is older than τ at the window end.",
-        )
-        with st.expander("Feature glossary"):
-            for feature, label in FEATURE_LABELS.items():
-                st.markdown(f"**{label}.** {FEATURE_DESCRIPTIONS[feature]}")
-        st.subheader("PCA")
-        pca_k = st.number_input(
-            "PCA components (0 = auto/elbow)",
-            min_value=0,
-            max_value=20,
-            step=1,
-            key="inter_pca_k_sel",
-        )
-        st.subheader("Clustering")
-        clustering = st.radio(
-            "Method",
-            options=tuple(CLUSTERING_LABELS),
-            key="inter_cluster_sel",
-            format_func=lambda m: CLUSTERING_LABELS[m],
-        )
+    st.subheader("Select features")
+    picked = [
+        feature
+        for feature in INTER_FEATURES
+        if st.checkbox(FEATURE_LABELS.get(feature, feature), key=f"inter_feat_{feature}")
+    ]
+    with st.expander("Feature glossary"):
+        for feature, label in FEATURE_LABELS.items():
+            st.markdown(f"**{label}.** {FEATURE_DESCRIPTIONS[feature]}")
+    stall = st.slider("Stall threshold τ (minutes)", min_value=15, max_value=480, step=15,
+                      key="inter_stall_sel")
+
+    st.subheader("Dimensionality reduction")
+    st.number_input("PCA components (0 = auto)", min_value=0, max_value=20, step=1,
+                    key="inter_pca_k_sel")
+
+    st.subheader("Clustering")
+    clustering = st.radio(
+        "Method",
+        options=tuple(CLUSTERING_LABELS),
+        key="inter_cluster_sel",
+        format_func=lambda m: CLUSTERING_LABELS[m],
+    )
+    if clustering == "som":
         col_grid_h, col_grid_w = st.columns(2)
-        grid_h = col_grid_h.number_input(
-            "SOM grid height", min_value=1, max_value=50, step=1, key="inter_grid_h_sel"
-        )
-        grid_w = col_grid_w.number_input(
-            "SOM grid width", min_value=1, max_value=50, step=1, key="inter_grid_w_sel"
-        )
-        som_init = st.radio(
-            "SOM init",
-            options=tuple(INIT_LABELS),
-            key="inter_init_sel",
-            format_func=lambda i: INIT_LABELS[i],
-        )
-        eps = st.number_input(
-            "DBSCAN eps",
-            min_value=0.05,
-            max_value=100.0,
-            step=0.05,
-            key="inter_eps_sel",
-        )
-        min_samples = st.number_input(
-            "DBSCAN min samples",
-            min_value=1,
-            max_value=1000,
-            step=1,
-            key="inter_minpts_sel",
-        )
-        kmeans_k = st.number_input(
-            "k-means clusters",
-            min_value=2,
-            max_value=25,
-            step=1,
-            key="inter_kmeans_k_sel",
-        )
-        st.subheader("Windows")
-        window_minutes = st.selectbox(
-            "Window W",
-            window_minute_choices(st.session_state["inter_W_sel"]),
-            key="inter_W_sel",
-            format_func=window_minute_label,
-        )
-        run_pipeline = st.form_submit_button(
-            "Run inter-case pipeline",
-            width="stretch",
-        )
+        col_grid_h.number_input("SOM grid height", min_value=1, max_value=50, step=1,
+                                key="inter_grid_h_sel")
+        col_grid_w.number_input("SOM grid width", min_value=1, max_value=50, step=1,
+                                key="inter_grid_w_sel")
+        st.radio("SOM init", options=tuple(INIT_LABELS), key="inter_init_sel",
+                 format_func=lambda i: INIT_LABELS[i])
+    elif clustering == "dbscan":
+        st.number_input("DBSCAN eps", min_value=0.05, max_value=100.0, step=0.05,
+                        key="inter_eps_sel")
+        st.number_input("DBSCAN min samples", min_value=1, max_value=1000, step=1,
+                        key="inter_minpts_sel")
+    else:
+        st.number_input("k-means clusters", min_value=2, max_value=25, step=1,
+                        key="inter_kmeans_k_sel")
+
+    st.subheader("Windows")
+    window_minutes = st.selectbox(
+        "Window W",
+        window_minute_choices(st.session_state["inter_W_sel"]),
+        key="inter_W_sel",
+        format_func=window_minute_label,
+    )
+    run_pipeline = st.button("Run inter-case pipeline", width="stretch", type="primary")
+
+# The parameters of the unselected clustering methods are not rendered, so they
+# are read from their seeded slots rather than from a widget's return value.
+pca_k = int(st.session_state["inter_pca_k_sel"])
+grid_h = int(st.session_state["inter_grid_h_sel"])
+grid_w = int(st.session_state["inter_grid_w_sel"])
+som_init = st.session_state["inter_init_sel"]
+eps = float(st.session_state["inter_eps_sel"])
+min_samples = int(st.session_state["inter_minpts_sel"])
+kmeans_k = int(st.session_state["inter_kmeans_k_sel"])
 
 if run_pipeline:
     if not picked:
@@ -193,7 +201,11 @@ if run_pipeline:
         st.stop()
     with st.spinner("Building features, fitting PCA, clustering states…"):
         matrix_df, spec = build_features(
-            log, window_minutes=int(window_minutes), stall_minutes=int(stall)
+            log,
+            window_minutes=int(window_minutes),
+            stall_minutes=int(stall),
+            numeric_attrs=numeric_attrs,
+            categorical_attrs=categorical_attrs,
         )
         if len(matrix_df) < 2:
             st.warning(
@@ -201,7 +213,7 @@ if run_pipeline:
                 "Pick a smaller W to get a trajectory."
             )
             st.stop()
-        selected_cols = list(picked)
+        selected_cols = [col for feature in picked for col in FEATURE_COLUMNS[feature]]
         mat = matrix_df[selected_cols].to_numpy()
         pca = fit_pca(mat, force_k=int(pca_k) if pca_k else None)
         if clustering == "dbscan":
@@ -309,13 +321,11 @@ else:
 
 st.subheader("Drift signal")
 st.caption(
-    "Rolling KL divergence of the recent state mix against the full-log "
-    "baseline — a sustained shift in the trajectory pushes the score up."
+    "Distance between each window's compressed state vector and the previous "
+    "window's — spikes mark the windows where the system picture changed."
 )
-shift = state_id_shift(
-    matrix_df[["window_start", "state_id"]], n_states=som.grid_h * som.grid_w
-)
-shift_fig = score_line(shift, "score", title="Rolling KL(state mix || baseline)")
+shift = window_vector_shift(matrix_df["window_start"], pca.transformed)
+shift_fig = score_line(shift, "score", title="‖window i − window i−1‖")
 add_window_boundaries(
     shift_fig, shift["window_start"], y_max=max(float(shift["score"].max()), 1e-9)
 )

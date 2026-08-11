@@ -1,16 +1,9 @@
-"""Intra-case state page: prefix features → PCA / autoencoder → SOM or DBSCAN states → per-case trajectory."""
+"""Intra-case state page: prefix features → PCA → SOM / DBSCAN / k-means states → per-case trajectory."""
 from __future__ import annotations
 
-import numpy as np
 import pandas as pd
 import streamlit as st
 
-from core.autoencoder import (
-    AE_ACTIVITIES,
-    artifacts_available,
-    encode_matrix,
-    fixed_matrix,
-)
 from core.controls import (
     INTRA_SCHEMA_VERSION,
     log_signature,
@@ -37,12 +30,7 @@ from viz.drift_scores import score_line
 from viz.drift_signal import add_window_boundaries, stacked_area_intra
 from viz.som_grid import som_heatmap
 from viz.tables import styled_feature_table
-from viz.trajectory import (
-    add_transition_markers,
-    ae_error_histogram,
-    pca_variance_plot,
-    state_timeline,
-)
+from viz.trajectory import add_transition_markers, pca_variance_plot, state_timeline
 
 st.set_page_config(page_title="Intra-case states", layout="wide")
 st.title("2 — Intra-case states")
@@ -59,11 +47,6 @@ GROUP_DESCRIPTIONS = {
     "bigram": "One column per observed directly-follows pair A→B — how often that transition occurred in the prefix, divided by the number of transitions so far.",
     "vocab": "One binary column per activity — 1 if the activity has already occurred in the case prefix, 0 otherwise.",
     "progress": "Position of the event within its case as a fraction of the total case length (last event = 1).",
-}
-
-REDUCTION_LABELS = {
-    "pca": "PCA",
-    "autoencoder": "Autoencoder",
 }
 
 CLUSTERING_LABELS = {
@@ -88,7 +71,6 @@ INTRA_RESULT_KEYS = (
     "intra_spec",
     "intra_som",
     "intra_pca",
-    "intra_ae",
     "intra_selected_cols",
     "intra_run_config",
     "intra_log_signature",
@@ -104,11 +86,9 @@ if (
         st.session_state.pop(key, None)
 
 run_cfg = st.session_state.get("intra_run_config") or {}
-available_groups = list(GROUP_LABELS)
-default_groups = run_cfg.get("groups", available_groups)
+default_groups = run_cfg.get("groups", list(GROUP_LABELS))
 for group in GROUP_LABELS:
     seed_widget(f"intra_group_{group}", group in default_groups)
-seed_choice("intra_method_sel", run_cfg.get("method", "pca"), tuple(REDUCTION_LABELS))
 seed_widget("intra_pca_k_sel", int(run_cfg.get("pca_k", 0)))
 seed_choice("intra_cluster_sel", run_cfg.get("clustering", "som"), tuple(CLUSTERING_LABELS))
 seed_choice("intra_init_sel", run_cfg.get("som_init", "random"), tuple(INIT_LABELS))
@@ -125,123 +105,73 @@ seed_widget(
 
 with st.sidebar:
     st.header("Controls")
-    with st.form("intra_pipeline_controls"):
-        st.subheader("Features for state clustering")
-        st.markdown("Include groups")
-        picked = [
-            group
-            for group, label in GROUP_LABELS.items()
-            if st.checkbox(label, key=f"intra_group_{group}")
-        ]
-        with st.expander("Feature glossary"):
-            for group, label in GROUP_LABELS.items():
-                st.markdown(f"**{label}:** {GROUP_DESCRIPTIONS[group]}")
-        st.subheader("Dimensionality reduction")
-        method = st.radio(
-            "Method",
-            options=tuple(REDUCTION_LABELS),
-            key="intra_method_sel",
-            format_func=lambda m: REDUCTION_LABELS[m],
-            help="The autoencoder needs all feature groups selected and a log "
-            f"with at most {len(AE_ACTIVITIES)} distinct activities.",
-        )
-        pca_k = st.number_input(
-            "PCA components",
-            min_value=0,
-            max_value=20,
-            step=1,
-            key="intra_pca_k_sel",
-        )
-        st.subheader("Clustering")
-        clustering = st.radio(
-            "Method",
-            options=tuple(CLUSTERING_LABELS),
-            key="intra_cluster_sel",
-            format_func=lambda m: CLUSTERING_LABELS[m],
-        )
+    st.subheader("Select features")
+    picked = [
+        group
+        for group, label in GROUP_LABELS.items()
+        if st.checkbox(label, key=f"intra_group_{group}")
+    ]
+    with st.expander("Feature glossary"):
+        for group, label in GROUP_LABELS.items():
+            st.markdown(f"**{label}:** {GROUP_DESCRIPTIONS[group]}")
+
+    st.subheader("Dimensionality reduction")
+    st.number_input("PCA components (0 = auto)", min_value=0, max_value=20, step=1,
+                    key="intra_pca_k_sel")
+
+    st.subheader("Clustering")
+    clustering = st.radio(
+        "Method",
+        options=tuple(CLUSTERING_LABELS),
+        key="intra_cluster_sel",
+        format_func=lambda m: CLUSTERING_LABELS[m],
+    )
+    if clustering == "som":
         col_grid_h, col_grid_w = st.columns(2)
-        grid_h = col_grid_h.number_input(
-            "SOM grid height", min_value=1, max_value=50, step=1, key="intra_grid_h_sel"
-        )
-        grid_w = col_grid_w.number_input(
-            "SOM grid width", min_value=1, max_value=50, step=1, key="intra_grid_w_sel"
-        )
-        som_init = st.radio(
-            "SOM init",
-            options=tuple(INIT_LABELS),
-            key="intra_init_sel",
-            format_func=lambda i: INIT_LABELS[i],
-        )
-        eps = st.number_input(
-            "DBSCAN eps",
-            min_value=0.05,
-            max_value=100.0,
-            step=0.05,
-            key="intra_eps_sel",
-        )
-        min_samples = st.number_input(
-            "DBSCAN min samples",
-            min_value=1,
-            max_value=1000,
-            step=1,
-            key="intra_minpts_sel",
-        )
-        kmeans_k = st.number_input(
-            "k-means clusters",
-            min_value=2,
-            max_value=25,
-            step=1,
-            key="intra_kmeans_k_sel",
-        )
-        st.subheader("Windows")
-        distribution_W = st.selectbox(
-            "Distribution window W",
-            window_minute_choices(st.session_state["intra_W_sel"]),
-            key="intra_W_sel",
-            format_func=window_minute_label,
-            help="Calendar window used to aggregate per-event states into frequency bands.",
-        )
-        run_pipeline = st.form_submit_button(
-            "Run intra-case pipeline",
-            width="stretch",
-        )
+        col_grid_h.number_input("SOM grid height", min_value=1, max_value=50, step=1,
+                                key="intra_grid_h_sel")
+        col_grid_w.number_input("SOM grid width", min_value=1, max_value=50, step=1,
+                                key="intra_grid_w_sel")
+        st.radio("SOM init", options=tuple(INIT_LABELS), key="intra_init_sel",
+                 format_func=lambda i: INIT_LABELS[i])
+    elif clustering == "dbscan":
+        st.number_input("DBSCAN eps", min_value=0.05, max_value=100.0, step=0.05,
+                        key="intra_eps_sel")
+        st.number_input("DBSCAN min samples", min_value=1, max_value=1000, step=1,
+                        key="intra_minpts_sel")
+    else:
+        st.number_input("k-means clusters", min_value=2, max_value=25, step=1,
+                        key="intra_kmeans_k_sel")
+
+    st.subheader("Windows")
+    distribution_W = st.selectbox(
+        "Distribution window W",
+        window_minute_choices(st.session_state["intra_W_sel"]),
+        key="intra_W_sel",
+        format_func=window_minute_label,
+    )
+    run_pipeline = st.button("Run intra-case pipeline", width="stretch", type="primary")
+
+# The parameters of the unselected clustering methods are not rendered, so they
+# are read from their seeded slots rather than from a widget's return value.
+pca_k = int(st.session_state["intra_pca_k_sel"])
+grid_h = int(st.session_state["intra_grid_h_sel"])
+grid_w = int(st.session_state["intra_grid_w_sel"])
+som_init = st.session_state["intra_init_sel"]
+eps = float(st.session_state["intra_eps_sel"])
+min_samples = int(st.session_state["intra_minpts_sel"])
+kmeans_k = int(st.session_state["intra_kmeans_k_sel"])
 
 if run_pipeline:
     if not picked:
         st.warning("Select at least one feature group.")
         st.stop()
-    if method == "autoencoder":
-        if set(picked) != set(available_groups):
-            st.warning(
-                "The pretrained autoencoder uses the full feature space — select "
-                "**all** feature groups, or switch to PCA."
-            )
-            st.stop()
-        if not artifacts_available():
-            st.warning(
-                "No trained autoencoder found under `data/autoencoder/` — run "
-                "`notebooks/train_autoencoder.ipynb` first."
-            )
-            st.stop()
-        n_activities = int(log["concept:name"].nunique())
-        if n_activities > len(AE_ACTIVITIES):
-            st.warning(
-                f"The pretrained autoencoder supports at most {len(AE_ACTIVITIES)} "
-                f"distinct activities; this log has {n_activities}."
-            )
-            st.stop()
     with st.spinner("Building features, reducing dimensions, clustering states…"):
         feat, spec = build_features(log)
         selected_cols = [c for g in picked for c in spec.groups[g]]
         matrix = feat[selected_cols].to_numpy()
-        if method == "autoencoder":
-            pca = None
-            ae = encode_matrix(fixed_matrix(feat, spec))
-            reduced = ae.transformed
-        else:
-            pca = fit_pca(matrix, force_k=int(pca_k) if pca_k else None)
-            ae = None
-            reduced = pca.transformed
+        pca = fit_pca(matrix, force_k=pca_k or None)
+        reduced = pca.transformed
         annotations = tuple(feat["concept:name"].astype(str).tolist())
         if clustering == "dbscan":
             som = cluster_dbscan(
@@ -257,13 +187,11 @@ if run_pipeline:
     st.session_state["intra_feat"] = feat
     st.session_state["intra_spec"] = spec
     st.session_state["intra_pca"] = pca
-    st.session_state["intra_ae"] = ae
     st.session_state["intra_som"] = som
     st.session_state["intra_selected_cols"] = selected_cols
     st.session_state["intra_log_signature"] = current_log_signature
     st.session_state["intra_run_config"] = {
         "grid": (grid_h, grid_w),
-        "method": method,
         "clustering": clustering,
         "som_init": som_init,
         "eps": float(eps),
@@ -284,11 +212,9 @@ if (
 feat = st.session_state["intra_feat"]
 spec = st.session_state["intra_spec"]
 pca = st.session_state["intra_pca"]
-ae = st.session_state["intra_ae"]
 som = st.session_state["intra_som"]
 selected_cols = st.session_state["intra_selected_cols"]
 distribution_W = st.session_state["intra_run_config"]["distribution_W"]
-ran_method = st.session_state["intra_run_config"].get("method", "pca")
 ran_clustering = st.session_state["intra_run_config"].get("clustering", "som")
 
 st.subheader("Feature matrix")
@@ -301,28 +227,10 @@ preview_groups = {g: [c for c in cols if c in selected_cols] for g, cols in spec
 styled = styled_feature_table(feat[preview_cols], preview_groups, max_rows=30)
 st.dataframe(styled, width="stretch", height=380)
 
-if ran_method == "autoencoder":
-    st.subheader("Autoencoder")
-    st.markdown(
-        "<style>[data-testid='stMetricValue'] { font-size: 1.4rem; }</style>",
-        unsafe_allow_html=True,
-    )
-    m1, m2, m3, m4, m5 = st.columns(5)
-    m1.metric("Reduction", f"{ae.raw_dim}D → {ae.latent_dim}D")
-    m2.metric(
-        "Explained variance",
-        f"{ae.explained_variance:.1%}",
-        help="Reconstruction R² = 1 − SSE/SST on this log — same footing as PCA's "
-        "cumulative explained-variance ratio. Negative means the pretrained model "
-        "reconstructs this log worse than its per-feature means would.",
-    )
-    m3.metric("Parameters", f"{ae.n_parameters:,}")
-    m4.metric("Mean recon error", f"{ae.recon_errors.mean():.3f}")
-    m5.metric("P95 recon error", f"{np.quantile(ae.recon_errors, 0.95):.3f}")
-    st.plotly_chart(ae_error_histogram(ae.recon_errors), width="stretch")
-else:
-    st.subheader("PCA")
-    st.plotly_chart(pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim), width="stretch")
+st.subheader("PCA")
+st.plotly_chart(
+    pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim), width="stretch"
+)
 
 col_l, col_r = st.columns([1, 1])
 with col_l:
@@ -380,11 +288,11 @@ st.plotly_chart(freq_fig, width="stretch")
 
 st.subheader("Drift signal")
 st.caption(
-    "Per-window KL divergence of the state distribution against the full-log "
-    "baseline — spikes mark windows whose state mix departs from normal."
+    "KL divergence of each window's state distribution against the previous "
+    "window's — spikes mark the windows where the state mix changed."
 )
 shift = intra_state_shift(intra_dist)
-shift_fig = score_line(shift, "score", title="KL(window state dist || baseline)")
+shift_fig = score_line(shift, "score", title="KL(window i || window i−1)")
 add_window_boundaries(
     shift_fig, shift["window_start"], y_max=max(float(shift["score"].max()), 1e-9)
 )

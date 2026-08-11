@@ -1,4 +1,4 @@
-"""Canonical log schema: expected column names and per-feature column requirements."""
+"""Canonical log schema: the mappable roles and the columns each feature needs."""
 from __future__ import annotations
 
 from typing import Iterable
@@ -7,11 +7,17 @@ import streamlit as st
 
 MUST_HAVE_COLUMNS = ("case:concept:name", "concept:name", "time:timestamp")
 
-# (what the column holds, the name it must have)
-OPTIONAL_COLUMNS = (
-    ("the executing resource of an event", "org:resource"),
-    ("an event's duration in minutes", "event:duration_min"),
-)
+# Role the user assigns a column to on the upload page -> canonical column name.
+ROLES = {
+    "case ID": "case:concept:name",
+    "activity": "concept:name",
+    "timestamp": "time:timestamp",
+    "resource": "org:resource",
+    "event duration": "event:duration_min",
+}
+OPTIONAL_ROLES = ("resource", "event duration")  # may be left unmapped
+ROLE_OF = {column: role for role, column in ROLES.items()}
+MAX_CASE_ATTRS = 10
 
 INTRA_FEATURE_LABELS = {
     "activity_freq": "Activity frequencies",
@@ -32,8 +38,8 @@ INTER_FEATURE_LABELS = {
     "new_arrivals": "New arrivals",
     "completions": "Completions",
     "total_events": "Total events",
-    "mean_delta_t": "Mean Δt (ln min)",
-    "std_delta_t": "Std Δt (ln min)",
+    "mean_delta_t": "Mean Δt",
+    "std_delta_t": "Std Δt",
     "stalled_cases": "Stalled cases",
 }
 
@@ -65,8 +71,10 @@ PERSPECTIVES = (
 
 
 def _requirement_text(req: str | tuple[str, ...]) -> str:
-    """One requirement as text; alternatives joined with 'or'."""
-    return " or ".join(req) if isinstance(req, tuple) else req
+    """One requirement as the role it is mapped from; alternatives joined with 'or'."""
+    if isinstance(req, tuple):
+        return " or ".join(ROLE_OF.get(r, r) for r in req)
+    return ROLE_OF.get(req, req)
 
 
 def missing_columns(present: Iterable[str], required: tuple) -> list[str]:
@@ -94,18 +102,8 @@ def feature_availability(
     return available, disabled
 
 
-def render_schema_help() -> None:
-    """Expected-columns section shared by the landing and upload pages."""
-    st.markdown(
-        "**Expected columns** `case:concept:name`, "
-        "`concept:name`, `time:timestamp`"
-    )
-    st.markdown(
-        "\n".join(
-            f"- If your log has a column for {concept}, its name must be `{name}`."
-            for concept, name in OPTIONAL_COLUMNS
-        )
-    )
+def render_feature_requirements() -> None:
+    """Static overview of the features and the mapped roles each one needs."""
     rows = ["| Perspective | Feature | Required columns |", "| --- | --- | --- |"]
     for perspective, labels, columns in PERSPECTIVES:
         for key, label in labels.items():
