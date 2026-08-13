@@ -10,15 +10,16 @@ from core.controls import (
     seed_choice,
     seed_widget,
 )
-from core.dbscan import cluster_dbscan
+from core.dbscan import cluster_dbscan, k_distances
+from core.distance import DISTANCE_LABELS, SUPPORTED_DISTANCES
 from core.drift import intra_state_distribution
 from core.features.intra_case import build_features
 from core.kmeans import cluster_kmeans
 from core.loader import span_label
-from core.pca import fit_pca
+from core.pca import SCALING_LABELS, fit_pca, standardize
 from core.schema import INTRA_FEATURE_LABELS as GROUP_LABELS
-from core.som import train_som
-from core.state_attribution import intra_state_shift
+from core.som import cell_distances, train_som
+from core.state_attribution import DIVERGENCE_LABELS, intra_state_shift
 from core.transitions import find_transitions
 from core.windows import (
     default_window_minutes,
@@ -28,9 +29,14 @@ from core.windows import (
 )
 from viz.drift_scores import score_line
 from viz.drift_signal import add_window_boundaries, stacked_area_intra
-from viz.som_grid import som_heatmap
+from viz.som_grid import cell_distance_heatmap, som_heatmap
 from viz.tables import styled_feature_table
-from viz.trajectory import add_transition_markers, pca_variance_plot, state_timeline
+from viz.trajectory import (
+    add_transition_markers,
+    k_distance_plot,
+    pca_variance_plot,
+    state_timeline,
+)
 
 st.set_page_config(page_title="Intra-case states", layout="wide")
 st.title("2 — Intra-case states")
@@ -47,6 +53,8 @@ GROUP_DESCRIPTIONS = {
     "bigram": "One column per observed directly-follows pair A→B — how often that transition occurred in the prefix, divided by the number of transitions so far.",
     "vocab": "One binary column per activity — 1 if the activity has already occurred in the case prefix, 0 otherwise.",
     "progress": "Position of the event within its case as a fraction of the total case length (last event = 1).",
+    "current": "One binary column per activity — 1 for the activity of this event.",
+    "history": "For each of the last n events of the same case, one binary column per activity — 1 for that event's activity. Before the case has n predecessors, the missing slots stay 0.",
 }
 
 CLUSTERING_LABELS = {
@@ -71,6 +79,7 @@ INTRA_RESULT_KEYS = (
     "intra_spec",
     "intra_som",
     "intra_pca",
+    "intra_reduced",
     "intra_selected_cols",
     "intra_run_config",
     "intra_log_signature",
@@ -89,11 +98,20 @@ run_cfg = st.session_state.get("intra_run_config") or {}
 default_groups = run_cfg.get("groups", list(GROUP_LABELS))
 for group in GROUP_LABELS:
     seed_widget(f"intra_group_{group}", group in default_groups)
+seed_widget("intra_history_sel", int(run_cfg.get("history", 3)))
+seed_widget("intra_skip_pca_sel", bool(run_cfg.get("skip_pca", False)))
 seed_widget("intra_pca_k_sel", int(run_cfg.get("pca_k", 0)))
+seed_choice("intra_scaling_sel", run_cfg.get("scaling", "none"), tuple(SCALING_LABELS))
 seed_choice("intra_cluster_sel", run_cfg.get("clustering", "som"), tuple(CLUSTERING_LABELS))
 seed_choice("intra_init_sel", run_cfg.get("som_init", "random"), tuple(INIT_LABELS))
+seed_choice(
+    "intra_metric_sel",
+    run_cfg.get("metric", "euclidean"),
+    SUPPORTED_DISTANCES[st.session_state["intra_cluster_sel"]],
+)
 seed_widget("intra_eps_sel", float(run_cfg.get("eps", 0.5)))
 seed_widget("intra_minpts_sel", int(run_cfg.get("min_samples", 5)))
+seed_widget("intra_kdist_sel", int(run_cfg.get("kdist_k", 5)))
 seed_widget("intra_kmeans_k_sel", int(run_cfg.get("kmeans_k", 6)))
 grid_default = tuple(run_cfg.get("grid", (3, 3)))
 seed_widget("intra_grid_h_sel", int(grid_default[0]))
@@ -114,10 +132,20 @@ with st.sidebar:
     with st.expander("Feature glossary"):
         for group, label in GROUP_LABELS.items():
             st.markdown(f"**{label}:** {GROUP_DESCRIPTIONS[group]}")
+    history = st.slider("Past activities window n (events)", min_value=1, max_value=20, step=1,
+                        key="intra_history_sel")
 
     st.subheader("Dimensionality reduction")
-    st.number_input("PCA components (0 = auto)", min_value=0, max_value=20, step=1,
-                    key="intra_pca_k_sel")
+    skip_pca = st.checkbox("Skip PCA", key="intra_skip_pca_sel")
+    if not skip_pca:
+        st.number_input("PCA components (0 = auto)", min_value=0, max_value=20, step=1,
+                        key="intra_pca_k_sel")
+    scaling = st.radio(
+        "Scaling",
+        options=tuple(SCALING_LABELS),
+        key="intra_scaling_sel",
+        format_func=lambda s: SCALING_LABELS[s],
+    )
 
     st.subheader("Clustering")
     clustering = st.radio(
@@ -125,6 +153,12 @@ with st.sidebar:
         options=tuple(CLUSTERING_LABELS),
         key="intra_cluster_sel",
         format_func=lambda m: CLUSTERING_LABELS[m],
+    )
+    metric = st.selectbox(
+        "Distance",
+        SUPPORTED_DISTANCES[clustering],
+        key="intra_metric_sel",
+        format_func=lambda d: DISTANCE_LABELS[d],
     )
     if clustering == "som":
         col_grid_h, col_grid_w = st.columns(2)
@@ -139,6 +173,8 @@ with st.sidebar:
                         key="intra_eps_sel")
         st.number_input("DBSCAN min samples", min_value=1, max_value=1000, step=1,
                         key="intra_minpts_sel")
+        st.number_input("k for the k-distance curve", min_value=1, max_value=100, step=1,
+                        key="intra_kdist_sel")
     else:
         st.number_input("k-means clusters", min_value=2, max_value=25, step=1,
                         key="intra_kmeans_k_sel")
@@ -160,6 +196,7 @@ grid_w = int(st.session_state["intra_grid_w_sel"])
 som_init = st.session_state["intra_init_sel"]
 eps = float(st.session_state["intra_eps_sel"])
 min_samples = int(st.session_state["intra_minpts_sel"])
+kdist_k = int(st.session_state["intra_kdist_sel"])
 kmeans_k = int(st.session_state["intra_kmeans_k_sel"])
 
 if run_pipeline:
@@ -167,26 +204,35 @@ if run_pipeline:
         st.warning("Select at least one feature group.")
         st.stop()
     with st.spinner("Building features, reducing dimensions, clustering states…"):
-        feat, spec = build_features(log)
+        feat, spec = build_features(log, history=int(history))
         selected_cols = [c for g in picked for c in spec.groups[g]]
         matrix = feat[selected_cols].to_numpy()
-        pca = fit_pca(matrix, force_k=pca_k or None)
-        reduced = pca.transformed
+        # PCA is optional; standardization, when asked for, applies to whatever
+        # goes into the clustering — the raw columns, or the PCA output.
+        pca = None if skip_pca else fit_pca(matrix, force_k=pca_k or None)
+        reduced = matrix if pca is None else pca.transformed
+        if scaling == "standardize":
+            reduced = standardize(reduced)
         annotations = tuple(feat["concept:name"].astype(str).tolist())
         if clustering == "dbscan":
             som = cluster_dbscan(
-                reduced, eps=float(eps), min_samples=int(min_samples), annotations=annotations
+                reduced, eps=float(eps), min_samples=int(min_samples), annotations=annotations,
+                metric=metric
             )
         elif clustering == "kmeans":
-            som = cluster_kmeans(reduced, n_clusters=int(kmeans_k), annotations=annotations)
+            som = cluster_kmeans(
+                reduced, n_clusters=int(kmeans_k), annotations=annotations, metric=metric
+            )
         else:
             som = train_som(
-                reduced, grid_h=grid_h, grid_w=grid_w, annotations=annotations, init=som_init
+                reduced, grid_h=grid_h, grid_w=grid_w, annotations=annotations,
+                init=som_init, metric=metric
             )
         feat = feat.assign(state_id=som.state_ids)
     st.session_state["intra_feat"] = feat
     st.session_state["intra_spec"] = spec
     st.session_state["intra_pca"] = pca
+    st.session_state["intra_reduced"] = reduced
     st.session_state["intra_som"] = som
     st.session_state["intra_selected_cols"] = selected_cols
     st.session_state["intra_log_signature"] = current_log_signature
@@ -194,12 +240,17 @@ if run_pipeline:
         "grid": (grid_h, grid_w),
         "clustering": clustering,
         "som_init": som_init,
+        "metric": metric,
         "eps": float(eps),
         "min_samples": int(min_samples),
+        "kdist_k": kdist_k,
         "kmeans_k": int(kmeans_k),
         "pca_k": int(pca_k),
+        "skip_pca": skip_pca,
+        "scaling": scaling,
         "distribution_W": int(distribution_W),
         "groups": list(picked),
+        "history": int(history),
     }
 
 if (
@@ -212,10 +263,12 @@ if (
 feat = st.session_state["intra_feat"]
 spec = st.session_state["intra_spec"]
 pca = st.session_state["intra_pca"]
+reduced = st.session_state["intra_reduced"]
 som = st.session_state["intra_som"]
 selected_cols = st.session_state["intra_selected_cols"]
 distribution_W = st.session_state["intra_run_config"]["distribution_W"]
 ran_clustering = st.session_state["intra_run_config"].get("clustering", "som")
+ran_metric = st.session_state["intra_run_config"].get("metric", "euclidean")
 
 st.subheader("Feature matrix")
 st.caption(
@@ -227,10 +280,19 @@ preview_groups = {g: [c for c in cols if c in selected_cols] for g, cols in spec
 styled = styled_feature_table(feat[preview_cols], preview_groups, max_rows=30)
 st.dataframe(styled, width="stretch", height=380)
 
-st.subheader("PCA")
-st.plotly_chart(
-    pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim), width="stretch"
-)
+if pca is not None:
+    st.subheader("PCA")
+    st.plotly_chart(
+        pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim),
+        width="stretch",
+    )
+
+# The knee of the k-distance curve is read as the candidate DBSCAN eps.
+if ran_clustering == "dbscan":
+    st.subheader("k-distance curve")
+    st.plotly_chart(
+        k_distance_plot(k_distances(reduced, kdist_k, ran_metric), kdist_k), width="stretch"
+    )
 
 col_l, col_r = st.columns([1, 1])
 with col_l:
@@ -242,7 +304,7 @@ with col_l:
     st.plotly_chart(
         som_heatmap(
             som.grid_h, som.grid_w, som.cell_counts, som.cell_labels,
-            title="States (hover for dominant last activity)",
+            title=f"{CLUSTERING_LABELS[ran_clustering]} states",
             dominants=som.cell_dominant,
             monochrome=grid_view == "Frequency",
         ),
@@ -263,6 +325,15 @@ with col_r:
     if not transitions.empty:
         add_transition_markers(fig, transitions["timestamp"])
     st.plotly_chart(fig, width="stretch")
+
+# The SOM cell spacing, read as the scale at which its states separate.
+codebook = getattr(som, "codebook", None)
+if ran_clustering == "som" and codebook is not None:
+    st.subheader("Cell distances")
+    st.plotly_chart(
+        cell_distance_heatmap(cell_distances(codebook, ran_metric), som.cell_labels),
+        width="stretch",
+    )
 
 st.subheader("Transitions")
 if transitions.empty:
@@ -286,13 +357,18 @@ freq_fig = stacked_area_intra(intra_dist, intra_cols, som.cell_labels)
 add_window_boundaries(freq_fig, intra_dist["window_start"])
 st.plotly_chart(freq_fig, width="stretch")
 
-st.subheader("Drift signal")
-st.caption(
-    "KL divergence of each window's state distribution against the previous "
-    "window's — spikes mark the windows where the state mix changed."
+st.subheader("Freq. distri divergences")
+divergence = st.selectbox(
+    "Divergence",
+    tuple(DIVERGENCE_LABELS),
+    key="intra_divergence_sel",
+    format_func=lambda d: DIVERGENCE_LABELS[d],
 )
-shift = intra_state_shift(intra_dist)
-shift_fig = score_line(shift, "score", title="KL(window i || window i−1)")
+st.caption("Each window's state distribution compared with the previous window's.")
+shift = intra_state_shift(intra_dist, divergence)
+shift_fig = score_line(
+    shift, "score", title=f"{DIVERGENCE_LABELS[divergence]}: window i vs. window i−1"
+)
 add_window_boundaries(
     shift_fig, shift["window_start"], y_max=max(float(shift["score"].max()), 1e-9)
 )

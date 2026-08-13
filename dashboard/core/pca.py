@@ -6,6 +6,22 @@ from dataclasses import dataclass
 import numpy as np
 import streamlit as st
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+
+# What to feed the clustering: the columns as they are, or z-scored first.
+SCALING_LABELS = {
+    "none": "No standardization",
+    "standardize": "Standardize",
+}
+
+
+@st.cache_data(show_spinner=False)
+def standardize(matrix: np.ndarray) -> np.ndarray:
+    """Z-score every column, so no column dominates on its units alone.
+
+    A constant column has no spread to divide by and comes back as zeros.
+    """
+    return StandardScaler().fit_transform(np.asarray(matrix, dtype=float))
 
 
 @dataclass(frozen=True)

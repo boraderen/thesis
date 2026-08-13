@@ -128,3 +128,19 @@ def pca_variance_plot(ratios: np.ndarray, chosen_k: int, raw_dim: int) -> go.Fig
     return fig
 
 
+
+def k_distance_plot(distances: np.ndarray, k: int) -> go.Figure:
+    """Sorted k-th-nearest-neighbour distances — the knee is the usual eps candidate."""
+    fig = go.Figure(data=[go.Scatter(
+        x=np.arange(1, len(distances) + 1), y=distances, mode="lines",
+        line=dict(color="#3C3489", width=2),
+        hovertemplate="point %{x}<br>distance=%{y:.3f}<extra></extra>",
+    )])
+    fig.update_layout(
+        title=f"Distance to the {k}-th nearest neighbour (median {np.median(distances):.3f})",
+        xaxis_title="Points, sorted by distance",
+        yaxis_title=f"{k}-th NN distance",
+        margin=dict(l=10, r=10, t=40, b=10),
+        height=260,
+    )
+    return fig

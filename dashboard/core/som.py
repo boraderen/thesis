@@ -7,6 +7,7 @@ from typing import Iterable
 import numpy as np
 import streamlit as st
 from minisom import MiniSom
+from sklearn.metrics import pairwise_distances
 
 
 @dataclass(frozen=True)
@@ -20,6 +21,7 @@ class SOMResult:
     cell_labels: list[str]  # length grid_h * grid_w — log-agnostic enumeration "S{id}"
     cell_counts: np.ndarray  # 1D length grid_h * grid_w
     cell_dominant: list[str]  # length grid_h * grid_w — descriptive overlay for tooltips
+    codebook: np.ndarray | None = None  # (grid_h * grid_w, dim) cell vectors, SOM only
 
 
 def _label_cells(
@@ -57,18 +59,21 @@ def train_som(
     seed: int = 7,
     annotations: tuple[str, ...] | None = None,
     init: str = "random",
+    metric: str = "euclidean",
 ) -> SOMResult:
     """Train a SOM for ~`epochs` random-order passes; return BMU assignments + cell labels.
 
     `init` selects the weight initialization: "random" sets each cell to a
     randomly drawn data sample; "pca" spans the grid across the first two
     principal components (falls back to random for one-dimensional inputs).
+    `metric` is the distance a sample's best-matching unit is decided by.
     """
     if matrix.size == 0:
         raise ValueError("Empty matrix")
     dim = matrix.shape[1]
     sigma = max(1.0, min(grid_h, grid_w) / 2.0)
-    som = MiniSom(grid_h, grid_w, dim, sigma=sigma, learning_rate=0.5, random_seed=seed)
+    som = MiniSom(grid_h, grid_w, dim, sigma=sigma, learning_rate=0.5, random_seed=seed,
+                  activation_distance=metric)
     if init == "pca" and dim >= 2:
         som.pca_weights_init(matrix)
     else:
@@ -86,4 +91,11 @@ def train_som(
         cell_labels=labels,
         cell_counts=counts,
         cell_dominant=dominants,
+        codebook=som.get_weights().reshape(grid_h * grid_w, dim),
     )
+
+
+@st.cache_data(show_spinner=False)
+def cell_distances(codebook: np.ndarray, metric: str = "euclidean") -> np.ndarray:
+    """Distance between every pair of cell vectors, under the metric they were trained with."""
+    return pairwise_distances(np.asarray(codebook, dtype=float), metric=metric)

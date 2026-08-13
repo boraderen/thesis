@@ -15,8 +15,8 @@ _CELL_NAMES = {
     "completions": "Burst closing",
     "stalled_cases": "Stalling",
     "active_cases": "High load",
-    "total_events": "High throughput",
-    "mean_delta_t": "Irregular timing",
+    "events_per_case": "Busy cases",
+    "mean_delta_t": "Slow cases",
     "std_delta_t": "Irregular timing",
 }
 
@@ -32,25 +32,36 @@ class InterSpec:
     window_starts: pd.DatetimeIndex
 
 
-def _zlog_minutes(seconds: np.ndarray) -> np.ndarray:
-    """Seconds → ln(minutes), zeros preserved."""
-    return np.log1p(np.clip(seconds / 60.0, 0, None))
+def _epoch_ns(values) -> np.ndarray:
+    """Timestamps as int64 nanoseconds, whatever resolution the log carries."""
+    return pd.DatetimeIndex(values).as_unit("ns").view("int64")
 
 
 def _stalled_count(
-    case_last: pd.Series, win_starts: pd.DatetimeIndex, win_minutes: int, stall_minutes: int
+    df: pd.DataFrame, win_starts: pd.DatetimeIndex, win_minutes: int, stall_minutes: int
 ) -> np.ndarray:
-    """For each window end, count cases whose last event is older than `stall_minutes`.
+    """For each window end, count the still-running cases idle for longer than τ.
 
-    Vectorised via searchsorted on case_last sorted in ns. We count cases with
-    `case_last < (win_end - threshold)` — under threshold > 0 this already implies
-    the case has started by win_end, so a separate filter is unnecessary.
+    A case waits between two of its consecutive events, and its last event
+    completes it — so only the gaps between consecutive events can stall, and a
+    completed case is never counted (same reading of "completion" as the
+    completions feature). Of those gaps only the ones longer than τ can stall;
+    such a gap contributes to every window end that falls more than τ after its
+    earlier event and before its later one. Counting both bounds with
+    searchsorted over the sorted endpoints does all windows at once.
     """
-    threshold_ns = pd.Timedelta(minutes=stall_minutes).value
-    win_end = win_starts + pd.Timedelta(minutes=win_minutes)
-    cutoff_ns = win_end.view("int64") - threshold_ns
-    last_ns = np.sort(pd.DatetimeIndex(case_last).view("int64"))
-    return np.searchsorted(last_ns, cutoff_ns, side="left").astype(int)
+    threshold = pd.Timedelta(minutes=stall_minutes)
+    ordered = df.sort_values(["case:concept:name", "time:timestamp"])
+    current = ordered["time:timestamp"]
+    following = ordered.groupby("case:concept:name")["time:timestamp"].shift(-1)
+    stalls = (following - current) > threshold  # a case's last event has no gap: NaT → False
+    onset = np.sort(_epoch_ns(current[stalls] + threshold))
+    resumes = np.sort(_epoch_ns(following[stalls]))
+    win_end = _epoch_ns(win_starts + pd.Timedelta(minutes=win_minutes))
+    return (
+        np.searchsorted(onset, win_end, side="left")
+        - np.searchsorted(resumes, win_end, side="right")
+    ).astype(int)
 
 
 def _describe_cell(features: np.ndarray, columns: list[str]) -> str:
@@ -62,12 +73,17 @@ def _describe_cell(features: np.ndarray, columns: list[str]) -> str:
 
 
 def _delta_stats(df: pd.DataFrame, win_idx: pd.DatetimeIndex) -> tuple[np.ndarray, np.ndarray]:
-    """Mean and std of ln-minute gaps between consecutive in-window events, per window."""
-    ordered = df.sort_values(["__win__", "time:timestamp"])
-    gap_s = ordered.groupby("__win__")["time:timestamp"].diff().dt.total_seconds()
+    """Mean and std of the gaps in minutes to the previous event *of the same case*, per window.
+
+    Each gap is credited to the window of its later event, so a window measures
+    how fast the cases that were running in it moved — not how densely the
+    system's events happened to interleave.
+    """
+    ordered = df.sort_values(["case:concept:name", "time:timestamp"])
+    gap_s = ordered.groupby("case:concept:name")["time:timestamp"].diff().dt.total_seconds()
     mask = gap_s.notna()
-    log_min = pd.Series(_zlog_minutes(gap_s[mask].to_numpy()), index=gap_s.index[mask])
-    grouped = log_min.groupby(ordered.loc[mask, "__win__"])
+    minutes = (gap_s[mask] / 60.0).clip(lower=0)
+    grouped = minutes.groupby(ordered.loc[mask, "__win__"])
     agg = grouped.agg(["mean", "std"]).reindex(win_idx).fillna(0.0)
     return agg["mean"].to_numpy(dtype=float), agg["std"].to_numpy(dtype=float)
 
@@ -131,15 +147,17 @@ def _attribute_columns(
 def _window_counts(
     df: pd.DataFrame, win_idx: pd.DatetimeIndex, origin: pd.Timestamp, win_minutes: int
 ) -> pd.DataFrame:
-    """Compute active/arrivals/completions/totals per window."""
+    """Compute active cases, arrivals, completions and events per active case per window."""
     first = floor_to_window(df.groupby("case:concept:name")["time:timestamp"].min(), origin, win_minutes)
     last = floor_to_window(df.groupby("case:concept:name")["time:timestamp"].max(), origin, win_minutes)
+    active = df.groupby("__win__")["case:concept:name"].nunique().reindex(win_idx, fill_value=0)
+    events = df.groupby("__win__").size().reindex(win_idx, fill_value=0)
     return pd.DataFrame(
         {
-            "active_cases": df.groupby("__win__")["case:concept:name"].nunique().reindex(win_idx, fill_value=0),
+            "active_cases": active,
             "new_arrivals": first.value_counts().reindex(win_idx, fill_value=0),
             "completions": last.value_counts().reindex(win_idx, fill_value=0),
-            "total_events": df.groupby("__win__").size().reindex(win_idx, fill_value=0),
+            "events_per_case": events.div(active.replace(0, np.nan)).fillna(0.0),
         },
         index=win_idx,
     ).astype(float)
@@ -161,15 +179,14 @@ def build_features(
 
     counts = _window_counts(df, win_idx, origin, window_minutes)
     deltas_mean, deltas_std = _delta_stats(df, win_idx)
-    case_last = df.groupby("case:concept:name")["time:timestamp"].max()
-    stalled = _stalled_count(case_last, win_idx, window_minutes, stall_minutes)
+    stalled = _stalled_count(df, win_idx, window_minutes, stall_minutes)
 
     out = counts.assign(mean_delta_t=deltas_mean, std_delta_t=deltas_std, stalled_cases=stalled.astype(float))
     attrs = _attribute_columns(df, win_idx, numeric_attrs, categorical_attrs)
     out = out.join(attrs)
     out.index.name = "window_start"
     groups = {
-        "counts": ["active_cases", "total_events"],
+        "counts": ["active_cases", "events_per_case"],
         "rates": ["new_arrivals", "completions"],
         "gaps": ["mean_delta_t", "std_delta_t"],
         "stall": ["stalled_cases"],

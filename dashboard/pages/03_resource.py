@@ -5,17 +5,18 @@ import pandas as pd
 import streamlit as st
 
 from core.controls import log_signature, seed_choice, seed_multi, seed_widget
-from core.dbscan import cluster_dbscan
+from core.dbscan import cluster_dbscan, k_distances
+from core.distance import DISTANCE_LABELS, SUPPORTED_DISTANCES
 from core.features.resource import build_features
 from core.kmeans import cluster_kmeans
 from core.loader import span_label
-from core.pca import fit_pca
+from core.pca import SCALING_LABELS, fit_pca, standardize
 from core.schema import (
     RESOURCE_FEATURE_COLUMNS,
     RESOURCE_FEATURE_LABELS as KIND_LABELS,
     feature_availability,
 )
-from core.som import train_som
+from core.som import cell_distances, train_som
 from core.state_attribution import window_vector_shift
 from core.transitions import find_transitions
 from core.windows import (
@@ -26,9 +27,14 @@ from core.windows import (
 )
 from viz.drift_scores import score_line
 from viz.drift_signal import add_window_boundaries
-from viz.som_grid import som_heatmap
+from viz.som_grid import cell_distance_heatmap, som_heatmap
 from viz.tables import styled_feature_table
-from viz.trajectory import add_transition_markers, pca_variance_plot, state_timeline
+from viz.trajectory import (
+    add_transition_markers,
+    k_distance_plot,
+    pca_variance_plot,
+    state_timeline,
+)
 
 st.set_page_config(page_title="Resource states", layout="wide")
 st.title("3 — Resource states")
@@ -74,6 +80,7 @@ RESOURCE_RESULT_KEYS = (
     "resource_matrix",
     "resource_spec",
     "resource_pca",
+    "resource_reduced",
     "resource_som",
     "resource_selected_cols",
     "resource_run_config",
@@ -103,11 +110,19 @@ for kind in KIND_LABELS:
         st.session_state[f"resource_kind_{kind}"] = False
 seed_multi("resource_res_sel", run_cfg.get("resources", all_resources), all_resources)
 seed_multi("resource_act_sel", run_cfg.get("activities", all_activities), all_activities)
+seed_widget("resource_skip_pca_sel", bool(run_cfg.get("skip_pca", False)))
 seed_widget("resource_pca_k_sel", int(run_cfg.get("pca_k", 0)))
+seed_choice("resource_scaling_sel", run_cfg.get("scaling", "none"), tuple(SCALING_LABELS))
 seed_choice("resource_cluster_sel", run_cfg.get("clustering", "som"), tuple(CLUSTERING_LABELS))
 seed_choice("resource_init_sel", run_cfg.get("som_init", "random"), tuple(INIT_LABELS))
+seed_choice(
+    "resource_metric_sel",
+    run_cfg.get("metric", "euclidean"),
+    SUPPORTED_DISTANCES[st.session_state["resource_cluster_sel"]],
+)
 seed_widget("resource_eps_sel", float(run_cfg.get("eps", 0.5)))
 seed_widget("resource_minpts_sel", int(run_cfg.get("min_samples", 5)))
+seed_widget("resource_kdist_sel", int(run_cfg.get("kdist_k", 5)))
 seed_widget("resource_kmeans_k_sel", int(run_cfg.get("kmeans_k", 6)))
 grid_default = tuple(run_cfg.get("grid", (2, 3)))
 seed_widget("resource_grid_h_sel", int(grid_default[0]))
@@ -132,8 +147,16 @@ with st.sidebar:
     picked_activities = st.multiselect("Activities", options=all_activities, key="resource_act_sel")
 
     st.subheader("Dimensionality reduction")
-    st.number_input("PCA components (0 = auto)", min_value=0, max_value=20, step=1,
-                    key="resource_pca_k_sel")
+    skip_pca = st.checkbox("Skip PCA", key="resource_skip_pca_sel")
+    if not skip_pca:
+        st.number_input("PCA components (0 = auto)", min_value=0, max_value=20, step=1,
+                        key="resource_pca_k_sel")
+    scaling = st.radio(
+        "Scaling",
+        options=tuple(SCALING_LABELS),
+        key="resource_scaling_sel",
+        format_func=lambda s: SCALING_LABELS[s],
+    )
 
     st.subheader("Clustering")
     clustering = st.radio(
@@ -141,6 +164,12 @@ with st.sidebar:
         options=tuple(CLUSTERING_LABELS),
         key="resource_cluster_sel",
         format_func=lambda m: CLUSTERING_LABELS[m],
+    )
+    metric = st.selectbox(
+        "Distance",
+        SUPPORTED_DISTANCES[clustering],
+        key="resource_metric_sel",
+        format_func=lambda d: DISTANCE_LABELS[d],
     )
     if clustering == "som":
         col_grid_h, col_grid_w = st.columns(2)
@@ -155,6 +184,8 @@ with st.sidebar:
                         key="resource_eps_sel")
         st.number_input("DBSCAN min samples", min_value=1, max_value=1000, step=1,
                         key="resource_minpts_sel")
+        st.number_input("k for the k-distance curve", min_value=1, max_value=100, step=1,
+                        key="resource_kdist_sel")
     else:
         st.number_input("k-means clusters", min_value=2, max_value=25, step=1,
                         key="resource_kmeans_k_sel")
@@ -176,6 +207,7 @@ grid_w = int(st.session_state["resource_grid_w_sel"])
 som_init = st.session_state["resource_init_sel"]
 eps = float(st.session_state["resource_eps_sel"])
 min_samples = int(st.session_state["resource_minpts_sel"])
+kdist_k = int(st.session_state["resource_kdist_sel"])
 kmeans_k = int(st.session_state["resource_kmeans_k_sel"])
 
 
@@ -228,19 +260,29 @@ if run_pipeline:
                 "when using activity-resource features."
             )
             st.stop()
-        pca = fit_pca(matrix_df[selected_cols].to_numpy(), force_k=int(pca_k) if pca_k else None)
+        # PCA is optional; standardization, when asked for, applies to whatever
+        # goes into the clustering — the raw columns, or the PCA output.
+        pca = None if skip_pca else fit_pca(matrix_df[selected_cols].to_numpy(), force_k=int(pca_k) if pca_k else None)
+        reduced = matrix_df[selected_cols].to_numpy() if pca is None else pca.transformed
+        if scaling == "standardize":
+            reduced = standardize(reduced)
         if clustering == "dbscan":
-            som = cluster_dbscan(pca.transformed, eps=float(eps), min_samples=int(min_samples))
+            som = cluster_dbscan(
+                reduced, eps=float(eps), min_samples=int(min_samples),
+                metric=metric,
+            )
         elif clustering == "kmeans":
-            som = cluster_kmeans(pca.transformed, n_clusters=int(kmeans_k))
+            som = cluster_kmeans(reduced, n_clusters=int(kmeans_k), metric=metric)
         else:
             som = train_som(
-                pca.transformed, grid_h=grid_h, grid_w=grid_w, annotations=None, init=som_init
+                reduced, grid_h=grid_h, grid_w=grid_w, annotations=None,
+                init=som_init, metric=metric
             )
         matrix_df = matrix_df.assign(state_id=som.state_ids)
     st.session_state["resource_matrix"] = matrix_df
     st.session_state["resource_spec"] = spec
     st.session_state["resource_pca"] = pca
+    st.session_state["resource_reduced"] = reduced
     st.session_state["resource_som"] = som
     st.session_state["resource_selected_cols"] = selected_cols
     st.session_state["resource_log_signature"] = current_log_signature
@@ -248,10 +290,14 @@ if run_pipeline:
         "grid": (grid_h, grid_w),
         "clustering": clustering,
         "som_init": som_init,
+        "metric": metric,
         "eps": float(eps),
         "min_samples": int(min_samples),
+        "kdist_k": kdist_k,
         "kmeans_k": int(kmeans_k),
         "pca_k": int(pca_k),
+        "skip_pca": skip_pca,
+        "scaling": scaling,
         "window_minutes": int(window_minutes),
         "kinds": list(picked_kinds),
         "resources": list(picked_resources),
@@ -268,6 +314,7 @@ if (
 matrix_df = st.session_state["resource_matrix"]
 spec = st.session_state["resource_spec"]
 pca = st.session_state["resource_pca"]
+reduced = st.session_state["resource_reduced"]
 som = st.session_state["resource_som"]
 selected_cols = st.session_state["resource_selected_cols"]
 
@@ -281,12 +328,25 @@ preview_groups = {g: [c for c in cols if c in selected_cols] for g, cols in spec
 styled = styled_feature_table(matrix_df[preview_cols], preview_groups, max_rows=30)
 st.dataframe(styled, width="stretch", height=380)
 
-st.subheader("PCA")
-st.plotly_chart(pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim), width="stretch")
+ran_clustering = st.session_state["resource_run_config"].get("clustering", "som")
+ran_metric = st.session_state["resource_run_config"].get("metric", "euclidean")
+
+if pca is not None:
+    st.subheader("PCA")
+    st.plotly_chart(
+        pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim),
+        width="stretch",
+    )
+
+# The knee of the k-distance curve is read as the candidate DBSCAN eps.
+if ran_clustering == "dbscan":
+    st.subheader("k-distance curve")
+    st.plotly_chart(
+        k_distance_plot(k_distances(reduced, kdist_k, ran_metric), kdist_k), width="stretch"
+    )
 
 col_l, col_r = st.columns([1, 1])
 with col_l:
-    ran_clustering = st.session_state["resource_run_config"].get("clustering", "som")
     st.subheader(GRID_TITLES.get(ran_clustering, "States"))
     grid_view = st.radio(
         "Grid view", ("State colors", "Frequency"),
@@ -295,7 +355,8 @@ with col_l:
     st.plotly_chart(
         som_heatmap(
             som.grid_h, som.grid_w, som.cell_counts, som.cell_labels,
-            title="Window states", dominants=som.cell_dominant,
+            title=f"{CLUSTERING_LABELS[ran_clustering]} states",
+            dominants=som.cell_dominant,
             monochrome=grid_view == "Frequency",
         ),
         width="stretch",
@@ -314,6 +375,15 @@ with col_r:
         add_transition_markers(fig, transitions["timestamp"])
     st.plotly_chart(fig, width="stretch")
 
+# The SOM cell spacing, read as the scale at which its states separate.
+codebook = getattr(som, "codebook", None)
+if ran_clustering == "som" and codebook is not None:
+    st.subheader("Cell distances")
+    st.plotly_chart(
+        cell_distance_heatmap(cell_distances(codebook, ran_metric), som.cell_labels),
+        width="stretch",
+    )
+
 st.subheader("Transitions")
 if transitions.empty:
     st.caption("No state changes in this trajectory.")
@@ -324,13 +394,18 @@ else:
         width="stretch", height=min(420, 60 + 36 * len(transitions)),
     )
 
-st.subheader("Drift signal")
-st.caption(
-    "Distance between each window's compressed state vector and the previous "
-    "window's — spikes mark the windows where the resource picture changed."
+st.subheader("State vector distances")
+shift_metric = st.selectbox(
+    "Distance",
+    tuple(DISTANCE_LABELS),
+    key="resource_shift_metric_sel",
+    format_func=lambda d: DISTANCE_LABELS[d],
 )
-shift = window_vector_shift(matrix_df["window_start"], pca.transformed)
-shift_fig = score_line(shift, "score", title="‖window i − window i−1‖")
+st.caption("Each window's compressed state vector compared with the previous window's.")
+shift = window_vector_shift(matrix_df["window_start"], reduced, shift_metric)
+shift_fig = score_line(
+    shift, "score", title=f"{DISTANCE_LABELS[shift_metric]} distance: window i vs. window i−1"
+)
 add_window_boundaries(
     shift_fig, shift["window_start"], y_max=max(float(shift["score"].max()), 1e-9)
 )

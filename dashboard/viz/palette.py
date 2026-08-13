@@ -34,6 +34,8 @@ GROUP_TINTS: dict[str, str] = {
     "bigram": "#E1F5EE",
     "vocab": "#FAEEDA",
     "progress": "#EEEEEE",
+    "current": "#FAECE7",
+    "history": "#EFF4E4",
     "resource_a": "#FAEEDA",
     "resource_b": "#E1F5EE",
     "resource_c": "#EEEDFE",

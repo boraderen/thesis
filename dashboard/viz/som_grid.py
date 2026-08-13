@@ -86,3 +86,27 @@ def som_heatmap(
         height=320,
     )
     return fig
+
+
+def cell_distance_heatmap(distances: np.ndarray, labels: list[str]) -> go.Figure:
+    """Pairwise Euclidean distances between SOM cell vectors, as an annotated matrix."""
+    n = len(labels)
+    off_diagonal = distances[~np.eye(n, dtype=bool)] if n > 1 else np.zeros(1)
+    fig = go.Figure(data=go.Heatmap(
+        z=distances, x=labels, y=labels, colorscale="Blues", colorbar=dict(title="distance"),
+        hovertemplate="%{y} ↔ %{x}<br>distance=%{z:.3f}<extra></extra>",
+        xgap=1, ygap=1,
+    ))
+    if n <= 8:
+        fig.update_traces(text=np.round(distances, 2), texttemplate="%{text}")
+    fig.update_layout(
+        title=(
+            f"Cell-to-cell distance — closest pair {off_diagonal.min():.3f}, "
+            f"median {np.median(off_diagonal):.3f}, farthest {off_diagonal.max():.3f}"
+        ),
+        xaxis=dict(scaleanchor="y", constrain="domain"),
+        yaxis=dict(autorange="reversed"),
+        margin=dict(l=10, r=10, t=40, b=10),
+        height=320,
+    )
+    return fig

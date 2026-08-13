@@ -24,6 +24,8 @@ INTRA_FEATURE_LABELS = {
     "bigram": "Directly-follows counts",
     "vocab": "Distinct activity set",
     "progress": "Case progress",
+    "current": "Current activity",
+    "history": "Past activities",
 }
 RESOURCE_FEATURE_LABELS = {
     "events": "Events per resource",
@@ -37,10 +39,19 @@ INTER_FEATURE_LABELS = {
     "active_cases": "Active cases",
     "new_arrivals": "New arrivals",
     "completions": "Completions",
-    "total_events": "Total events",
+    "events_per_case": "Events per active case",
     "mean_delta_t": "Mean Δt",
     "std_delta_t": "Std Δt",
     "stalled_cases": "Stalled cases",
+}
+# Inter-case features one *mapped case attribute* contributes. They are not part
+# of INTER_FEATURE_LABELS: the real feature keys carry the attribute's own name
+# and only exist once a log is mapped, while these describe the kinds up front.
+CASE_ATTRIBUTE = "case attribute"
+ATTRIBUTE_FEATURE_LABELS = {
+    "attr_mean": "Mean of a numeric case attribute",
+    "attr_std": "Std of a numeric case attribute",
+    "attr_share": "Value shares of a categorical case attribute",
 }
 
 # feature key -> columns the log must contain; an inner tuple means any one of them.
@@ -57,16 +68,21 @@ INTER_FEATURE_COLUMNS = {
     "active_cases": ("case:concept:name", "time:timestamp"),
     "new_arrivals": ("case:concept:name", "time:timestamp"),
     "completions": ("case:concept:name", "time:timestamp"),
-    "total_events": ("time:timestamp",),
-    "mean_delta_t": ("time:timestamp",),
-    "std_delta_t": ("time:timestamp",),
+    "events_per_case": ("case:concept:name", "time:timestamp"),
+    "mean_delta_t": ("case:concept:name", "time:timestamp"),
+    "std_delta_t": ("case:concept:name", "time:timestamp"),
     "stalled_cases": ("case:concept:name", "time:timestamp"),
 }
+ATTRIBUTE_FEATURE_COLUMNS = {key: ("time:timestamp", CASE_ATTRIBUTE) for key in ATTRIBUTE_FEATURE_LABELS}
 
 PERSPECTIVES = (
     ("Intra-case", INTRA_FEATURE_LABELS, INTRA_FEATURE_COLUMNS),
     ("Resource", RESOURCE_FEATURE_LABELS, RESOURCE_FEATURE_COLUMNS),
-    ("Inter-case", INTER_FEATURE_LABELS, INTER_FEATURE_COLUMNS),
+    (
+        "Inter-case",
+        {**INTER_FEATURE_LABELS, **ATTRIBUTE_FEATURE_LABELS},
+        {**INTER_FEATURE_COLUMNS, **ATTRIBUTE_FEATURE_COLUMNS},
+    ),
 )
 
 

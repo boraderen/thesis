@@ -16,7 +16,7 @@ from typing import Iterable, Sequence
 import pandas as pd
 import streamlit as st
 
-INTRA_SCHEMA_VERSION = "intra_prefix_v1"
+INTRA_SCHEMA_VERSION = "intra_prefix_v2"
 
 
 def log_signature(df: pd.DataFrame, schema_version: str) -> tuple[object, ...]:

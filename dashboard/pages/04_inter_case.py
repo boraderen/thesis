@@ -8,13 +8,14 @@ import pandas as pd
 import streamlit as st
 
 from core.controls import log_signature, seed_choice, seed_widget
-from core.dbscan import cluster_dbscan
+from core.dbscan import cluster_dbscan, k_distances
+from core.distance import DISTANCE_LABELS, SUPPORTED_DISTANCES
 from core.features.inter_case import attribute_features, build_features, describe_cells
 from core.kmeans import cluster_kmeans
 from core.loader import span_label
-from core.pca import fit_pca
+from core.pca import SCALING_LABELS, fit_pca, standardize
 from core.schema import INTER_FEATURE_LABELS as FEATURE_LABELS
-from core.som import train_som
+from core.som import cell_distances, train_som
 from core.state_attribution import window_vector_shift
 from core.transitions import find_transitions
 from core.windows import (
@@ -25,9 +26,14 @@ from core.windows import (
 )
 from viz.drift_scores import score_line
 from viz.drift_signal import add_window_boundaries
-from viz.som_grid import som_heatmap
+from viz.som_grid import cell_distance_heatmap, som_heatmap
 from viz.tables import styled_feature_table
-from viz.trajectory import add_transition_markers, pca_variance_plot, state_timeline
+from viz.trajectory import (
+    add_transition_markers,
+    k_distance_plot,
+    pca_variance_plot,
+    state_timeline,
+)
 
 st.set_page_config(page_title="Inter-case states", layout="wide")
 st.title("4 — Inter-case states")
@@ -43,10 +49,10 @@ FEATURE_DESCRIPTIONS = {
     "active_cases": "Number of distinct cases with at least one event in the calendar window.",
     "new_arrivals": "Number of cases whose first event falls inside the window.",
     "completions": "Number of cases whose last event falls inside the window.",
-    "total_events": "Total number of events in the window.",
-    "mean_delta_t": "Mean gap between consecutive events inside the window, in ln-minutes.",
-    "std_delta_t": "Standard deviation of the gaps between consecutive events inside the window, in ln-minutes.",
-    "stalled_cases": "Number of cases whose last event is older than the stall threshold τ at the window end.",
+    "events_per_case": "Events in the window divided by the number of cases active in it.",
+    "mean_delta_t": "Mean gap between an event and the previous event of the same case, in minutes.",
+    "std_delta_t": "Standard deviation of those within-case gaps, in minutes.",
+    "stalled_cases": "Number of cases still running at the window end whose most recent event is older than the stall threshold τ. Completed cases are not counted.",
 }
 
 
@@ -95,11 +101,12 @@ INIT_LABELS = {
     "pca": "PCA plane",
 }
 
-INTER_SCHEMA_VERSION = "inter_window_v1"
+INTER_SCHEMA_VERSION = "inter_window_v4"
 INTER_RESULT_KEYS = (
     "inter_matrix",
     "inter_spec",
     "inter_pca",
+    "inter_reduced",
     "inter_som",
     "inter_selected_cols",
     "inter_run_config",
@@ -120,11 +127,19 @@ default_features = run_cfg.get("features", INTER_FEATURES)
 for feature in INTER_FEATURES:
     seed_widget(f"inter_feat_{feature}", feature in default_features)
 seed_widget("inter_stall_sel", int(run_cfg.get("stall_minutes", 60)))
+seed_widget("inter_skip_pca_sel", bool(run_cfg.get("skip_pca", False)))
 seed_widget("inter_pca_k_sel", int(run_cfg.get("pca_k", 0)))
+seed_choice("inter_scaling_sel", run_cfg.get("scaling", "none"), tuple(SCALING_LABELS))
 seed_choice("inter_cluster_sel", run_cfg.get("clustering", "som"), tuple(CLUSTERING_LABELS))
 seed_choice("inter_init_sel", run_cfg.get("som_init", "random"), tuple(INIT_LABELS))
+seed_choice(
+    "inter_metric_sel",
+    run_cfg.get("metric", "euclidean"),
+    SUPPORTED_DISTANCES[st.session_state["inter_cluster_sel"]],
+)
 seed_widget("inter_eps_sel", float(run_cfg.get("eps", 0.5)))
 seed_widget("inter_minpts_sel", int(run_cfg.get("min_samples", 5)))
+seed_widget("inter_kdist_sel", int(run_cfg.get("kdist_k", 5)))
 seed_widget("inter_kmeans_k_sel", int(run_cfg.get("kmeans_k", 6)))
 grid_default = tuple(run_cfg.get("grid", (2, 2)))
 seed_widget("inter_grid_h_sel", int(grid_default[0]))
@@ -145,12 +160,20 @@ with st.sidebar:
     with st.expander("Feature glossary"):
         for feature, label in FEATURE_LABELS.items():
             st.markdown(f"**{label}.** {FEATURE_DESCRIPTIONS[feature]}")
-    stall = st.slider("Stall threshold τ (minutes)", min_value=15, max_value=480, step=15,
+    stall = st.slider("Stall threshold τ (minutes)", min_value=0, max_value=1000, step=5,
                       key="inter_stall_sel")
 
     st.subheader("Dimensionality reduction")
-    st.number_input("PCA components (0 = auto)", min_value=0, max_value=20, step=1,
-                    key="inter_pca_k_sel")
+    skip_pca = st.checkbox("Skip PCA", key="inter_skip_pca_sel")
+    if not skip_pca:
+        st.number_input("PCA components (0 = auto)", min_value=0, max_value=20, step=1,
+                        key="inter_pca_k_sel")
+    scaling = st.radio(
+        "Scaling",
+        options=tuple(SCALING_LABELS),
+        key="inter_scaling_sel",
+        format_func=lambda s: SCALING_LABELS[s],
+    )
 
     st.subheader("Clustering")
     clustering = st.radio(
@@ -158,6 +181,12 @@ with st.sidebar:
         options=tuple(CLUSTERING_LABELS),
         key="inter_cluster_sel",
         format_func=lambda m: CLUSTERING_LABELS[m],
+    )
+    metric = st.selectbox(
+        "Distance",
+        SUPPORTED_DISTANCES[clustering],
+        key="inter_metric_sel",
+        format_func=lambda d: DISTANCE_LABELS[d],
     )
     if clustering == "som":
         col_grid_h, col_grid_w = st.columns(2)
@@ -172,6 +201,8 @@ with st.sidebar:
                         key="inter_eps_sel")
         st.number_input("DBSCAN min samples", min_value=1, max_value=1000, step=1,
                         key="inter_minpts_sel")
+        st.number_input("k for the k-distance curve", min_value=1, max_value=100, step=1,
+                        key="inter_kdist_sel")
     else:
         st.number_input("k-means clusters", min_value=2, max_value=25, step=1,
                         key="inter_kmeans_k_sel")
@@ -193,6 +224,7 @@ grid_w = int(st.session_state["inter_grid_w_sel"])
 som_init = st.session_state["inter_init_sel"]
 eps = float(st.session_state["inter_eps_sel"])
 min_samples = int(st.session_state["inter_minpts_sel"])
+kdist_k = int(st.session_state["inter_kdist_sel"])
 kmeans_k = int(st.session_state["inter_kmeans_k_sel"])
 
 if run_pipeline:
@@ -215,14 +247,23 @@ if run_pipeline:
             st.stop()
         selected_cols = [col for feature in picked for col in FEATURE_COLUMNS[feature]]
         mat = matrix_df[selected_cols].to_numpy()
-        pca = fit_pca(mat, force_k=int(pca_k) if pca_k else None)
+        # PCA is optional; standardization, when asked for, applies to whatever
+        # goes into the clustering — the raw columns, or the PCA output.
+        pca = None if skip_pca else fit_pca(mat, force_k=int(pca_k) if pca_k else None)
+        reduced = mat if pca is None else pca.transformed
+        if scaling == "standardize":
+            reduced = standardize(reduced)
         if clustering == "dbscan":
-            som = cluster_dbscan(pca.transformed, eps=float(eps), min_samples=int(min_samples))
+            som = cluster_dbscan(
+                reduced, eps=float(eps), min_samples=int(min_samples),
+                metric=metric,
+            )
         elif clustering == "kmeans":
-            som = cluster_kmeans(pca.transformed, n_clusters=int(kmeans_k))
+            som = cluster_kmeans(reduced, n_clusters=int(kmeans_k), metric=metric)
         else:
             som = train_som(
-                pca.transformed, grid_h=grid_h, grid_w=grid_w, annotations=None, init=som_init
+                reduced, grid_h=grid_h, grid_w=grid_w, annotations=None,
+                init=som_init, metric=metric
             )
         centroids = np.zeros((som.grid_h * som.grid_w, len(selected_cols)))
         for cell_id in range(som.grid_h * som.grid_w):
@@ -234,6 +275,7 @@ if run_pipeline:
     st.session_state["inter_matrix"] = matrix_df
     st.session_state["inter_spec"] = spec
     st.session_state["inter_pca"] = pca
+    st.session_state["inter_reduced"] = reduced
     st.session_state["inter_som"] = som
     st.session_state["inter_selected_cols"] = selected_cols
     st.session_state["inter_log_signature"] = current_log_signature
@@ -241,10 +283,14 @@ if run_pipeline:
         "grid": (grid_h, grid_w),
         "clustering": clustering,
         "som_init": som_init,
+        "metric": metric,
         "eps": float(eps),
         "min_samples": int(min_samples),
+        "kdist_k": kdist_k,
         "kmeans_k": int(kmeans_k),
         "pca_k": int(pca_k),
+        "skip_pca": skip_pca,
+        "scaling": scaling,
         "window_minutes": int(window_minutes),
         "stall_minutes": int(stall),
         "features": list(picked),
@@ -260,6 +306,7 @@ if (
 matrix_df = st.session_state["inter_matrix"]
 spec = st.session_state["inter_spec"]
 pca = st.session_state["inter_pca"]
+reduced = st.session_state["inter_reduced"]
 som = st.session_state["inter_som"]
 selected_cols = st.session_state["inter_selected_cols"]
 
@@ -273,15 +320,25 @@ preview_groups = {g: [c for c in cols if c in selected_cols] for g, cols in spec
 styled = styled_feature_table(matrix_df[preview_cols], preview_groups, max_rows=30)
 st.dataframe(styled, width="stretch", height=380)
 
-st.subheader("PCA")
-st.plotly_chart(
-    pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim),
-    width="stretch",
-)
+ran_clustering = st.session_state["inter_run_config"].get("clustering", "som")
+ran_metric = st.session_state["inter_run_config"].get("metric", "euclidean")
+
+if pca is not None:
+    st.subheader("PCA")
+    st.plotly_chart(
+        pca_variance_plot(pca.explained_variance_ratio, pca.chosen_k, pca.raw_dim),
+        width="stretch",
+    )
+
+# The knee of the k-distance curve is read as the candidate DBSCAN eps.
+if ran_clustering == "dbscan":
+    st.subheader("k-distance curve")
+    st.plotly_chart(
+        k_distance_plot(k_distances(reduced, kdist_k, ran_metric), kdist_k), width="stretch"
+    )
 
 col_l, col_r = st.columns([1, 1])
 with col_l:
-    ran_clustering = st.session_state["inter_run_config"].get("clustering", "som")
     st.subheader(GRID_TITLES.get(ran_clustering, "States"))
     grid_view = st.radio(
         "Grid view", ("State colors", "Frequency"),
@@ -290,7 +347,8 @@ with col_l:
     st.plotly_chart(
         som_heatmap(
             som.grid_h, som.grid_w, som.cell_counts, som.cell_labels,
-            title="System-level states", dominants=som.cell_dominant,
+            title=f"{CLUSTERING_LABELS[ran_clustering]} states",
+            dominants=som.cell_dominant,
             monochrome=grid_view == "Frequency",
         ),
         width="stretch",
@@ -309,6 +367,15 @@ with col_r:
         add_transition_markers(fig, transitions["timestamp"])
     st.plotly_chart(fig, width="stretch")
 
+# The SOM cell spacing, read as the scale at which its states separate.
+codebook = getattr(som, "codebook", None)
+if ran_clustering == "som" and codebook is not None:
+    st.subheader("Cell distances")
+    st.plotly_chart(
+        cell_distance_heatmap(cell_distances(codebook, ran_metric), som.cell_labels),
+        width="stretch",
+    )
+
 st.subheader("Transitions")
 if transitions.empty:
     st.caption("No state changes in this trajectory.")
@@ -319,13 +386,18 @@ else:
         width="stretch", height=min(420, 60 + 36 * len(transitions)),
     )
 
-st.subheader("Drift signal")
-st.caption(
-    "Distance between each window's compressed state vector and the previous "
-    "window's — spikes mark the windows where the system picture changed."
+st.subheader("State vector distances")
+shift_metric = st.selectbox(
+    "Distance",
+    tuple(DISTANCE_LABELS),
+    key="inter_shift_metric_sel",
+    format_func=lambda d: DISTANCE_LABELS[d],
 )
-shift = window_vector_shift(matrix_df["window_start"], pca.transformed)
-shift_fig = score_line(shift, "score", title="‖window i − window i−1‖")
+st.caption("Each window's compressed state vector compared with the previous window's.")
+shift = window_vector_shift(matrix_df["window_start"], reduced, shift_metric)
+shift_fig = score_line(
+    shift, "score", title=f"{DISTANCE_LABELS[shift_metric]} distance: window i vs. window i−1"
+)
 add_window_boundaries(
     shift_fig, shift["window_start"], y_max=max(float(shift["score"].max()), 1e-9)
 )
