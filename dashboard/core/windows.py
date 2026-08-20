@@ -25,12 +25,17 @@ WINDOW_MINUTE_OPTIONS: list[tuple[int, str]] = [
 ]
 
 
-def window_minute_choices(extra: int | None = None) -> list[int]:
-    """Return the sorted list of minute values, optionally including a custom value."""
+def window_minute_choices(extra: object | None = None) -> list[int]:
+    """Return the sorted list of minute values, optionally including a custom value.
+
+    `extra` may be a hand-typed string; anything that is not a positive number
+    is ignored rather than breaking the option list.
+    """
     values = [m for m, _ in WINDOW_MINUTE_OPTIONS]
-    if extra is not None and extra not in values:
-        values = sorted({*values, int(extra)})
-    return values
+    if extra is None:
+        return values
+    minutes = as_window_minutes(extra, fallback=0)
+    return values if minutes in (0, *values) else sorted({*values, minutes})
 
 
 def window_minute_label(minutes: int) -> str:
@@ -69,3 +74,12 @@ def window_index(origin: pd.Timestamp, last_ts: pd.Timestamp, minutes: int) -> p
     freq = pd.Timedelta(minutes=minutes)
     last_win = origin + ((last_ts - origin) // freq) * freq
     return pd.date_range(start=origin, end=last_win, freq=freq)
+
+
+def as_window_minutes(value: object, fallback: int) -> int:
+    """Coerce a picked or hand-typed window size to a positive whole number of minutes."""
+    try:
+        minutes = int(float(str(value).strip()))
+    except (TypeError, ValueError):
+        return fallback
+    return minutes if minutes > 0 else fallback

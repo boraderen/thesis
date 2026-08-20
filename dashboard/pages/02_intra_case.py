@@ -19,9 +19,14 @@ from core.loader import span_label
 from core.pca import SCALING_LABELS, fit_pca, standardize
 from core.schema import INTRA_FEATURE_LABELS as GROUP_LABELS
 from core.som import cell_distances, train_som
-from core.state_attribution import DIVERGENCE_LABELS, intra_state_shift
+from core.state_attribution import (
+    DIVERGENCE_LABELS,
+    REFERENCE_LABELS,
+    intra_state_shift,
+)
 from core.transitions import find_transitions
 from core.windows import (
+    as_window_minutes,
     default_window_minutes,
     log_span_minutes,
     window_minute_choices,
@@ -112,6 +117,7 @@ seed_choice(
 seed_widget("intra_eps_sel", float(run_cfg.get("eps", 0.5)))
 seed_widget("intra_minpts_sel", int(run_cfg.get("min_samples", 5)))
 seed_widget("intra_kdist_sel", int(run_cfg.get("kdist_k", 5)))
+seed_widget("intra_lookback_sel", 5)  # l for the rolling-reference divergence
 seed_widget("intra_kmeans_k_sel", int(run_cfg.get("kmeans_k", 6)))
 grid_default = tuple(run_cfg.get("grid", (3, 3)))
 seed_widget("intra_grid_h_sel", int(grid_default[0]))
@@ -119,6 +125,10 @@ seed_widget("intra_grid_w_sel", int(grid_default[1]))
 seed_widget(
     "intra_W_sel",
     int(run_cfg.get("distribution_W", default_window_minutes(log_span_minutes(log)))),
+)
+# The window selectbox takes hand-typed values, which arrive as strings.
+st.session_state["intra_W_sel"] = as_window_minutes(
+    st.session_state["intra_W_sel"], default_window_minutes(log_span_minutes(log))
 )
 
 with st.sidebar:
@@ -171,20 +181,24 @@ with st.sidebar:
     elif clustering == "dbscan":
         st.number_input("DBSCAN eps", min_value=0.05, max_value=100.0, step=0.05,
                         key="intra_eps_sel")
-        st.number_input("DBSCAN min samples", min_value=1, max_value=1000, step=1,
+        st.number_input("DBSCAN min samples", min_value=1, step=1,
                         key="intra_minpts_sel")
-        st.number_input("k for the k-distance curve", min_value=1, max_value=100, step=1,
+        st.number_input("k for the k-distance curve", min_value=1, step=1,
                         key="intra_kdist_sel")
     else:
         st.number_input("k-means clusters", min_value=2, max_value=25, step=1,
                         key="intra_kmeans_k_sel")
 
     st.subheader("Windows")
-    distribution_W = st.selectbox(
-        "Distribution window W",
-        window_minute_choices(st.session_state["intra_W_sel"]),
-        key="intra_W_sel",
-        format_func=window_minute_label,
+    distribution_W = as_window_minutes(
+        st.selectbox(
+            "Distribution window W",
+            window_minute_choices(st.session_state["intra_W_sel"]),
+            key="intra_W_sel",
+            format_func=window_minute_label,
+            accept_new_options=True,
+        ),
+        default_window_minutes(log_span_minutes(log)),
     )
     run_pipeline = st.button("Run intra-case pipeline", width="stretch", type="primary")
 
@@ -358,16 +372,35 @@ add_window_boundaries(freq_fig, intra_dist["window_start"])
 st.plotly_chart(freq_fig, width="stretch")
 
 st.subheader("Freq. distri divergences")
-divergence = st.selectbox(
+pick_div, pick_ref, pick_l = st.columns([1, 1, 1])
+divergence = pick_div.selectbox(
     "Divergence",
     tuple(DIVERGENCE_LABELS),
     key="intra_divergence_sel",
     format_func=lambda d: DIVERGENCE_LABELS[d],
 )
-st.caption("Each window's state distribution compared with the previous window's.")
-shift = intra_state_shift(intra_dist, divergence)
+reference = pick_ref.selectbox(
+    "Compare against",
+    tuple(REFERENCE_LABELS),
+    key="intra_reference_sel",
+    format_func=lambda r: REFERENCE_LABELS[r],
+)
+lookback = (
+    pick_l.number_input("Windows to average (l)", min_value=1, step=1, key="intra_lookback_sel")
+    if reference == "recent"
+    else st.session_state.get("intra_lookback_sel", 5)
+)
+REFERENCE_PHRASES = {
+    "previous": "window i−1",
+    "recent": f"mean of the {int(lookback)} windows before i",
+    "baseline": "full-log baseline",
+}
+st.caption("Each window's state distribution compared with its reference.")
+shift = intra_state_shift(intra_dist, divergence, reference, int(lookback))
 shift_fig = score_line(
-    shift, "score", title=f"{DIVERGENCE_LABELS[divergence]}: window i vs. window i−1"
+    shift,
+    "score",
+    title=f"{DIVERGENCE_LABELS[divergence]}: window i vs. {REFERENCE_PHRASES[reference]}",
 )
 add_window_boundaries(
     shift_fig, shift["window_start"], y_max=max(float(shift["score"].max()), 1e-9)

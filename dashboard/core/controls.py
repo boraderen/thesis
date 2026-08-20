@@ -45,12 +45,19 @@ def seed_choice(key: str, default: object, options: Sequence) -> None:
 
 
 def seed_multi(key: str, defaults: Iterable, options: Sequence) -> None:
-    """Seed a multiselect slot, dropping stored entries that left the option set."""
+    """Seed a multiselect slot, dropping stored entries that left the option set.
+
+    An empty selection is a choice the user made, not an unseeded slot: clearing
+    the box has to survive the rerun, or the entries come straight back and it
+    is impossible to clear it and pick a few. A slot whose entries *all* left the
+    option set (a different log) is a different case and does get re-seeded.
+    """
     current = st.session_state.get(key)
-    if current is not None:
-        kept = [v for v in current if v in options]
-        if kept:
-            if len(kept) != len(current):
-                st.session_state[key] = kept
-            return
-    st.session_state[key] = [v for v in defaults if v in options]
+    if current is None:
+        st.session_state[key] = [v for v in defaults if v in options]
+        return
+    kept = [v for v in current if v in options]
+    if current and not kept:
+        st.session_state[key] = [v for v in defaults if v in options]
+    elif len(kept) != len(current):
+        st.session_state[key] = kept

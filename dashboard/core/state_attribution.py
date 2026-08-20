@@ -1,15 +1,23 @@
-"""State-based drift signals: how far each window sits from the window before it.
+"""State-based drift signals: how far each window sits from a reference window.
 
 Stays within the state-based method — no raw activity / resource / attribute
-distributions are read here. Every score is window-to-window, never against a
-full-log baseline, so a shift shows up where it happens instead of being spread
-over every window that differs from the average.
+distributions are read here. The default reference is the window before, so a
+shift shows up where it happens instead of being spread over every window that
+differs from the average; the other references trade that locality for a
+steadier comparison.
 """
 from __future__ import annotations
 
 import numpy as np
 import pandas as pd
 import streamlit as st
+
+# What a window's state distribution is compared against.
+REFERENCE_LABELS = {
+    "previous": "Previous window",
+    "recent": "Average of the last l windows",
+    "baseline": "Full-log baseline",
+}
 
 # Ways to compare two state *distributions* (intra-case windows).
 DIVERGENCE_LABELS = {
@@ -64,15 +72,38 @@ def _vector_distance(later: np.ndarray, earlier: np.ndarray, metric: str) -> np.
     raise ValueError(f"Unknown metric: {metric}")
 
 
+def _reference_rows(rows: np.ndarray, reference: str, lookback: int) -> list[np.ndarray | None]:
+    """The distribution each window is compared against; None means "no score yet"."""
+    if reference == "baseline":
+        base = rows.mean(axis=0)
+        return [base] * len(rows)
+    if reference == "recent":
+        span = max(1, int(lookback))
+        return [None] + [rows[max(0, i - span):i].mean(axis=0) for i in range(1, len(rows))]
+    return [None] + [rows[i - 1] for i in range(1, len(rows))]
+
+
 @st.cache_data(show_spinner=False)
-def intra_state_shift(intra_dist: pd.DataFrame, divergence: str = "kl") -> pd.DataFrame:
-    """Compare each window's intra-case state distribution with the previous window's."""
+def intra_state_shift(
+    intra_dist: pd.DataFrame,
+    divergence: str = "kl",
+    reference: str = "previous",
+    lookback: int = 5,
+) -> pd.DataFrame:
+    """Compare each window's intra-case state distribution against its reference.
+
+    The reference is the window before it, the mean of the `lookback` windows
+    before it, or the mean over every window in the log.
+    """
     cols = [c for c in intra_dist.columns if c.startswith("intra_S")]
     if not cols or intra_dist.empty:
         return pd.DataFrame({"window_start": intra_dist.get("window_start", []), "score": []})
     dist = intra_dist.sort_values("window_start")
     rows = dist[cols].to_numpy(dtype=float)
-    scores = [0.0] + [_divergence(rows[i], rows[i - 1], divergence) for i in range(1, len(rows))]
+    scores = [
+        0.0 if against is None else _divergence(rows[i], against, divergence)
+        for i, against in enumerate(_reference_rows(rows, reference, lookback))
+    ]
     return pd.DataFrame({"window_start": dist["window_start"].values, "score": scores})
 
 

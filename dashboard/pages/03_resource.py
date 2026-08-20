@@ -20,6 +20,7 @@ from core.som import cell_distances, train_som
 from core.state_attribution import window_vector_shift
 from core.transitions import find_transitions
 from core.windows import (
+    as_window_minutes,
     default_window_minutes,
     log_span_minutes,
     window_minute_choices,
@@ -131,6 +132,10 @@ seed_widget(
     "resource_W_sel",
     int(run_cfg.get("window_minutes", default_window_minutes(log_span_minutes(log)))),
 )
+# The window selectbox takes hand-typed values, which arrive as strings.
+st.session_state["resource_W_sel"] = as_window_minutes(
+    st.session_state["resource_W_sel"], default_window_minutes(log_span_minutes(log))
+)
 
 with st.sidebar:
     st.header("Controls")
@@ -182,20 +187,24 @@ with st.sidebar:
     elif clustering == "dbscan":
         st.number_input("DBSCAN eps", min_value=0.05, max_value=100.0, step=0.05,
                         key="resource_eps_sel")
-        st.number_input("DBSCAN min samples", min_value=1, max_value=1000, step=1,
+        st.number_input("DBSCAN min samples", min_value=1, step=1,
                         key="resource_minpts_sel")
-        st.number_input("k for the k-distance curve", min_value=1, max_value=100, step=1,
+        st.number_input("k for the k-distance curve", min_value=1, step=1,
                         key="resource_kdist_sel")
     else:
         st.number_input("k-means clusters", min_value=2, max_value=25, step=1,
                         key="resource_kmeans_k_sel")
 
     st.subheader("Windows")
-    window_minutes = st.selectbox(
-        "Window W",
-        window_minute_choices(st.session_state["resource_W_sel"]),
-        key="resource_W_sel",
-        format_func=window_minute_label,
+    window_minutes = as_window_minutes(
+        st.selectbox(
+            "Window W",
+            window_minute_choices(st.session_state["resource_W_sel"]),
+            key="resource_W_sel",
+            format_func=window_minute_label,
+            accept_new_options=True,
+        ),
+        default_window_minutes(log_span_minutes(log)),
     )
     run_pipeline = st.button("Run resource pipeline", width="stretch", type="primary")
 

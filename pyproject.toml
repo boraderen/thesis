@@ -12,6 +12,7 @@ dependencies = [
     "pandas>=2.0",
     "plotly>=5.20",
     "pm4py>=2.7",
+    "python-dotenv>=1.2.3",
     "rheon",
     "scikit-learn>=1.4",
     "seaborn>=0.13",
