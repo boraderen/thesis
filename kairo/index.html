@@ -1,0 +1,872 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rheon documentation</title>
+  <link rel="icon" href="favicon.ico" sizes="any">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="apple-touch-icon.png">
+  <meta name="theme-color" content="#f5f8ff">
+  <style>
+    :root {
+      --bg: #ffffff;
+      --sidebar-bg: #ffffff;
+      --topbar-bg: #f5f8ff;
+      --topbar-fg: #16224a;
+      --topbar-line: #dde5f6;
+      --ink: #1e1f22;
+      --muted: #5e6470;
+      --line: #e5e6ea;
+      --soft: #f5f6f7;
+      --accent: #2b5fe3;
+      --accent-soft: #e9f0ff;
+      --code-bg: #f5f6f7;
+      --card-hover: #fafafb;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      line-height: 1.55;
+      font-size: 15px;
+    }
+
+    /* ---------- Top bar ---------- */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      height: 56px;
+      background: var(--topbar-bg);
+      color: var(--topbar-fg);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      border-bottom: 1px solid var(--topbar-line);
+    }
+
+    .topbar-brand {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+
+    .topbar-logo {
+      height: 22px;
+      width: auto;
+      display: block;
+      object-fit: contain;
+      flex: 0 0 auto;
+    }
+
+    .topbar-title {
+      font-size: 0.95rem;
+      font-weight: 600;
+      letter-spacing: -0.005em;
+      color: var(--topbar-fg);
+      white-space: nowrap;
+    }
+
+    /* ---------- Layout ---------- */
+    .layout {
+      display: grid;
+      grid-template-columns: 280px 1fr;
+      min-height: calc(100vh - 56px);
+    }
+
+    /* ---------- Sidebar ---------- */
+    .sidebar {
+      background: var(--sidebar-bg);
+      border-right: 1px solid var(--line);
+      padding: 18px 12px 40px;
+      overflow-y: auto;
+      position: sticky;
+      top: 56px;
+      height: calc(100vh - 56px);
+    }
+
+    .nav-item {
+      display: block;
+      padding: 8px 16px;
+      position: relative;
+      border-radius: 6px;
+      color: var(--ink);
+      text-decoration: none;
+      font-size: 0.9rem;
+      cursor: pointer;
+      user-select: none;
+      line-height: 1.4;
+    }
+
+    .nav-item:hover { background: var(--soft); }
+
+    .nav-item.active {
+      background: var(--accent);
+      color: #fff;
+    }
+
+    /* ---------- Main content ---------- */
+    main {
+      padding: 56px 64px 96px;
+      max-width: 1040px;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    h1, h2, h3 {
+      color: var(--ink);
+      line-height: 1.2;
+      margin: 0;
+      font-weight: 600;
+    }
+
+    h1 {
+      font-size: 2.4rem;
+      letter-spacing: -0.01em;
+      margin-bottom: 8px;
+    }
+
+    h2 {
+      font-size: 1.45rem;
+      margin-top: 48px;
+      margin-bottom: 12px;
+    }
+
+    h3 {
+      font-size: 1.05rem;
+      margin-top: 28px;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 1.2rem;
+      color: var(--muted);
+      margin: 0 0 32px;
+      font-weight: 400;
+    }
+
+    p {
+      margin: 12px 0 0;
+      color: var(--ink);
+      max-width: 780px;
+    }
+
+    a {
+      color: var(--accent);
+      text-decoration: none;
+    }
+    a:hover { text-decoration: underline; }
+
+    code, pre {
+      font-family: "JetBrains Mono", "SFMono-Regular", Consolas, monospace;
+      font-size: 0.88em;
+    }
+
+    code {
+      background: var(--code-bg);
+      padding: 0.12em 0.4em;
+      border-radius: 4px;
+      color: var(--ink);
+    }
+
+    pre {
+      overflow: auto;
+      margin: 16px 0 0;
+      padding: 16px 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--code-bg);
+      line-height: 1.55;
+    }
+
+    pre code {
+      background: transparent;
+      padding: 0;
+    }
+
+    .code-block { position: relative; margin-top: 16px; }
+    .code-block > pre { margin-top: 0; }
+
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 4px;
+      cursor: pointer;
+      opacity: 0.55;
+      transition: opacity .15s, color .15s, border-color .15s;
+    }
+    .copy-btn svg { width: 15px; height: 15px; display: block; }
+    .code-block:hover .copy-btn { opacity: 1; }
+    .copy-btn:hover { color: var(--ink); border-color: var(--accent); }
+    .copy-btn.copied { color: var(--accent); border-color: var(--accent); }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 16px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    th, td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--line);
+      vertical-align: top;
+      text-align: left;
+      font-size: 0.92rem;
+    }
+
+    th {
+      background: var(--soft);
+      font-weight: 600;
+      color: var(--ink);
+    }
+
+    tr:last-child td { border-bottom: 0; }
+
+    ul {
+      padding-left: 1.2rem;
+      margin: 12px 0 0;
+    }
+
+    li { margin: 4px 0; }
+
+    /* ---------- Cards ---------- */
+    .card-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+
+    .card {
+      display: block;
+      background: var(--bg);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 24px;
+      text-decoration: none;
+      color: var(--ink);
+      cursor: pointer;
+      transition: background 0.12s ease, border-color 0.12s ease;
+    }
+
+    .card:hover {
+      background: var(--card-hover);
+      border-color: #c8cad0;
+    }
+
+    .card-icon {
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 18px;
+      color: var(--accent);
+    }
+
+    .card h3 {
+      margin: 0 0 6px;
+      font-size: 1.05rem;
+    }
+
+    .card p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    /* ---------- Responsive ---------- */
+    @media (max-width: 880px) {
+      .layout { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      main { padding: 32px 20px 64px; }
+      h1 { font-size: 1.9rem; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div class="topbar-brand">
+    <img class="topbar-logo" src="rheon.png" alt="" aria-hidden="true">
+    <span class="topbar-title">Rheon documentation</span>
+  </div>
+</div>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <a class="nav-item active" data-target="welcome">Welcome</a>
+    <a class="nav-item" data-target="installation">Installation</a>
+    <a class="nav-item" data-target="quick-start">Quick start</a>
+    <a class="nav-item" data-target="package-structure">Package structure</a>
+    <a class="nav-item" data-target="api">API</a>
+    <a class="nav-item" data-target="drift-modes">Drift modes</a>
+    <a class="nav-item" data-target="drift-types">Drift types</a>
+    <a class="nav-item" data-target="output">Output &amp; metadata</a>
+  </aside>
+
+  <!-- Main content -->
+  <main>
+
+    <!-- Welcome -->
+    <section class="page active" id="welcome">
+      <h1>Rheon</h1>
+      <p class="subtitle">A library for synthetic event log generation with injected concept drifts.</p>
+
+      <div class="card-grid">
+        <a class="card" data-target="installation">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
+                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 12l10-9 10 9-10 9z"/>
+              <path d="M2 12l10 9 10-9"/>
+            </svg>
+          </div>
+          <h3>Installation</h3>
+        </a>
+
+        <a class="card" data-target="quick-start">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
+                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
+              <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22 22 0 0 1-4 2z"/>
+              <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
+              <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
+            </svg>
+          </div>
+          <h3>Quick start</h3>
+        </a>
+
+        <a class="card" data-target="package-structure">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
+                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 4.5h6v5H4z"/>
+              <path d="M14 4.5h6v5h-6z"/>
+              <path d="M4 14.5h6v5H4z"/>
+              <path d="M10 7h4"/>
+              <path d="M7 9.5v5"/>
+            </svg>
+          </div>
+          <h3>Package structure</h3>
+        </a>
+
+        <a class="card" data-target="api">
+          <div class="card-icon">
+            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
+                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M8 8l-4 4 4 4"/>
+              <path d="M16 8l4 4-4 4"/>
+              <path d="M13.5 5.5l-3 13"/>
+            </svg>
+          </div>
+          <h3>API</h3>
+        </a>
+      </div>
+
+      <h2>Concepts</h2>
+
+      <div class="card-grid">
+        <a class="card" data-target="drift-modes">
+          <h3>Drift modes</h3>
+          <p>Two modes: <code>sudden</code> and <code>gradual</code>.</p>
+        </a>
+        <a class="card" data-target="drift-types">
+          <h3>Drift types</h3>
+          <p>Nine types across the intra-case, resource, and inter-case perspectives.</p>
+        </a>
+        <a class="card" data-target="output">
+          <h3>Output &amp; metadata</h3>
+          <p>The XES or CSV log plus the metadata.</p>
+        </a>
+      </div>
+    </section>
+
+    <!-- Quick start -->
+    <section class="page" id="quick-start">
+      <h1>Quick start</h1>
+      <p class="subtitle">Generate a labeled log with the simple API.</p>
+
+      <p>Describe a base process and a list of drifts, then write a labeled log.</p>
+      <pre><code>import rheon
+
+drifts = [
+    {"type": "control_flow", "mode": "sudden", "drift_point": 0.5, "num_activities": 9},
+    {"type": "reassignment", "mode": "gradual", "start_point": 0.3, "end_point": 0.45},
+    {"type": "amount", "mode": "sudden", "drift_point": 0.6, "mean": 4000},
+]
+
+rheon.generate_log(drifts, "out/example.xes", num_traces=2000, num_activities=8)</code></pre>
+
+      <p>This writes two files: the log <code>out/example.xes</code> and a ground-truth metadata
+        sidecar <code>out/example_meta.md</code>.</p>
+
+      <p>Read the generated log back with pm4py:</p>
+      <pre><code>import pm4py
+
+log = pm4py.read_xes("out/example.xes")</code></pre>
+    </section>
+
+    <!-- Installation -->
+    <section class="page" id="installation">
+      <h1>Installation</h1>
+      <p class="subtitle">Get the runtime and dependencies in place.</p>
+
+      <h3>Prerequisites</h3>
+      <ul>
+        <li>Python 3.10 or newer</li>
+        <li><a href="https://docs.astral.sh/uv/" target="_blank" rel="noopener">uv</a> package manager</li>
+      </ul>
+
+      <h3>Set up</h3>
+      <p>Clone the repository and let <code>uv</code> resolve dependencies on first run:</p>
+      <pre><code>git clone git@github.com:boraderen/rheon.git
+cd rheon
+uv sync</code></pre>
+
+      <h3>Example</h3>
+      <p>Run the bundled script to generate a labeled log:</p>
+      <pre><code>uv run python example/generate_log.py</code></pre>
+      <p>It injects drifts across every perspective and writes <code>example/example.csv</code> plus
+        its <code>example_meta.md</code> ground-truth sidecar.</p>
+    </section>
+
+    <!-- Package structure -->
+    <section class="page" id="package-structure">
+      <h1>Package structure</h1>
+      <p class="subtitle">How the public API and implementation are split.</p>
+
+      <p>The package exposes a single function, <code>rheon.generate_log</code>, from
+        <code>rheon/__init__.py</code>. The implementation is just seven small modules.</p>
+
+      <pre><code>rheon/
+  __init__.py      public exports
+  config.py        column keys, labels, GeneratorConfig
+  drifts.py        drift spec, validation, timeline helpers
+  process_tree.py  build trees and play out activity sequences
+  generator.py     the generation engine (the six steps)
+  metadata.py      build and render the ground-truth metadata
+  write.py         write XES / CSV and the metadata sidecar
+example/
+  generate_log.py  one mixed-drift example
+tests/
+  test_*.py        behavior coverage</code></pre>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Path</th>
+            <th>Role</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>rheon/config.py</code></td><td>Column names, label helpers, and the parameter bundle.</td></tr>
+          <tr><td><code>rheon/drifts.py</code></td><td>Normalizes and validates the drift list.</td></tr>
+          <tr><td><code>rheon/process_tree.py</code></td><td>Builds process trees and plays out traces.</td></tr>
+          <tr><td><code>rheon/generator.py</code></td><td>The generation engine and the public <code>generate_log</code>.</td></tr>
+          <tr><td><code>rheon/metadata.py</code></td><td>Assembles and renders the ground-truth metadata.</td></tr>
+          <tr><td><code>rheon/write.py</code></td><td>Writes the log (XES or CSV) and the metadata sidecar.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- API -->
+    <section class="page" id="api">
+      <h1>API</h1>
+      <p class="subtitle">Function signature and generator options for <code>rheon.generate_log()</code>.</p>
+
+      <h3>Signature</h3>
+      <pre><code>rheon.generate_log(
+    drifts,
+    output_path,
+    *,
+    log_name=None,
+    format="xes",          # "xes" or "csv"
+    num_traces=1000,
+    num_activities=10,
+    num_resources=8,
+    num_regions=4,
+    tree_weights={"sequence": 0.6, "choice": 0.25, "parallel": 0.1, "loop": 0.05},
+    start_date=datetime(2020, 1, 1),
+    end_date=datetime(2020, 12, 31),
+    activity_duration=(30.0, 100.0),
+    waiting_time=(15.0, 50.0),
+    amount=(1000.0, 40000.0),
+    seed=42,
+)</code></pre>
+
+      <p><code>drifts</code> is a list of dictionaries, each with a <code>type</code>, a <code>mode</code>, and a
+        position; see <a href="#drift-types">Drift types</a> and <a href="#drift-modes">Drift modes</a>. The
+        parameters below all describe the single base process.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Argument</th>
+            <th>Default</th>
+            <th>Description</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>drifts</code></td><td>—</td><td>List of drift dictionaries to inject.</td></tr>
+          <tr><td><code>output_path</code></td><td>—</td><td>Destination of the log.</td></tr>
+          <tr><td><code>log_name</code></td><td>file stem</td><td>Name used in metadata and the sidecar filename.</td></tr>
+          <tr><td><code>format</code></td><td><code>"xes"</code></td><td><code>"xes"</code> or <code>"csv"</code>.</td></tr>
+          <tr><td><code>num_traces</code></td><td><code>1000</code></td><td>Approximate number of cases (not strict).</td></tr>
+          <tr><td><code>num_activities</code></td><td><code>10</code></td><td>Activities in the base process tree.</td></tr>
+          <tr><td><code>num_resources</code></td><td><code>8</code></td><td>Size of the resource pool.</td></tr>
+          <tr><td><code>num_regions</code></td><td><code>4</code></td><td>Number of regions.</td></tr>
+          <tr><td><code>tree_weights</code></td><td>see above</td><td>Operator weights for the base tree (<code>sequence</code>, <code>choice</code>, <code>parallel</code>, <code>loop</code>).</td></tr>
+          <tr><td><code>start_date</code></td><td><code>2020-01-01</code></td><td>Start of the time horizon.</td></tr>
+          <tr><td><code>end_date</code></td><td><code>2020-12-31</code></td><td>End of the time horizon (with <code>start_date</code> it fixes the window).</td></tr>
+          <tr><td><code>activity_duration</code></td><td><code>(30.0, 100.0)</code></td><td><code>(mean, variance)</code> of activity processing time in minutes.</td></tr>
+          <tr><td><code>waiting_time</code></td><td><code>(15.0, 50.0)</code></td><td><code>(mean, variance)</code> of the waiting gap between events.</td></tr>
+          <tr><td><code>amount</code></td><td><code>(1000.0, 40000.0)</code></td><td><code>(mean, variance)</code> of the case amount.</td></tr>
+          <tr><td><code>seed</code></td><td><code>42</code></td><td>Random seed.</td></tr>
+        </tbody>
+      </table>
+
+      <p>Cases are spread across <code>[start_date, end_date]</code>. The mean inter-arrival gap is
+        derived as <code>(end_date − start_date) / num_traces</code>. The <code>arrival_rate</code> drift changes that derived
+        rate after its drift point.</p>
+    </section>
+
+    <!-- Drift modes -->
+    <section class="page" id="drift-modes">
+      <h1>Drift modes</h1>
+      <p class="subtitle">How the change is shaped over time.</p>
+
+      <p>Every drift declares a <code>mode</code> and a position. All positions are fractions of the time
+        horizon in <code>(0, 1)</code>, where <code>0.5</code> is the midpoint. The metadata records each
+        position as both a fraction and an absolute timestamp.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Mode</th>
+            <th>Position keys</th>
+            <th>Behavior</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><code>sudden</code></td>
+            <td><code>drift_point</code></td>
+            <td>A hard switch: everything after <code>drift_point</code> uses the new behavior.</td>
+          </tr>
+          <tr>
+            <td><code>gradual</code></td>
+            <td><code>start_point</code>, <code>end_point</code></td>
+            <td>A transition window: between the two points the new behavior is mixed in with a probability that rises linearly from 0 to 1.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- Drift types -->
+    <section class="page" id="drift-types">
+      <h1>Drift types</h1>
+      <p class="subtitle">The nine drifts and exactly what each one changes.</p>
+
+      <p>A drift's <code>type</code> selects the mechanism. Perspectives (intra-case, resource,
+        inter-case) are a documentation grouping only — <code>generate_log</code> dispatches purely on
+        <code>type</code>.</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Perspective</th>
+            <th>Type</th>
+            <th>What changes</th>
+            <th>Type-specific params</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>intra-case</td><td><code>control_flow</code></td><td>Activity-ordering structure (a different process tree).</td><td><code>num_activities</code>, <code>tree_weights</code></td></tr>
+          <tr><td>resource</td><td><code>pool_size</code></td><td>Resources added or removed; durations scale the opposite way.</td><td><code>delta</code>, <code>duration_factor</code></td></tr>
+          <tr><td>resource</td><td><code>reassignment</code></td><td>A new dominant resource per activity.</td><td>—</td></tr>
+          <tr><td>resource</td><td><code>workload</code></td><td>Traces duplicated or dropped; per-resource load shifts.</td><td><code>workload_factor</code></td></tr>
+          <tr><td>resource</td><td><code>duration</code></td><td>Processing time of the given resources is scaled.</td><td><code>resources</code>, <code>factor</code></td></tr>
+          <tr><td>inter-case</td><td><code>waiting_time</code></td><td>The mean waiting gap between consecutive events of a case shifts (all activities at once).</td><td><code>mean</code>, <code>variance</code></td></tr>
+          <tr><td>inter-case</td><td><code>amount</code></td><td>Case amounts drawn from a shifted distribution.</td><td><code>mean</code>, <code>variance</code></td></tr>
+          <tr><td>inter-case</td><td><code>arrival_rate</code></td><td>The mean gap between case arrivals changes.</td><td><code>inter_arrival</code> or <code>factor</code></td></tr>
+          <tr><td>inter-case</td><td><code>region</code></td><td>A new dominant region for later cases.</td><td>—</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Example valid drift specs</h2>
+      <p>The following <code>drifts</code> list is valid with the default generator labels
+        (<code>res_01</code> ... <code>res_08</code> and <code>region_1</code> ... <code>region_4</code>).
+        Use any subset of these dicts; if you add multiple drifts of the same <code>type</code>, their
+        windows must not overlap.</p>
+      <pre><code>drifts = [
+    {
+        "type": "control_flow",
+        "mode": "sudden",
+        "drift_point": 0.35,
+        "num_activities": 9,
+        "tree_weights": {"sequence": 0.50, "choice": 0.30, "parallel": 0.15, "loop": 0.05},
+    },
+    {
+        "type": "pool_size",
+        "mode": "gradual",
+        "start_point": 0.20,
+        "end_point": 0.30,
+        "delta": 2,
+        "duration_factor": 1.25,
+    },
+    {"type": "reassignment", "mode": "sudden", "drift_point": 0.40},
+    {
+        "type": "workload",
+        "mode": "gradual",
+        "start_point": 0.70,
+        "end_point": 0.85,
+        "workload_factor": 1.40,
+    },
+    {
+        "type": "duration",
+        "mode": "sudden",
+        "drift_point": 0.55,
+        "resources": ["res_01", "res_02"],
+        "factor": 1.80,
+    },
+    {
+        "type": "waiting_time",
+        "mode": "gradual",
+        "start_point": 0.45,
+        "end_point": 0.60,
+        "mean": 45.0,
+        "variance": 80.0,
+    },
+    {
+        "type": "amount",
+        "mode": "sudden",
+        "drift_point": 0.65,
+        "mean": 3000.0,
+        "variance": 90000.0,
+    },
+    {
+        "type": "arrival_rate",
+        "mode": "sudden",
+        "drift_point": 0.50,
+        "inter_arrival": 240.0,
+    },
+    {"type": "region", "mode": "gradual", "start_point": 0.75, "end_point": 0.90},
+]</code></pre>
+
+      <p>For <code>arrival_rate</code>, use either an absolute <code>inter_arrival</code> value in minutes
+        as shown above or a relative <code>factor</code>, for example
+        <code>{"type": "arrival_rate", "mode": "sudden", "drift_point": 0.50, "factor": 0.5}</code>.</p>
+
+      <h2>What each drift does</h2>
+
+      <h3><code>control_flow</code> · intra-case</h3>
+      <p>Cases after the drift are played out from a <em>different</em> process tree, so the
+        activity-ordering (trace variants) structure changes. The new tree is built from the drift's
+        <code>num_activities</code> and <code>tree_weights</code>.
+        In <strong>sudden</strong> mode every case after <code>drift_point</code> uses the new tree; in
+        <strong>gradual</strong> mode a case in the window picks the new tree with the rising window
+        probability.</p>
+
+      <h3><code>pool_size</code> · resource</h3>
+      <p><code>delta</code> adds (<code>+</code>) or removes (<code>−</code>) resources at the drift.
+        When it shrinks, the removed resources' later events are redistributed to the rest; when it
+        grows, each new resource becomes dominant for a free activity. Durations scale the opposite way
+        by <code>duration_factor</code> (fewer resources → slower, more → faster). <strong>Gradual</strong>
+        mode ramps the reassignment and the duration scaling across the window.</p>
+
+      <h3><code>reassignment</code> · resource</h3>
+      <p>A new dominant resource is chosen for every activity and the resource column is re-filled after
+        the drift (keeping 80% dominance). In <strong>gradual</strong> mode the share of events that use
+        the new mapping rises across the window. The before/after dominance maps are written to the
+        metadata.</p>
+
+      <h3><code>workload</code> · resource</h3>
+      <p>After the drift, <code>workload_factor</code> sets how many traces to add or remove
+        (<code>1.0</code> = no change). Added traces are duplicates of existing ones with freshly drawn
+        timing, amount, resources and region; removals never drop the last instance of a variant. The
+        total trace count may change. <strong>Gradual</strong> mode spreads the
+        duplicates across the window.</p>
+
+      <h3><code>duration</code> · resource</h3>
+      <p>The processing time of the given resources' later events is multiplied by <code>factor</code>
+        ("these resources slow down / speed up"). <code>resources</code> may be <code>"all"</code>, a
+        count (the first N resources), or an explicit list. <strong>Gradual</strong> mode ramps the
+        factor from 1 to its target across the window.</p>
+
+      <h3><code>waiting_time</code> · inter-case</h3>
+      <p>The mean of the waiting gap between events shifts to <code>mean</code> after the drift — the
+        main driver of throughput time. A gap is the idle time between consecutive events of the same
+        case, and every activity's waiting distribution is updated to the new
+        (<code>mean</code>, <code>variance</code>), so all activities shift at once.
+        <strong>Gradual</strong> mode blends each gap from its old value toward the new mean across the
+        window.</p>
+
+      <h3><code>amount</code> · inter-case</h3>
+      <p>Case amounts after the drift are drawn from a shifted distribution (<code>mean</code>,
+        <code>variance</code>). <strong>Gradual</strong> mode interpolates the mean and variance across
+        the window.</p>
+
+      <h3><code>arrival_rate</code> · inter-case</h3>
+      <p>The mean inter-arrival gap changes after the drift, set by a new absolute
+        <code>inter_arrival</code> or a <code>factor</code> applied to the base. Cases arrive denser or
+        sparser. <strong>Gradual</strong> mode moves the mean across the window.</p>
+
+      <h3><code>region</code> · inter-case</h3>
+      <p>A new dominant region is chosen and the region of later cases is re-filled (keeping 80%
+        dominance). <strong>Gradual</strong> mode raises the share of cases using the new region across
+        the window.</p>
+    </section>
+
+    <!-- Output -->
+    <section class="page" id="output">
+      <h1>Output &amp; metadata</h1>
+      <p class="subtitle">An XES or CSV log and a readable metadata sidecar.</p>
+
+      <p>Each run writes two files next to <code>output_path</code> (the log suffix follows
+        <code>format</code>):</p>
+      <pre><code>&lt;name&gt;.xes   (or &lt;name&gt;.csv)
+&lt;log_name&gt;_meta.md</code></pre>
+
+      <h3>Log columns</h3>
+      <p>Events carry:</p>
+      <p>
+        <code>event:id</code>,
+        <code>case:concept:name</code>,
+        <code>concept:name</code>,
+        <code>start_timestamp</code>,
+        <code>time:timestamp</code>,
+        <code>event:duration_min</code>,
+        <code>org:resource</code>
+      </p>
+      <p>Each case carries <code>case:amount</code> and <code>case:region</code>. For XES the full
+        metadata is also embedded as a log-level <code>rheon:metadata</code> attribute.</p>
+
+      <h3>Metadata sidecar</h3>
+      <p>The <code>&lt;log_name&gt;_meta.md</code> file is the ground truth, in three sections:</p>
+      <ul>
+        <li><strong>General parameters</strong> — the structural, temporal and attribute parameters of the run.</li>
+        <li><strong>Base distributions</strong> — the starting state: every activity's dominant resource and its duration and waiting distributions <code>(mean, var)</code>, plus the case-level amount distribution, inter-arrival mean and dominant region.</li>
+        <li><strong>Drifts</strong> — each drift with its mode and drift point or window (as both a horizon fraction and an absolute timestamp), followed by exactly which distributions or assignments it changed, per activity / resource.</li>
+      </ul>
+    </section>
+
+  </main>
+</div>
+
+<script>
+  // Navigation
+  const navItems = document.querySelectorAll('.nav-item[data-target]');
+  const pages = document.querySelectorAll('.page');
+  const cards = document.querySelectorAll('.card[data-target]');
+
+  function showPage(targetId) {
+    if (!targetId) return;
+    let found = false;
+    pages.forEach(p => {
+      const active = p.id === targetId;
+      p.classList.toggle('active', active);
+      if (active) found = true;
+    });
+    if (!found) return;
+
+    // Sidebar active state: last matching nav-item with this target
+    navItems.forEach(n => n.classList.remove('active'));
+    const matches = document.querySelectorAll(`.nav-item[data-target="${targetId}"]`);
+    if (matches.length) matches[matches.length - 1].classList.add('active');
+
+    // Update URL hash without scrolling
+    if (history.replaceState) {
+      history.replaceState(null, '', '#' + targetId);
+    }
+
+    window.scrollTo({ top: 0, behavior: 'instant' in window ? 'instant' : 'auto' });
+  }
+
+  navItems.forEach(item => {
+    item.addEventListener('click', e => {
+      e.preventDefault();
+      const target = item.getAttribute('data-target');
+      showPage(target);
+    });
+  });
+
+  cards.forEach(card => {
+    card.addEventListener('click', e => {
+      e.preventDefault();
+      showPage(card.getAttribute('data-target'));
+    });
+  });
+
+  // Initial route from hash
+  const initial = location.hash ? location.hash.slice(1) : 'welcome';
+  showPage(initial);
+
+  // Copy button on every code block
+  const COPY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="13" height="13" rx="2.5"/><path d="M8 16v3a2 2 0 0 0 2 2h9a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-3"/></svg>';
+  const CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>';
+
+  document.querySelectorAll('pre').forEach(pre => {
+    const code = pre.querySelector('code');
+    if (!code) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'code-block';
+    pre.parentNode.insertBefore(wrapper, pre);
+    wrapper.appendChild(pre);
+
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'copy-btn';
+    btn.setAttribute('aria-label', 'Copy code');
+    btn.title = 'Copy';
+    btn.innerHTML = COPY_ICON;
+    wrapper.appendChild(btn);
+
+    btn.addEventListener('click', async () => {
+      const text = code.innerText;
+      try {
+        await navigator.clipboard.writeText(text);
+      } catch (e) {
+        const range = document.createRange();
+        range.selectNodeContents(code);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        try { document.execCommand('copy'); } catch (_) {}
+        sel.removeAllRanges();
+      }
+      btn.innerHTML = CHECK_ICON;
+      btn.classList.add('copied');
+      btn.title = 'Copied';
+      setTimeout(() => { btn.innerHTML = COPY_ICON; btn.classList.remove('copied'); btn.title = 'Copy'; }, 1500);
+    });
+  });
+</script>
+
+</body>
+</html>
