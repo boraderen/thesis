@@ -7,7 +7,7 @@ drifts = [
         #{"type": "duration", "mode": "sudden", "drift_point": 0.4, "resources": ["res_01", "res_02"], "factor": 2.5},
         #{"type": "pool_size", "mode": "sudden", "drift_point": 0.6, "delta": -2},
         #{"type": "workload", "mode": "sudden", "drift_point": 0.8, "workload_factor": 1.6},
-        {"type": "control_flow", "mode": "sudden", "drift_point": 0.75, "num_activities": 8, "tree_weights": {"sequence": 0.50, "choice": 0.35, "parallel": 0.1, "loop": 0.05}},
+        {"type": "control_flow", "mode": "sudden", "drift_point": 0.75, "num_activities": 8, "tree_weights": {"sequence": 0.50, "choice": 0.48, "parallel": 0.1, "loop": 0.01}},
         #{"type": "amount", "mode": "sudden", "drift_point": 0.50, "mean": 3000.0, "variance": 40000.0},
         #{"type": "waiting_time", "mode": "sudden", "drift_point": 0.3, "mean": 45.0, "variance": 80.0}
     ]
