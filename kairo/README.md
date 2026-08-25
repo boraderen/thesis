@@ -1,4 +1,4 @@
-# kairo
+## kairo
 
 State-based process monitoring and concept-drift detection for traditional
 event logs — with textual abstractions and LLM access built in.
