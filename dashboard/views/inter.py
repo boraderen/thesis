@@ -9,9 +9,7 @@ import cache
 import kairo
 import ui
 from controls import log_signature, seed_widget
-from kairo.features.inter import attribute_feature_catalog, describe_states
-from kairo.cluster import state_means
-from kairo.schema import FEATURE_DESCRIPTIONS, INTER_FEATURES
+from kairo.data.schema import FEATURE_DESCRIPTIONS, INTER_FEATURES
 
 PREFIX = "inter"
 SCHEMA_VERSION = "inter_window_v4"
@@ -37,7 +35,7 @@ def attr_description(key: str, columns: list[str]) -> str:
 
 numeric_attrs = tuple(st.session_state.get("case_numeric_attrs", []))
 categorical_attrs = tuple(st.session_state.get("case_categorical_attrs", []))
-ATTR_CATALOG = attribute_feature_catalog(log, numeric_attrs, categorical_attrs)
+ATTR_CATALOG = kairo.features.inter.attribute_feature_catalog(log, numeric_attrs, categorical_attrs)
 FEATURE_LABELS = {**INTER_FEATURES, **{k: label for k, (label, _) in ATTR_CATALOG.items()}}
 DESCRIPTIONS = {
     **{k: FEATURE_DESCRIPTIONS[k] for k in INTER_FEATURES},
@@ -95,8 +93,8 @@ if run_pipeline:
             st.stop()
         reduced, pca = cache.reduce_matrix(fs.values(), skip_pca, pca_k or None, scaling)
         model = cache.cluster(reduced, controls["clustering"], None, ui.cluster_params(controls))
-        raw_centroids = state_means(fs.values(), model.state_ids, model.n_states)
-        model = replace(model, dominant=describe_states(raw_centroids, fs.columns))
+        raw_centroids = kairo.analysis.state_means(fs.values(), model.state_ids, model.n_states)
+        model = replace(model, dominant=kairo.features.inter.describe_states(raw_centroids, fs.columns))
         window_starts = fs.index["window_start"]
         result = kairo.StateResult(
             perspective="inter_case",
@@ -109,14 +107,22 @@ if run_pipeline:
                 grid=controls["grid"], som_init=controls["som_init"],
                 n_clusters=controls["kmeans_k"], eps=controls["eps"],
                 min_samples=controls["min_samples"],
+                signal_metric=st.session_state.get(f"{PREFIX}_shift_metric_sel", "euclidean"),
+                signal_reference=st.session_state.get(f"{PREFIX}_shift_reference_sel", "previous"),
+                signal_lookback=int(st.session_state.get(f"{PREFIX}_shift_lookback_sel", 5)),
             ),
             features=fs, pca=pca, reduced=reduced, states=model,
-            trajectories=kairo.trajectories(fs, model),
+            trajectories=kairo.analysis.trajectories(fs, model),
             transitions=cache.find_transitions(window_starts, model.state_ids,
                                                tuple(model.labels), fs.matrix),
             distribution=cache.state_distribution(window_starts, model.state_ids,
                                                   model.n_states, int(window_minutes)),
-            signal=cache.window_vector_shift(window_starts, reduced, "euclidean"),
+            signal=cache.window_vector_shift(
+                window_starts, reduced,
+                st.session_state.get(f"{PREFIX}_shift_metric_sel", "euclidean"),
+                st.session_state.get(f"{PREFIX}_shift_reference_sel", "previous"),
+                int(st.session_state.get(f"{PREFIX}_shift_lookback_sel", 5)),
+            ),
         )
     st.session_state["inter_result"] = result
     st.session_state["inter_log_signature"] = current_signature

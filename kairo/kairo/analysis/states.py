@@ -6,22 +6,21 @@ import numpy as np
 import pandas as pd
 
 from .cluster import StateModel
-from .features import FeatureSet
-from .schema import CASE, TIMESTAMP
-from .windows import floor_to_window
+from ..features import FeatureSet
+from ..data.schema import CASE, TIMESTAMP
+from ..data.windows import floor_to_window
 
 
-def assign_states(fs: FeatureSet, model: StateModel) -> pd.DataFrame:
-    """The FeatureSet's index columns with each row's state id and label."""
+def trajectories(fs: FeatureSet, model: StateModel) -> pd.DataFrame:
+    """State over time: the FeatureSet's index columns plus each row's state.
+
+    One row per event for intra-case (carrying case, activity and timestamp),
+    one row per window for the windowed perspectives.
+    """
     out = fs.index.copy().reset_index(drop=True)
     out["state_id"] = model.state_ids
     out["state"] = [model.labels[i] for i in model.state_ids]
     return out
-
-
-def trajectories(fs: FeatureSet, model: StateModel) -> pd.DataFrame:
-    """State over time: per case for intra-case, per window otherwise."""
-    return assign_states(fs, model)
 
 
 def _top_changes(before: pd.Series, after: pd.Series, top_n: int) -> str:

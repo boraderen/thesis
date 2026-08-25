@@ -73,9 +73,11 @@ def build_features(log: pd.DataFrame, perspective: str, **kwargs) -> FeatureSet:
     resources, activities · inter_case: features, window_minutes,
     stall_minutes, numeric_attrs, categorical_attrs.
     """
-    from . import inter, intra, resource
-
     builders = {"intra_case": intra.build, "resource": resource.build, "inter_case": inter.build}
     if perspective not in builders:
         raise ValueError(f"Unknown perspective: {perspective!r} (use one of {tuple(builders)})")
     return builders[perspective](log, **kwargs)
+
+
+# Imported last: the builders import FeatureSet from this module.
+from . import inter, intra, resource  # noqa: E402

@@ -7,7 +7,7 @@ import cache
 import kairo
 import ui
 from controls import log_signature, seed_widget
-from kairo.schema import FEATURE_DESCRIPTIONS, INTRA_FEATURES
+from kairo.data.schema import FEATURE_DESCRIPTIONS, INTRA_FEATURES
 
 PREFIX = "intra"
 SCHEMA_VERSION = "intra_prefix_v2"
@@ -75,8 +75,8 @@ if run_pipeline:
                 min_samples=controls["min_samples"], window_minutes=int(distribution_W),
             ),
             features=fs, pca=pca, reduced=reduced, states=model,
-            trajectories=kairo.trajectories(fs, model),
-            transitions=kairo.case_transitions(fs, model),
+            trajectories=kairo.analysis.trajectories(fs, model),
+            transitions=kairo.analysis.case_transitions(fs, model),
             distribution=dist,
             signal=cache.drift_signal(dist, "js", "previous", 5),
         )
@@ -151,7 +151,7 @@ with tab_drift:
     W = ran["window_minutes"]
     st.markdown("**State frequency distribution over time**")
     st.caption(
-        f"Per {kairo.windows.window_minute_label(W)} window — the fraction of events in each state. "
+        f"Per {kairo.data.window_minute_label(W)} window — the fraction of events in each state. "
         f"{len(result.distribution):,} windows across {fs.index['case:concept:name'].nunique():,} cases."
     )
     freq_fig = kairo.plot_state_distribution(result.distribution, model)

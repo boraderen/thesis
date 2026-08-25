@@ -11,11 +11,11 @@ from dataclasses import asdict
 import numpy as np
 import pandas as pd
 
-from .cluster import StateModel, state_distances
-from .features import FeatureSet
-from .log import LogStatistics
-from .reduce import PCAResult
-from .schema import CASE, FEATURE_LABELS
+from ..analysis.cluster import StateModel, state_distances
+from ..features import FeatureSet
+from ..data.log import LogStatistics
+from ..analysis.reduce import PCAResult
+from ..data.schema import CASE, FEATURE_LABELS
 
 MAX_LEN = 10000
 
@@ -321,7 +321,7 @@ def abstract_config(config, max_len: int = MAX_LEN, include_header: bool = True)
 def abstract_result(result, max_len: int = MAX_LEN, include_header: bool = True) -> str:
     """One pipeline run, fully described: config, features, PCA, states,
     transitions, distribution, and drift signal — under a shared budget."""
-    from .states import state_profiles  # local import to avoid a cycle
+    from ..analysis.states import state_profiles  # local import to avoid a cycle
 
     parts = _header(f"=== {result.perspective} pipeline run ===", include_header)
     budget = max_len // 7

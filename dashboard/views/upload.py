@@ -6,7 +6,7 @@ import streamlit as st
 
 import cache
 import kairo
-from kairo.schema import MAX_CASE_ATTRS, OPTIONAL_ROLES, ROLES
+from kairo.data.schema import MAX_CASE_ATTRS, OPTIONAL_ROLES, ROLES
 
 st.title("Upload event log")
 st.caption("Load an XES or CSV file, then map its columns to their roles by clicking them.")
@@ -80,7 +80,7 @@ attrs: list[str] = st.session_state.setdefault("attrs", [])
 attr_types: dict[str, str] = st.session_state.setdefault("attr_types", {})
 
 with st.expander("Required columns per feature"):
-    st.dataframe(kairo.schema.requirements_table(), hide_index=True, width="stretch")
+    st.dataframe(kairo.data.requirements_table(), hide_index=True, width="stretch")
 left, right, _ = st.columns([1, 1, 6])
 left.button("Reset mapping", on_click=reset, width="stretch")
 right.button("Remove log", on_click=remove_log, width="stretch")
@@ -143,7 +143,7 @@ st.session_state["case_categorical_attrs"] = categorical_attrs
 attr_kinds = {**{c: "numeric" for c in numeric_attrs}, **{c: "categorical" for c in categorical_attrs}}
 stats = kairo.log_statistics(log, case_attributes=attr_kinds)
 
-st.success(f"Log mapped — {kairo.span_label(log)}", icon=":material/check_circle:")
+st.success(f"Log mapped — {kairo.data.span_label(log)}", icon=":material/check_circle:")
 m1, m2, m3, m4, m5 = st.columns(5)
 m1.metric("Cases", f"{stats.cases:,}")
 m2.metric("Events", f"{stats.events:,}")

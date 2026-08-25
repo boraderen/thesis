@@ -18,10 +18,8 @@ dependencies = [
     "minisom>=2.3.1",
     "plotly>=5.20",
     "requests>=2.31",
+    "kaleido>=0.2",
 ]
-
-[project.optional-dependencies]
-vision = ["kaleido>=0.2"]
 
 [dependency-groups]
 dev = ["pytest>=8.0"]

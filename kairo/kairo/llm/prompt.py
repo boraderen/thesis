@@ -7,13 +7,13 @@ from dataclasses import fields
 
 import pandas as pd
 
-from ..abstract import abstract_result
-from ..cluster import DISTANCES, METHODS, SOM_INIT
-from ..drift import DIVERGENCES, REFERENCES
+from .abstract import abstract_result
+from ..analysis.cluster import DISTANCES, METHODS, SOM_INIT
+from ..analysis.drift import DIVERGENCES, REFERENCES
 from ..pipeline import CONFIGS
-from ..plots import save_figure
-from ..reduce import SCALING
-from ..schema import FEATURE_LABELS
+from ..viz.plots import save_figure
+from ..analysis.reduce import SCALING
+from ..data.schema import FEATURE_LABELS
 from .connectors import anthropic_query
 from .knowledge import DEFAULT_PARTS, inject
 
@@ -70,9 +70,8 @@ def explain_plot(
 ) -> str:
     """Send a kairo figure to a vision-capable model and return its reading.
 
-    The figure is rendered to a PNG (needs kaleido: ``pip install kairo[vision]``)
-    and attached to the prompt. The executor must accept an `image_path` keyword
-    — all kairo connectors do.
+    The figure is rendered to a PNG and attached to the prompt. The executor
+    must accept an `image_path` keyword — all kairo connectors do.
     """
     path = save_figure(fig)
     question = question or "Explain what this plot from the state-based drift analysis shows."

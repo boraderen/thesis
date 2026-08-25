@@ -9,8 +9,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from ..schema import CASE, TIMESTAMP
-from ..windows import assign_windows, floor_to_window
+from ..data.schema import CASE, TIMESTAMP
+from ..data.windows import assign_windows, floor_to_window
 from . import FeatureSet
 
 # Descriptive names for state centroids, keyed by the dominant feature.

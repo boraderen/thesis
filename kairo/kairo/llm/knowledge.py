@@ -8,8 +8,8 @@ from __future__ import annotations
 
 import pandas as pd
 
-from ..abstract import abstract_config, abstract_log_attributes, abstract_log_statistics
-from ..log import log_statistics
+from .abstract import abstract_config, abstract_log_attributes, abstract_log_statistics
+from ..data.log import log_statistics
 
 DRIFT_DETECTION = """\
 The analysis studies state-based concept drift detection in traditional event logs.
@@ -111,6 +111,6 @@ def inject(
         blocks.append(log_knowledge(log, max_len=max(500, max_len // 3)))
     if config is not None:
         blocks.append(abstract_config(config))
-    from ..abstract import _clip
+    from .abstract import _clip
 
     return _clip("\n\n".join(blocks), max_len)

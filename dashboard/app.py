@@ -9,7 +9,7 @@ ROOT = Path(__file__).resolve().parent
 ICON = ROOT.parent / "kairo" / "kairo.png"
 
 st.set_page_config(
-    page_title="Kairo — state-based process monitoring",
+    page_title="Kairo Dashboard",
     page_icon=str(ICON) if ICON.exists() else "🌀",
     layout="wide",
     initial_sidebar_state="expanded",

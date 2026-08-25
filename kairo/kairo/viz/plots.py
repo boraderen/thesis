@@ -6,72 +6,22 @@ where it goes (Streamlit, a notebook, or `save_figure` for LLM vision input).
 from __future__ import annotations
 
 import tempfile
+import warnings
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.io as pio
 
-from .cluster import StateModel, state_distances
-from .log import LogStatistics
-from .reduce import PCAResult
+from ..analysis.cluster import StateModel, state_distances
+from .palette import ACCENT, DISTINCT_COLORS, _is_dark, blend, state_bg, state_fg
+from ..data.log import LogStatistics
+from ..analysis.reduce import PCAResult
 
 # ---------------------------------------------------------------------------
 # Palette
 # ---------------------------------------------------------------------------
-
-# 25 visually distinct colors (Green-Armytage's "colour alphabet", light gray
-# dropped) — enough for the largest grids; grid cells and trajectory segments
-# share these so a state looks the same in every plot.
-DISTINCT_COLORS = [
-    "#AA0DFE", "#3283FE", "#85660D", "#782AB6", "#565656",
-    "#1C8356", "#16FF32", "#F7E1A0", "#1CBE4F", "#C4451C",
-    "#DEA0FD", "#FE00FA", "#325A9B", "#FEAF16", "#F8A19F",
-    "#90AD1C", "#F6222E", "#1CFFCE", "#2ED9FF", "#B10DA1",
-    "#C075A6", "#FC1CBF", "#B00068", "#FBE426", "#FA0087",
-]
-
-STATE_COLORS: list[tuple[str, str]] = [
-    ("#EEEDFE", "#3C3489"),  # purple
-    ("#E1F5EE", "#085041"),  # teal
-    ("#FAEEDA", "#633806"),  # amber
-    ("#FAECE7", "#712B13"),  # coral
-    ("#E7F0FA", "#1C3F66"),  # blue
-    ("#F4EAF6", "#5B2A6B"),  # plum
-    ("#EFF4E4", "#3C5417"),  # olive
-    ("#FBE9F0", "#7A1F45"),  # rose
-    ("#E6F1F1", "#1F4F4F"),  # pine
-    ("#F2EFE3", "#5C4A1E"),  # sand
-]
-
-ACCENT = "#2B5FE3"
-
-
-def blend(light: str, dark: str, w: float) -> str:
-    """Linear blend between two hex colors: w=0 → light, w=1 → dark."""
-    a = [int(light[i:i + 2], 16) for i in (1, 3, 5)]
-    b = [int(dark[i:i + 2], 16) for i in (1, 3, 5)]
-    return "#" + "".join(f"{round(x + (y - x) * w):02X}" for x, y in zip(a, b))
-
-
-def state_color(idx: int) -> tuple[str, str]:
-    """(background, foreground) for a state index."""
-    return STATE_COLORS[idx % len(STATE_COLORS)]
-
-
-def state_bg(idx: int) -> str:
-    return state_color(idx)[0]
-
-
-def state_fg(idx: int) -> str:
-    return state_color(idx)[1]
-
-
-def _is_dark(color: str) -> bool:
-    """Perceived-luminance check to pick a readable label color."""
-    r, g, b = (int(color[i:i + 2], 16) for i in (1, 3, 5))
-    return (0.299 * r + 0.587 * g + 0.114 * b) < 140
-
 
 # ---------------------------------------------------------------------------
 # Log overview
@@ -404,16 +354,15 @@ def plot_drift_signal(signal: pd.DataFrame, title: str = "", height: int = 220) 
 # ---------------------------------------------------------------------------
 
 def save_figure(fig: go.Figure, path: str | Path | None = None, scale: int = 2) -> Path:
-    """Write a figure to a PNG (for reports or LLM vision input). Needs kaleido."""
+    """Write a figure to a PNG, for reports or as LLM vision input."""
     if path is None:
         handle = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
         path = handle.name
         handle.close()
-    try:
-        fig.write_image(str(path), scale=scale)
-    except Exception as exc:  # pragma: no cover
-        raise RuntimeError(
-            "Saving figures needs the kaleido engine — install it with "
-            "`pip install kairo[vision]` or `pip install kaleido`."
-        ) from exc
+    # Time axes carry pandas Timestamps, which the image writer cannot serialize.
+    # Plotly's own encoder does know them, so round-trip through it first; it drops
+    # sub-microsecond precision, which no rendered axis can show anyway.
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", message="Discarding nonzero nanoseconds")
+        pio.from_json(pio.to_json(fig)).write_image(str(path), scale=scale)
     return Path(path)

@@ -106,19 +106,31 @@ def drift_signal(
 
 
 def window_vector_shift(
-    window_starts: pd.Series, vectors: np.ndarray, metric: str = "euclidean"
+    window_starts: pd.Series,
+    vectors: np.ndarray,
+    metric: str = "euclidean",
+    reference: str = "previous",
+    lookback: int = 5,
 ) -> pd.DataFrame:
-    """Distance between each window's compressed vector and the previous one's.
+    """Distance between each window's compressed vector and its reference vector.
 
-    Resource and inter-case windows are represented by one PCA-compressed
-    vector each, so consecutive windows are compared directly in that space.
+    Resource and inter-case windows are represented by one compressed vector
+    each, so windows are compared directly in that space. The reference is the
+    window before, the mean of the `lookback` windows before, or the mean over
+    every window in the log — the same three choices the distribution-based
+    ``drift_signal`` offers, and with the same trade-off: `previous` keeps a
+    shift local to where it happens, `baseline` spreads it over every window
+    that differs from the average.
     """
     if len(vectors) == 0:
         return pd.DataFrame({"window_start": [], "score": []})
     mat = np.asarray(vectors, dtype=float)
     scores = np.zeros(len(mat))
-    if len(mat) > 1:
-        scores[1:] = np.nan_to_num(_vector_distance(mat[1:], mat[:-1], metric))
+    against = _reference_rows(mat, reference, lookback)
+    scored = [i for i, row in enumerate(against) if row is not None]
+    if scored:
+        earlier = np.vstack([against[i] for i in scored])
+        scores[scored] = np.nan_to_num(_vector_distance(mat[scored], earlier, metric))
     return pd.DataFrame({"window_start": pd.Series(window_starts).values, "score": scores})
 
 

@@ -10,8 +10,8 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from ..schema import ACTIVITY, CASE, DURATION, RESOURCE, TIMESTAMP
-from ..windows import assign_windows
+from ..data.schema import ACTIVITY, CASE, DURATION, RESOURCE, TIMESTAMP
+from ..data.windows import assign_windows
 from . import FeatureSet
 
 

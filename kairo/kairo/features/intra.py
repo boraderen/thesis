@@ -8,7 +8,7 @@ from __future__ import annotations
 import numpy as np
 import pandas as pd
 
-from ..schema import ACTIVITY, CASE, TIMESTAMP
+from ..data.schema import ACTIVITY, CASE, TIMESTAMP
 from . import FeatureSet
 
 

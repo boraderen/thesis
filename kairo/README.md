@@ -18,12 +18,11 @@ result = kairo.run_intra_case(log, kairo.IntraConfig(clustering="som", grid=(3, 
 kairo.plot_state_grid(result.states).show()
 print(kairo.abstract_result(result))
 
-answer = kairo.llm.ask(
+answer = kairo.ask(
     "Where does the process drift, and what characterises the change?",
     result=result, log=log,
-    executor=kairo.llm.anthropic_query,   # or openai_query / google_query / local_query
+    executor=kairo.anthropic_query,   # or openai_query / google_query / local_query
 )
 ```
 
-Open `index.html` for the full documentation. Install with `pip install -e .`
-(add `.[vision]` for figure-to-image export used by `explain_plot`).
+Open `index.html` for the full documentation. It ships inside the thesis repository — `uv sync` from the repo root installs it.

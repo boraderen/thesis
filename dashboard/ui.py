@@ -34,7 +34,7 @@ def page_header(title: str, subtitle: str, log: pd.DataFrame | None = None) -> N
     st.title(title)
     caption = subtitle
     if log is not None:
-        caption += "  \n" + kairo.span_label(log)
+        caption += "  \n" + kairo.data.span_label(log)
     st.caption(caption)
 
 
@@ -53,7 +53,7 @@ def run_banner(prefix: str) -> None:
         chips.append(f"eps={cfg.get('eps')}, minPts={cfg.get('min_samples')}")
     chips.append("no PCA" if cfg.get("skip_pca") else f"PCA k={cfg.get('pca_k') or 'auto'}")
     chips.append(f"metric {cfg.get('metric')}")
-    chips.append(f"W {kairo.windows.window_minute_label(int(cfg.get('window_minutes', 0)))}")
+    chips.append(f"W {kairo.data.window_minute_label(int(cfg.get('window_minutes', 0)))}")
     st.caption("Last run · " + " · ".join(chips))
 
 
@@ -89,12 +89,12 @@ def seed_common(prefix: str, run_cfg: dict, log: pd.DataFrame, grid_default: tup
     seed_widget(
         f"{prefix}_W_sel",
         int(run_cfg.get("window_minutes",
-                        kairo.windows.default_window_minutes(kairo.windows.log_span_minutes(log)))),
+                        kairo.data.default_window_minutes(kairo.data.log_span_minutes(log)))),
     )
     # The window selectbox takes hand-typed values, which arrive as strings.
-    st.session_state[f"{prefix}_W_sel"] = kairo.windows.as_window_minutes(
+    st.session_state[f"{prefix}_W_sel"] = kairo.data.as_window_minutes(
         st.session_state[f"{prefix}_W_sel"],
-        kairo.windows.default_window_minutes(kairo.windows.log_span_minutes(log)),
+        kairo.data.default_window_minutes(kairo.data.log_span_minutes(log)),
     )
 
 
@@ -142,15 +142,15 @@ def clustering_controls(prefix: str) -> dict:
 
 def window_control(prefix: str, log: pd.DataFrame, label: str) -> int:
     st.subheader("4 · Windows")
-    return kairo.windows.as_window_minutes(
+    return kairo.data.as_window_minutes(
         st.selectbox(
             label,
-            kairo.windows.window_minute_choices(st.session_state[f"{prefix}_W_sel"]),
+            kairo.data.window_minute_choices(st.session_state[f"{prefix}_W_sel"]),
             key=f"{prefix}_W_sel",
-            format_func=kairo.windows.window_minute_label,
+            format_func=kairo.data.window_minute_label,
             accept_new_options=True,
         ),
-        kairo.windows.default_window_minutes(kairo.windows.log_span_minutes(log)),
+        kairo.data.default_window_minutes(kairo.data.log_span_minutes(log)),
     )
 
 
@@ -170,7 +170,7 @@ def cluster_params(controls: dict) -> dict:
 # Result sections
 # ---------------------------------------------------------------------------
 
-def render_feature_matrix(fs: kairo.FeatureSet, selected: list[str], caption: str) -> None:
+def render_feature_matrix(fs: kairo.features.FeatureSet, selected: list[str], caption: str) -> None:
     st.caption(caption)
     preview = fs.frame[[*fs.index.columns, *selected]]
     groups = {g: [c for c in cols if c in selected] for g, cols in fs.groups.items()}
@@ -213,14 +213,33 @@ def render_transitions(transitions: pd.DataFrame, empty_text: str) -> None:
                  height=min(420, 60 + 36 * len(show)))
 
 
+REFERENCE_PHRASES = {
+    "previous": "window i−1",
+    "recent": "mean of the {l} windows before i",
+    "baseline": "full-log baseline",
+}
+
+
 def render_vector_shift(prefix: str, window_starts: pd.Series, reduced) -> None:
-    """The window-to-window vector-distance drift signal with a metric picker."""
-    metric = st.selectbox("Distance", tuple(kairo.DISTANCES), key=f"{prefix}_shift_metric_sel",
-                          format_func=lambda d: kairo.DISTANCES[d])
-    st.caption("Each window's compressed state vector compared with the previous window's.")
-    shift = cache.window_vector_shift(window_starts, reduced, metric)
+    """The window-to-window vector-distance drift signal, with distance and reference pickers."""
+    seed_widget(f"{prefix}_shift_lookback_sel", 5)
+    pick_metric, pick_ref, pick_l = st.columns(3)
+    metric = pick_metric.selectbox("Distance", tuple(kairo.DISTANCES),
+                                   key=f"{prefix}_shift_metric_sel",
+                                   format_func=lambda d: kairo.DISTANCES[d])
+    reference = pick_ref.selectbox("Compare against", tuple(kairo.REFERENCES),
+                                   key=f"{prefix}_shift_reference_sel",
+                                   format_func=lambda r: kairo.REFERENCES[r])
+    lookback = (
+        pick_l.number_input("Windows to average (l)", min_value=1, step=1,
+                            key=f"{prefix}_shift_lookback_sel")
+        if reference == "recent" else st.session_state.get(f"{prefix}_shift_lookback_sel", 5)
+    )
+    phrase = REFERENCE_PHRASES[reference].format(l=int(lookback))
+    st.caption(f"Each window's compressed state vector compared with the {phrase}.")
+    shift = cache.window_vector_shift(window_starts, reduced, metric, reference, int(lookback))
     fig = kairo.plot_drift_signal(
-        shift, title=f"{kairo.DISTANCES[metric]} distance: window i vs. window i−1")
+        shift, title=f"{kairo.DISTANCES[metric]} distance: window i vs. {phrase}")
     kairo.add_window_boundaries(fig, shift["window_start"],
                                 y_max=max(float(shift["score"].max()), 1e-9))
     st.plotly_chart(fig, width="stretch")

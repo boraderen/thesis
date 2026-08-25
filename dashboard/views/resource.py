@@ -7,7 +7,7 @@ import cache
 import kairo
 import ui
 from controls import log_signature, seed_multi, seed_widget
-from kairo.schema import FEATURE_DESCRIPTIONS, RESOURCE, RESOURCE_FEATURES
+from kairo.data.schema import FEATURE_DESCRIPTIONS, RESOURCE, RESOURCE_FEATURES
 
 PREFIX = "resource"
 SCHEMA_VERSION = "resource_window_v3"
@@ -21,7 +21,7 @@ if RESOURCE not in log.columns:
     st.error("No resource column was mapped on the **Upload** page — this page is disabled.")
     st.stop()
 
-available, disabled = kairo.schema.feature_availability(log.columns, "resource")
+available, disabled = kairo.data.feature_availability(log.columns, "resource")
 all_resources = sorted(log[RESOURCE].astype(str).dropna().unique().tolist())
 all_activities = sorted(log["concept:name"].astype(str).dropna().unique().tolist())
 
@@ -93,14 +93,22 @@ if run_pipeline:
                 grid=controls["grid"], som_init=controls["som_init"],
                 n_clusters=controls["kmeans_k"], eps=controls["eps"],
                 min_samples=controls["min_samples"],
+                signal_metric=st.session_state.get(f"{PREFIX}_shift_metric_sel", "euclidean"),
+                signal_reference=st.session_state.get(f"{PREFIX}_shift_reference_sel", "previous"),
+                signal_lookback=int(st.session_state.get(f"{PREFIX}_shift_lookback_sel", 5)),
             ),
             features=fs, pca=pca, reduced=reduced, states=model,
-            trajectories=kairo.trajectories(fs, model),
+            trajectories=kairo.analysis.trajectories(fs, model),
             transitions=cache.find_transitions(window_starts, model.state_ids,
                                                tuple(model.labels), fs.matrix),
             distribution=cache.state_distribution(window_starts, model.state_ids,
                                                   model.n_states, int(window_minutes)),
-            signal=cache.window_vector_shift(window_starts, reduced, "euclidean"),
+            signal=cache.window_vector_shift(
+                window_starts, reduced,
+                st.session_state.get(f"{PREFIX}_shift_metric_sel", "euclidean"),
+                st.session_state.get(f"{PREFIX}_shift_reference_sel", "previous"),
+                int(st.session_state.get(f"{PREFIX}_shift_lookback_sel", 5)),
+            ),
         )
     st.session_state["resource_result"] = result
     st.session_state["resource_log_signature"] = current_signature

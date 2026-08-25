@@ -3,39 +3,38 @@ from __future__ import annotations
 
 import streamlit as st
 
-st.title("State-based process monitoring")
+st.title("State-based process monitoring for concept-drift detection")
 st.caption(
-    "Compute intra-case, resource, and inter-case **states** from an event log, follow how "
-    "they evolve over time, and read significant changes as **concept-drift** signals. "
-    "Powered by the [kairo](https://github.com/) library."
+    "Compute intra-case, resource, and inter-case states from an event log, follow how "
+    "they evolve over time, and read significant changes as concept-drift signals. "
 )
 
 has_log = "log" in st.session_state
 if has_log:
     st.success("An event log is loaded — pick a perspective below.", icon=":material/check_circle:")
 else:
-    st.info("Start by loading an event log.", icon=":material/upload_file:")
+    st.info("Upload an event log.", icon=":material/upload_file:")
 
 cards = st.columns(4)
 with cards[0], st.container(border=True):
     st.markdown("**1 · Upload**")
-    st.caption("Load an XES / CSV log and map its columns by clicking them.")
+    st.caption("Load an XES / CSV log and map its columns")
     st.page_link("views/upload.py", label="Upload log", icon=":material/upload_file:")
 with cards[1], st.container(border=True):
     st.markdown("**2 · Intra-case**")
-    st.caption("Prefix features per event → PCA → clustered states → per-case trajectories.")
+    st.caption("Features per event → PCA → clustered states → per-case trajectories.")
     st.page_link("views/intra.py", label="Intra-case states", icon=":material/route:")
 with cards[2], st.container(border=True):
     st.markdown("**3 · Resource**")
-    st.caption("Windowed workload, waits, and handovers → states of the resource dimension.")
+    st.caption("Windowed features → PCA → clustered states → log-level trajectories.")
     st.page_link("views/resource.py", label="Resource states", icon=":material/group:")
 with cards[3], st.container(border=True):
     st.markdown("**4 · Inter-case**")
-    st.caption("Windowed system signals: load, arrivals, pacing, stalls → global states.")
+    st.caption("Windowed features → PCA → clustered states → log-level trajectories.")
     st.page_link("views/inter.py", label="Inter-case states", icon=":material/hub:")
 
-with st.expander("How the pipelines fit together"):
-    st.graphviz_chart(
+st.title("Overview of the pipelines")
+st.graphviz_chart(
         """
 digraph {
     rankdir=LR
@@ -87,4 +86,4 @@ digraph {
     log -> inter_feat
 }
         """
-    )
+)

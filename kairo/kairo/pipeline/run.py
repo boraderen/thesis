@@ -6,89 +6,21 @@ by one with the same parameters.
 """
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, field, replace
+from dataclasses import asdict, dataclass, replace
 
 import numpy as np
 import pandas as pd
 
-from .cluster import StateModel, cluster, state_means
-from .drift import drift_signal, window_vector_shift
-from .features import FeatureSet, build_features
-from .features.inter import describe_states
-from .reduce import PCAResult, reduce
-from .schema import ACTIVITY, CASE, INTRA_FEATURES, TIMESTAMP
-from .states import case_transitions, find_transitions, state_distribution, trajectories
+from ..analysis.cluster import StateModel, cluster, state_means
+from ..analysis.drift import drift_signal, window_vector_shift
+from ..features import FeatureSet, build_features
+from ..features.inter import describe_states
+from ..analysis.reduce import PCAResult, reduce
+from ..data.schema import ACTIVITY, CASE, INTRA_FEATURES, TIMESTAMP
+from ..analysis.states import case_transitions, find_transitions, state_distribution, trajectories
+from .config import CONFIGS, InterConfig, IntraConfig, ResourceConfig
 
 
-@dataclass(frozen=True)
-class IntraConfig:
-    """Every knob of the intra-case pipeline, in dashboard-sidebar granularity."""
-
-    features: tuple[str, ...] = tuple(INTRA_FEATURES)
-    history: int = 3
-    skip_pca: bool = False
-    pca_components: int | None = None      # None = elbow rule
-    scaling: str = "none"                  # none | standardize
-    clustering: str = "som"                # som | kmeans | dbscan
-    metric: str = "euclidean"
-    grid: tuple[int, int] = (3, 3)         # som
-    som_init: str = "random"               # random | pca
-    n_clusters: int = 6                    # kmeans
-    eps: float = 0.5                       # dbscan
-    min_samples: int = 5                   # dbscan
-    window_minutes: int = 60               # state-distribution window W
-    divergence: str = "js"                 # kl | js | tv | hellinger
-    reference: str = "previous"            # previous | recent | baseline
-    lookback: int = 5
-    seed: int = 7
-
-
-@dataclass(frozen=True)
-class ResourceConfig:
-    """Every knob of the resource pipeline; empty resources/activities = all."""
-
-    features: tuple[str, ...] = ("events", "active", "duration", "wait", "activity_events", "ho")
-    resources: tuple[str, ...] = ()
-    activities: tuple[str, ...] = ()
-    window_minutes: int = 60
-    skip_pca: bool = False
-    pca_components: int | None = None
-    scaling: str = "none"
-    clustering: str = "som"
-    metric: str = "euclidean"
-    grid: tuple[int, int] = (2, 3)
-    som_init: str = "random"
-    n_clusters: int = 6
-    eps: float = 0.5
-    min_samples: int = 5
-    signal_metric: str = "euclidean"       # window-to-window vector distance
-    seed: int = 7
-
-
-@dataclass(frozen=True)
-class InterConfig:
-    """Every knob of the inter-case pipeline; features may include attr_* keys."""
-
-    features: tuple[str, ...] = ()         # empty = all system + attribute features
-    window_minutes: int = 60
-    stall_minutes: int = 60
-    numeric_attrs: tuple[str, ...] = ()
-    categorical_attrs: tuple[str, ...] = ()
-    skip_pca: bool = False
-    pca_components: int | None = None
-    scaling: str = "none"
-    clustering: str = "som"
-    metric: str = "euclidean"
-    grid: tuple[int, int] = (2, 2)
-    som_init: str = "random"
-    n_clusters: int = 6
-    eps: float = 0.5
-    min_samples: int = 5
-    signal_metric: str = "euclidean"
-    seed: int = 7
-
-
-CONFIGS = {"intra_case": IntraConfig, "resource": ResourceConfig, "inter_case": InterConfig}
 
 
 @dataclass(frozen=True)
@@ -171,7 +103,8 @@ def _run_windowed(log: pd.DataFrame, perspective: str, config, build_kwargs: dic
     transitions = find_transitions(window_starts, model.state_ids, model.labels, fs.matrix)
     dist = state_distribution(window_starts, model.state_ids, model.n_states,
                               config.window_minutes)
-    signal = window_vector_shift(window_starts, reduced, config.signal_metric)
+    signal = window_vector_shift(window_starts, reduced, config.signal_metric,
+                                 config.signal_reference, config.signal_lookback)
     return StateResult(
         perspective=perspective, config=config, features=fs, pca=pca, reduced=reduced,
         states=model, trajectories=traj, transitions=transitions,
