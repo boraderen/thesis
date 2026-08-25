@@ -1,0 +1,32 @@
+[project]
+name = "kairo"
+version = "0.1.0"
+description = "State-based process monitoring and concept-drift detection for event logs, with LLM-ready abstractions"
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = ["process-mining", "concept-drift", "event-log", "states", "som", "llm"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Intended Audience :: Science/Research",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.0",
+    "pm4py>=2.7",
+    "scikit-learn>=1.4",
+    "minisom>=2.3.1",
+    "plotly>=5.20",
+    "requests>=2.31",
+    "kaleido>=0.2",
+]
+
+[dependency-groups]
+dev = ["pytest>=8.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["kairo"]

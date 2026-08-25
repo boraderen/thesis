@@ -13,6 +13,7 @@ dependencies = [
     "plotly>=5.20",
     "pm4py>=2.7",
     "python-dotenv>=1.2.3",
+    "kairo",
     "rheon",
     "scikit-learn>=1.4",
     "seaborn>=0.13",
@@ -22,6 +23,7 @@ dependencies = [
 ]
 
 [tool.uv.sources]
+kairo = { path = "kairo", editable = true }
 rheon = { path = "../rheon", editable = true }
 
 [dependency-groups]

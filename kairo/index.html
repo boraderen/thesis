@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Rheon documentation</title>
+  <title>Kairo documentation</title>
   <link rel="icon" href="favicon.ico" sizes="any">
   <link rel="icon" type="image/png" href="favicon.png">
   <link rel="apple-touch-icon" href="apple-touch-icon.png">
@@ -60,7 +60,7 @@
     }
 
     .topbar-logo {
-      height: 22px;
+      height: 32px;
       width: auto;
       display: block;
       object-fit: contain;
@@ -112,6 +112,12 @@
       background: var(--accent);
       color: #fff;
     }
+
+    /* ---------- API table of contents ---------- */
+    .toc-grid { margin-bottom: 8px; }
+    .toc-grid .card h3 { margin-bottom: 4px; }
+    .toc-grid .card p { margin: 0; font-size: 0.86rem; color: var(--muted); }
+    main h2[id] { scroll-margin-top: 72px; }
 
     /* ---------- Main content ---------- */
     main {
@@ -306,475 +312,397 @@
 </head>
 <body>
 
-<!-- Top bar -->
 <div class="topbar">
   <div class="topbar-brand">
-    <img class="topbar-logo" src="rheon.png" alt="" aria-hidden="true">
-    <span class="topbar-title">Rheon documentation</span>
+    <img class="topbar-logo" src="kairo.png" alt="" aria-hidden="true">
+    <span class="topbar-title">Kairo documentation</span>
   </div>
 </div>
 
 <div class="layout">
 
-  <!-- Sidebar -->
   <aside class="sidebar">
     <a class="nav-item active" data-target="welcome">Welcome</a>
     <a class="nav-item" data-target="installation">Installation</a>
     <a class="nav-item" data-target="quick-start">Quick start</a>
-    <a class="nav-item" data-target="package-structure">Package structure</a>
     <a class="nav-item" data-target="api">API</a>
-    <a class="nav-item" data-target="drift-modes">Drift modes</a>
-    <a class="nav-item" data-target="drift-types">Drift types</a>
-    <a class="nav-item" data-target="output">Output &amp; metadata</a>
+    <a class="nav-item" data-target="package-structure">Package structure</a>
   </aside>
 
-  <!-- Main content -->
   <main>
+<section class="page active" id="welcome">
+  <h1>Kairo</h1>
+  <p class="subtitle">State-based process monitoring and concept-drift detection for event logs —
+    with textual abstractions and LLM access built in.</p>
 
-    <!-- Welcome -->
-    <section class="page active" id="welcome">
-      <h1>Rheon</h1>
-      <p class="subtitle">A library for synthetic event log generation with injected concept drifts.</p>
+  <div class="card-grid">
+    <a class="card" data-target="installation">
+      <div class="card-icon"><svg viewBox="0 0 24 24" width="36" height="36" fill="none"
+        stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 12l10-9 10 9-10 9z"/><path d="M2 12l10 9 10-9"/></svg></div>
+      <h3>Installation</h3></a>
+    <a class="card" data-target="quick-start">
+      <div class="card-icon"><svg viewBox="0 0 24 24" width="36" height="36" fill="none"
+        stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M5 3l14 9-14 9z"/></svg></div>
+      <h3>Quick start</h3></a>
+    <a class="card" data-target="api">
+      <div class="card-icon"><svg viewBox="0 0 24 24" width="36" height="36" fill="none"
+        stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 8l-4 4 4 4"/><path d="M16 8l4 4-4 4"/><path d="M13.5 5.5l-3 13"/></svg></div>
+      <h3>API</h3></a>
+    <a class="card" data-target="package-structure">
+      <div class="card-icon"><svg viewBox="0 0 24 24" width="36" height="36" fill="none"
+        stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 4.5h6v5H4z"/><path d="M14 4.5h6v5h-6z"/><path d="M4 14.5h6v5H4z"/>
+        <path d="M10 7h4"/><path d="M7 9.5v5"/></svg></div>
+      <h3>Package structure</h3></a>
+  </div>
 
-      <div class="card-grid">
-        <a class="card" data-target="installation">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
-                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M2 12l10-9 10 9-10 9z"/>
-              <path d="M2 12l10 9 10-9"/>
-            </svg>
-          </div>
-          <h3>Installation</h3>
-        </a>
+  <h2>What it does</h2>
+  <p>Kairo describes a process through three complementary notions of <strong>state</strong>
+    computed from a traditional event log, follows how state occupancy evolves over calendar
+    windows, and turns significant changes in those signals into <strong>concept-drift</strong>
+    indicators. Every computed object has an <code>abstract_*</code> twin that renders it as text,
+    so a language model — hosted or local — can read a whole analysis and reason about it.</p>
 
-        <a class="card" data-target="quick-start">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
-                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z"/>
-              <path d="M12 15l-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22 22 0 0 1-4 2z"/>
-              <path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0"/>
-              <path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5"/>
-            </svg>
-          </div>
-          <h3>Quick start</h3>
-        </a>
+  <h2>The three perspectives</h2>
+  <table>
+    <thead><tr><th>Perspective</th><th>One sample is</th><th>Features describe</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Intra-case</strong></td><td>one event</td>
+        <td>that event's case prefix — activity frequencies, directly-follows counts, vocabulary,
+            progress, current and past activities.</td></tr>
+      <tr><td><strong>Resource</strong></td><td>one calendar window</td>
+        <td>the resource pool — events and active cases per resource, mean durations,
+            cross-resource waits, activity-resource shares, handover shares.</td></tr>
+      <tr><td><strong>Inter-case</strong></td><td>one calendar window</td>
+        <td>the whole system — active cases, arrivals, completions, events per case, within-case
+            pacing, stalled cases, case-attribute mixes.</td></tr>
+    </tbody>
+  </table>
 
-        <a class="card" data-target="package-structure">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
-                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M4 4.5h6v5H4z"/>
-              <path d="M14 4.5h6v5h-6z"/>
-              <path d="M4 14.5h6v5H4z"/>
-              <path d="M10 7h4"/>
-              <path d="M7 9.5v5"/>
-            </svg>
-          </div>
-          <h3>Package structure</h3>
-        </a>
+  <h2>How a run works</h2>
+  <p>All three perspectives share one pipeline shape. Feature vectors are optionally compressed
+    with PCA and optionally standardized, then clustered — a <strong>SOM</strong> lays states on a
+    grid, <strong>k-means</strong> gives k states, <strong>DBSCAN</strong> gives density clusters
+    plus a noise state. Each sample is assigned a state, producing state trajectories over time.
+    Intra-case then compares per-window state <em>distributions</em> against a reference under a
+    divergence; the two windowed perspectives compare each window's compressed vector with the
+    previous one's. Spikes are drift candidates — the transitions table and state profiles explain
+    what changed.</p>
+  <p>Read the whole surface on the <a class="nav-item" data-target="api"
+    style="display:inline;padding:0;color:var(--accent)">API</a> page.</p>
+</section>
+<section class="page" id="installation">
+  <h1>Installation</h1>
+  <p class="subtitle">Kairo ships inside the thesis repository.</p>
 
-        <a class="card" data-target="api">
-          <div class="card-icon">
-            <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor"
-                 stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M8 8l-4 4 4 4"/>
-              <path d="M16 8l4 4-4 4"/>
-              <path d="M13.5 5.5l-3 13"/>
-            </svg>
-          </div>
-          <h3>API</h3>
-        </a>
-      </div>
+  <p>It is wired into the uv workspace as an editable dependency, so one command from the
+    repository root installs it along with everything else:</p>
+  <pre><code>uv sync</code></pre>
+  <p>That is all. <code>import kairo</code> then works in the notebooks, the dashboard, and any
+    script run with <code>uv run</code>.</p>
 
-      <h2>Concepts</h2>
+  <h3>API keys</h3>
+  <p>Connectors read keys from the environment <em>at call time</em> — never at import — checking
+    the <code>KAIRO_*</code> name first and the provider's usual one second. Put them in a
+    <code>.env</code> at the repository root:</p>
+  <pre><code>KAIRO_ANTHROPIC_API_KEY  or  ANTHROPIC_API_KEY
+KAIRO_OPENAI_API_KEY     or  OPENAI_API_KEY
+KAIRO_GOOGLE_API_KEY     or  GOOGLE_API_KEY
+KAIRO_LOCAL_API_URL      (default http://localhost:1234/v1)
+KAIRO_LLM_PROVIDER       (default provider for kairo.query)</code></pre>
+  <p>Local servers such as LM Studio and Ollama need no key. In a notebook, load the file before
+    importing anything that reads it: <code>from dotenv import load_dotenv; load_dotenv()</code>.
+    With <code>uv run --env-file .env …</code> the variables are set before Python starts.</p>
+</section>
+<section class="page" id="quick-start">
+  <h1>Quick start</h1>
+  <p class="subtitle">Log in, states out, question answered.</p>
 
-      <div class="card-grid">
-        <a class="card" data-target="drift-modes">
-          <h3>Drift modes</h3>
-          <p>Two modes: <code>sudden</code> and <code>gradual</code>.</p>
-        </a>
-        <a class="card" data-target="drift-types">
-          <h3>Drift types</h3>
-          <p>Nine types across the intra-case, resource, and inter-case perspectives.</p>
-        </a>
-        <a class="card" data-target="output">
-          <h3>Output &amp; metadata</h3>
-          <p>The XES or CSV log plus the metadata.</p>
-        </a>
-      </div>
-    </section>
+  <h3>Run a pipeline</h3>
+  <pre><code>import kairo
 
-    <!-- Quick start -->
-    <section class="page" id="quick-start">
-      <h1>Quick start</h1>
-      <p class="subtitle">Generate a labeled log with the simple API.</p>
+log = kairo.read_log("log.xes")
+log = kairo.map_columns(log, {
+    "case ID": "case:concept:name", "activity": "concept:name",
+    "timestamp": "time:timestamp", "resource": "org:resource", "event duration": None,
+})
 
-      <p>Describe a base process and a list of drifts, then write a labeled log.</p>
-      <pre><code>import rheon
+result = kairo.run_intra_case(log, kairo.IntraConfig(
+    clustering="som", grid=(3, 3), pca_components=4, window_minutes=1440,
+))
 
-drifts = [
-    {"type": "control_flow", "mode": "sudden", "drift_point": 0.5, "num_activities": 9},
-    {"type": "reassignment", "mode": "gradual", "start_point": 0.3, "end_point": 0.45},
-    {"type": "amount", "mode": "sudden", "drift_point": 0.6, "mean": 4000},
-]
+kairo.plot_state_grid(result.states).show()
+kairo.plot_drift_signal(result.signal).show()</code></pre>
 
-rheon.generate_log(drifts, "out/example.xes", num_traces=2000, num_activities=8)</code></pre>
+  <h3>Turn it into text</h3>
+  <pre><code>print(kairo.abstract_result(result))        # the whole run
+print(kairo.abstract_states(result.states)) # just the states</code></pre>
 
-      <p>This writes two files: the log <code>out/example.xes</code> and a ground-truth metadata
-        sidecar <code>out/example_meta.md</code>.</p>
+  <h3>Ask a model</h3>
+  <pre><code>answer = kairo.ask(
+    "Where does the process drift, and what characterises the change?",
+    result=result, log=log,
+    executor=kairo.anthropic_query,   # or openai_query / google_query / local_query
+)
 
-      <p>Read the generated log back with pm4py:</p>
-      <pre><code>import pm4py
+prompt = kairo.build_prompt("Where is the drift?", result=result, log=log)  # no network call</code></pre>
 
-log = pm4py.read_xes("out/example.xes")</code></pre>
-    </section>
+</section>
+<section class="page" id="package-structure">
+  <h1>Package structure</h1>
+  <p class="subtitle">Six subpackages behind one flat public surface.</p>
 
-    <!-- Installation -->
-    <section class="page" id="installation">
-      <h1>Installation</h1>
-      <p class="subtitle">Get the runtime and dependencies in place.</p>
+  <p>Everything on the <a class="nav-item" data-target="api"
+    style="display:inline;padding:0;color:var(--accent)">API</a> page is callable as
+    <code>kairo.<em>name</em></code>. The subpackages hold the implementation and stay importable
+    for anything the flat surface does not expose.</p>
 
-      <h3>Prerequisites</h3>
-      <ul>
-        <li>Python 3.10 or newer</li>
-        <li><a href="https://docs.astral.sh/uv/" target="_blank" rel="noopener">uv</a> package manager</li>
-      </ul>
+  <pre><code>kairo/
+  __init__.py          the flat public API
+  data/                the event log itself
+    schema.py          canonical columns, roles, feature catalog
+    log.py             read XES/CSV, map columns, statistics
+    windows.py         calendar-window helpers
+  features/            feature extraction, one function per feature
+    intra.py           per-event prefix features
+    resource.py        per-window resource features
+    inter.py           per-window system and attribute features
+  analysis/            the analytical steps
+    reduce.py          standardization, PCA
+    cluster.py         SOM / k-means / DBSCAN -&gt; StateModel
+    states.py          trajectories, transitions, distributions, profiles
+    drift.py           divergences, references, drift signals
+  pipeline/            end-to-end runs
+    config.py          IntraConfig, ResourceConfig, InterConfig
+    run.py             the runners and StateResult
+  viz/                 figures
+    palette.py         state colours, shared across every plot
+    plots.py           every plotly figure
+  llm/                 text and language models
+    abstract.py        every object -&gt; text
+    connectors.py      anthropic / openai / google / local
+    knowledge.py       hardcoded domain knowledge + injection
+    prompt.py          build_prompt, ask, explain_plot, nlp_to_config</code></pre>
 
-      <h3>Set up</h3>
-      <p>Clone the repository and let <code>uv</code> resolve dependencies on first run:</p>
-      <pre><code>git clone git@github.com:boraderen/rheon.git
-cd rheon
-uv sync</code></pre>
+  <table>
+    <thead><tr><th>Subpackage</th><th>Holds</th><th>Depends on</th></tr></thead>
+    <tbody>
+      <tr><td><code>kairo.data</code></td><td>Reading, mapping, and describing an event log.</td><td>—</td></tr>
+      <tr><td><code>kairo.features</code></td><td>The three feature builders and <code>FeatureSet</code>.</td><td><code>data</code></td></tr>
+      <tr><td><code>kairo.analysis</code></td><td>Reduce, cluster, states over time, drift signals.</td><td><code>data</code>, <code>features</code></td></tr>
+      <tr><td><code>kairo.pipeline</code></td><td>Configs, runners, <code>StateResult</code>.</td><td><code>data</code>, <code>features</code>, <code>analysis</code></td></tr>
+      <tr><td><code>kairo.viz</code></td><td>Palette and every figure.</td><td><code>data</code>, <code>analysis</code></td></tr>
+      <tr><td><code>kairo.llm</code></td><td>Abstractions, connectors, knowledge, prompting.</td><td>all of the above</td></tr>
+    </tbody>
+  </table>
 
-      <h3>Example</h3>
-      <p>Run the bundled script to generate a labeled log:</p>
-      <pre><code>uv run python example/generate_log.py</code></pre>
-      <p>It injects drifts across every perspective and writes <code>example/example.csv</code> plus
-        its <code>example_meta.md</code> ground-truth sidecar.</p>
-    </section>
-
-    <!-- Package structure -->
-    <section class="page" id="package-structure">
-      <h1>Package structure</h1>
-      <p class="subtitle">How the public API and implementation are split.</p>
-
-      <p>The package exposes a single function, <code>rheon.generate_log</code>, from
-        <code>rheon/__init__.py</code>. The implementation is just seven small modules.</p>
-
-      <pre><code>rheon/
-  __init__.py      public exports
-  config.py        column keys, labels, GeneratorConfig
-  drifts.py        drift spec, validation, timeline helpers
-  process_tree.py  build trees and play out activity sequences
-  generator.py     the generation engine (the six steps)
-  metadata.py      build and render the ground-truth metadata
-  write.py         write XES / CSV and the metadata sidecar
-example/
-  generate_log.py  one mixed-drift example
-tests/
-  test_*.py        behavior coverage</code></pre>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Path</th>
-            <th>Role</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td><code>rheon/config.py</code></td><td>Column names, label helpers, and the parameter bundle.</td></tr>
-          <tr><td><code>rheon/drifts.py</code></td><td>Normalizes and validates the drift list.</td></tr>
-          <tr><td><code>rheon/process_tree.py</code></td><td>Builds process trees and plays out traces.</td></tr>
-          <tr><td><code>rheon/generator.py</code></td><td>The generation engine and the public <code>generate_log</code>.</td></tr>
-          <tr><td><code>rheon/metadata.py</code></td><td>Assembles and renders the ground-truth metadata.</td></tr>
-          <tr><td><code>rheon/write.py</code></td><td>Writes the log (XES or CSV) and the metadata sidecar.</td></tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- API -->
-    <section class="page" id="api">
-      <h1>API</h1>
-      <p class="subtitle">Function signature and generator options for <code>rheon.generate_log()</code>.</p>
-
-      <h3>Signature</h3>
-      <pre><code>rheon.generate_log(
-    drifts,
-    output_path,
-    *,
-    log_name=None,
-    format="xes",          # "xes" or "csv"
-    num_traces=1000,
-    num_activities=10,
-    num_resources=8,
-    num_regions=4,
-    tree_weights={"sequence": 0.6, "choice": 0.25, "parallel": 0.1, "loop": 0.05},
-    start_date=datetime(2020, 1, 1),
-    end_date=datetime(2020, 12, 31),
-    activity_duration=(30.0, 100.0),
-    waiting_time=(15.0, 50.0),
-    amount=(1000.0, 40000.0),
-    seed=42,
-)</code></pre>
-
-      <p><code>drifts</code> is a list of dictionaries, each with a <code>type</code>, a <code>mode</code>, and a
-        position; see <a href="#drift-types">Drift types</a> and <a href="#drift-modes">Drift modes</a>. The
-        parameters below all describe the single base process.</p>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Argument</th>
-            <th>Default</th>
-            <th>Description</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td><code>drifts</code></td><td>—</td><td>List of drift dictionaries to inject.</td></tr>
-          <tr><td><code>output_path</code></td><td>—</td><td>Destination of the log.</td></tr>
-          <tr><td><code>log_name</code></td><td>file stem</td><td>Name used in metadata and the sidecar filename.</td></tr>
-          <tr><td><code>format</code></td><td><code>"xes"</code></td><td><code>"xes"</code> or <code>"csv"</code>.</td></tr>
-          <tr><td><code>num_traces</code></td><td><code>1000</code></td><td>Approximate number of cases (not strict).</td></tr>
-          <tr><td><code>num_activities</code></td><td><code>10</code></td><td>Activities in the base process tree.</td></tr>
-          <tr><td><code>num_resources</code></td><td><code>8</code></td><td>Size of the resource pool.</td></tr>
-          <tr><td><code>num_regions</code></td><td><code>4</code></td><td>Number of regions.</td></tr>
-          <tr><td><code>tree_weights</code></td><td>see above</td><td>Operator weights for the base tree (<code>sequence</code>, <code>choice</code>, <code>parallel</code>, <code>loop</code>).</td></tr>
-          <tr><td><code>start_date</code></td><td><code>2020-01-01</code></td><td>Start of the time horizon.</td></tr>
-          <tr><td><code>end_date</code></td><td><code>2020-12-31</code></td><td>End of the time horizon (with <code>start_date</code> it fixes the window).</td></tr>
-          <tr><td><code>activity_duration</code></td><td><code>(30.0, 100.0)</code></td><td><code>(mean, variance)</code> of activity processing time in minutes.</td></tr>
-          <tr><td><code>waiting_time</code></td><td><code>(15.0, 50.0)</code></td><td><code>(mean, variance)</code> of the waiting gap between events.</td></tr>
-          <tr><td><code>amount</code></td><td><code>(1000.0, 40000.0)</code></td><td><code>(mean, variance)</code> of the case amount.</td></tr>
-          <tr><td><code>seed</code></td><td><code>42</code></td><td>Random seed.</td></tr>
-        </tbody>
-      </table>
-
-      <p>Cases are spread across <code>[start_date, end_date]</code>. The mean inter-arrival gap is
-        derived as <code>(end_date − start_date) / num_traces</code>. The <code>arrival_rate</code> drift changes that derived
-        rate after its drift point.</p>
-    </section>
-
-    <!-- Drift modes -->
-    <section class="page" id="drift-modes">
-      <h1>Drift modes</h1>
-      <p class="subtitle">How the change is shaped over time.</p>
-
-      <p>Every drift declares a <code>mode</code> and a position. All positions are fractions of the time
-        horizon in <code>(0, 1)</code>, where <code>0.5</code> is the midpoint. The metadata records each
-        position as both a fraction and an absolute timestamp.</p>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Mode</th>
-            <th>Position keys</th>
-            <th>Behavior</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td><code>sudden</code></td>
-            <td><code>drift_point</code></td>
-            <td>A hard switch: everything after <code>drift_point</code> uses the new behavior.</td>
-          </tr>
-          <tr>
-            <td><code>gradual</code></td>
-            <td><code>start_point</code>, <code>end_point</code></td>
-            <td>A transition window: between the two points the new behavior is mixed in with a probability that rises linearly from 0 to 1.</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
-
-    <!-- Drift types -->
-    <section class="page" id="drift-types">
-      <h1>Drift types</h1>
-      <p class="subtitle">The nine drifts and exactly what each one changes.</p>
-
-      <p>A drift's <code>type</code> selects the mechanism. Perspectives (intra-case, resource,
-        inter-case) are a documentation grouping only — <code>generate_log</code> dispatches purely on
-        <code>type</code>.</p>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Perspective</th>
-            <th>Type</th>
-            <th>What changes</th>
-            <th>Type-specific params</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr><td>intra-case</td><td><code>control_flow</code></td><td>Activity-ordering structure (a different process tree).</td><td><code>num_activities</code>, <code>tree_weights</code></td></tr>
-          <tr><td>resource</td><td><code>pool_size</code></td><td>Resources added or removed; durations scale the opposite way.</td><td><code>delta</code>, <code>duration_factor</code></td></tr>
-          <tr><td>resource</td><td><code>reassignment</code></td><td>A new dominant resource per activity.</td><td>—</td></tr>
-          <tr><td>resource</td><td><code>workload</code></td><td>Traces duplicated or dropped; per-resource load shifts.</td><td><code>workload_factor</code></td></tr>
-          <tr><td>resource</td><td><code>duration</code></td><td>Processing time of the given resources is scaled.</td><td><code>resources</code>, <code>factor</code></td></tr>
-          <tr><td>inter-case</td><td><code>waiting_time</code></td><td>The mean waiting gap between consecutive events of a case shifts (all activities at once).</td><td><code>mean</code>, <code>variance</code></td></tr>
-          <tr><td>inter-case</td><td><code>amount</code></td><td>Case amounts drawn from a shifted distribution.</td><td><code>mean</code>, <code>variance</code></td></tr>
-          <tr><td>inter-case</td><td><code>arrival_rate</code></td><td>The mean gap between case arrivals changes.</td><td><code>inter_arrival</code> or <code>factor</code></td></tr>
-          <tr><td>inter-case</td><td><code>region</code></td><td>A new dominant region for later cases.</td><td>—</td></tr>
-        </tbody>
-      </table>
-
-      <h2>Example valid drift specs</h2>
-      <p>The following <code>drifts</code> list is valid with the default generator labels
-        (<code>res_01</code> ... <code>res_08</code> and <code>region_1</code> ... <code>region_4</code>).
-        Use any subset of these dicts; if you add multiple drifts of the same <code>type</code>, their
-        windows must not overlap.</p>
-      <pre><code>drifts = [
-    {
-        "type": "control_flow",
-        "mode": "sudden",
-        "drift_point": 0.35,
-        "num_activities": 9,
-        "tree_weights": {"sequence": 0.50, "choice": 0.30, "parallel": 0.15, "loop": 0.05},
-    },
-    {
-        "type": "pool_size",
-        "mode": "gradual",
-        "start_point": 0.20,
-        "end_point": 0.30,
-        "delta": 2,
-        "duration_factor": 1.25,
-    },
-    {"type": "reassignment", "mode": "sudden", "drift_point": 0.40},
-    {
-        "type": "workload",
-        "mode": "gradual",
-        "start_point": 0.70,
-        "end_point": 0.85,
-        "workload_factor": 1.40,
-    },
-    {
-        "type": "duration",
-        "mode": "sudden",
-        "drift_point": 0.55,
-        "resources": ["res_01", "res_02"],
-        "factor": 1.80,
-    },
-    {
-        "type": "waiting_time",
-        "mode": "gradual",
-        "start_point": 0.45,
-        "end_point": 0.60,
-        "mean": 45.0,
-        "variance": 80.0,
-    },
-    {
-        "type": "amount",
-        "mode": "sudden",
-        "drift_point": 0.65,
-        "mean": 3000.0,
-        "variance": 90000.0,
-    },
-    {
-        "type": "arrival_rate",
-        "mode": "sudden",
-        "drift_point": 0.50,
-        "inter_arrival": 240.0,
-    },
-    {"type": "region", "mode": "gradual", "start_point": 0.75, "end_point": 0.90},
-]</code></pre>
-
-      <p>For <code>arrival_rate</code>, use either an absolute <code>inter_arrival</code> value in minutes
-        as shown above or a relative <code>factor</code>, for example
-        <code>{"type": "arrival_rate", "mode": "sudden", "drift_point": 0.50, "factor": 0.5}</code>.</p>
-
-      <h2>What each drift does</h2>
-
-      <h3><code>control_flow</code> · intra-case</h3>
-      <p>Cases after the drift are played out from a <em>different</em> process tree, so the
-        activity-ordering (trace variants) structure changes. The new tree is built from the drift's
-        <code>num_activities</code> and <code>tree_weights</code>.
-        In <strong>sudden</strong> mode every case after <code>drift_point</code> uses the new tree; in
-        <strong>gradual</strong> mode a case in the window picks the new tree with the rising window
-        probability.</p>
-
-      <h3><code>pool_size</code> · resource</h3>
-      <p><code>delta</code> adds (<code>+</code>) or removes (<code>−</code>) resources at the drift.
-        When it shrinks, the removed resources' later events are redistributed to the rest; when it
-        grows, each new resource becomes dominant for a free activity. Durations scale the opposite way
-        by <code>duration_factor</code> (fewer resources → slower, more → faster). <strong>Gradual</strong>
-        mode ramps the reassignment and the duration scaling across the window.</p>
-
-      <h3><code>reassignment</code> · resource</h3>
-      <p>A new dominant resource is chosen for every activity and the resource column is re-filled after
-        the drift (keeping 80% dominance). In <strong>gradual</strong> mode the share of events that use
-        the new mapping rises across the window. The before/after dominance maps are written to the
-        metadata.</p>
-
-      <h3><code>workload</code> · resource</h3>
-      <p>After the drift, <code>workload_factor</code> sets how many traces to add or remove
-        (<code>1.0</code> = no change). Added traces are duplicates of existing ones with freshly drawn
-        timing, amount, resources and region; removals never drop the last instance of a variant. The
-        total trace count may change. <strong>Gradual</strong> mode spreads the
-        duplicates across the window.</p>
-
-      <h3><code>duration</code> · resource</h3>
-      <p>The processing time of the given resources' later events is multiplied by <code>factor</code>
-        ("these resources slow down / speed up"). <code>resources</code> may be <code>"all"</code>, a
-        count (the first N resources), or an explicit list. <strong>Gradual</strong> mode ramps the
-        factor from 1 to its target across the window.</p>
-
-      <h3><code>waiting_time</code> · inter-case</h3>
-      <p>The mean of the waiting gap between events shifts to <code>mean</code> after the drift — the
-        main driver of throughput time. A gap is the idle time between consecutive events of the same
-        case, and every activity's waiting distribution is updated to the new
-        (<code>mean</code>, <code>variance</code>), so all activities shift at once.
-        <strong>Gradual</strong> mode blends each gap from its old value toward the new mean across the
-        window.</p>
-
-      <h3><code>amount</code> · inter-case</h3>
-      <p>Case amounts after the drift are drawn from a shifted distribution (<code>mean</code>,
-        <code>variance</code>). <strong>Gradual</strong> mode interpolates the mean and variance across
-        the window.</p>
-
-      <h3><code>arrival_rate</code> · inter-case</h3>
-      <p>The mean inter-arrival gap changes after the drift, set by a new absolute
-        <code>inter_arrival</code> or a <code>factor</code> applied to the base. Cases arrive denser or
-        sparser. <strong>Gradual</strong> mode moves the mean across the window.</p>
-
-      <h3><code>region</code> · inter-case</h3>
-      <p>A new dominant region is chosen and the region of later cases is re-filled (keeping 80%
-        dominance). <strong>Gradual</strong> mode raises the share of cases using the new region across
-        the window.</p>
-    </section>
-
-    <!-- Output -->
-    <section class="page" id="output">
-      <h1>Output &amp; metadata</h1>
-      <p class="subtitle">An XES or CSV log and a readable metadata sidecar.</p>
-
-      <p>Each run writes two files next to <code>output_path</code> (the log suffix follows
-        <code>format</code>):</p>
-      <pre><code>&lt;name&gt;.xes   (or &lt;name&gt;.csv)
-&lt;log_name&gt;_meta.md</code></pre>
-
-      <h3>Log columns</h3>
-      <p>Events carry:</p>
-      <p>
-        <code>event:id</code>,
-        <code>case:concept:name</code>,
-        <code>concept:name</code>,
-        <code>start_timestamp</code>,
-        <code>time:timestamp</code>,
-        <code>event:duration_min</code>,
-        <code>org:resource</code>
-      </p>
-      <p>Each case carries <code>case:amount</code> and <code>case:region</code>. For XES the full
-        metadata is also embedded as a log-level <code>rheon:metadata</code> attribute.</p>
-
-      <h3>Metadata sidecar</h3>
-      <p>The <code>&lt;log_name&gt;_meta.md</code> file is the ground truth, in three sections:</p>
-      <ul>
-        <li><strong>General parameters</strong> — the structural, temporal and attribute parameters of the run.</li>
-        <li><strong>Base distributions</strong> — the starting state: every activity's dominant resource and its duration and waiting distributions <code>(mean, var)</code>, plus the case-level amount distribution, inter-arrival mean and dominant region.</li>
-        <li><strong>Drifts</strong> — each drift with its mode and drift point or window (as both a horizon fraction and an absolute timestamp), followed by exactly which distributions or assignments it changed, per activity / resource.</li>
-      </ul>
-    </section>
-
+  <p>Dependencies point one way only, so there are no import cycles. Functions are pure: no global
+    state, no caching, no I/O beyond reading the log file you name. The Streamlit dashboard
+    consumes this API and adds only widgets and its own caching layer.</p>
+</section>
+<section class="page" id="api">
+<h1>API</h1>
+<p class="subtitle">The public surface: signature, parameters, and what comes back.</p>
+<div class="card-grid toc-grid"><a class="card" href="#api-logs"><h3>Reading logs</h3><p>Load a file and map its columns.</p></a><a class="card" href="#api-pipelines"><h3>Pipelines</h3><p>The runners and their configs.</p></a><a class="card" href="#api-results"><h3>Result objects</h3><p>What a run hands back.</p></a><a class="card" href="#api-plots"><h3>Plots</h3><p>A figure per artifact.</p></a><a class="card" href="#api-abstractions"><h3>Abstractions</h3><p>Objects as prompt-ready text.</p></a><a class="card" href="#api-llms"><h3>Language models</h3><p>Connectors and prompting.</p></a><a class="card" href="#api-constants"><h3>Constants</h3><p>The values a config accepts.</p></a></div>
+<h2 id="api-logs">Reading logs</h2>
+<h3 id="api-read_log"><code>read_log</code></h3>
+<p>Read an event log from disk or memory without renaming any column.</p>
+<pre><code>read_log(source: str | Path | bytes, name: str | None = None) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>source</code></td><td><code>str | Path | bytes</code></td><td><em>required</em></td><td>Path to a <code>.xes</code> / <code>.csv</code> file, or raw bytes.</td></tr><tr><td><code>name</code></td><td><code>str | None</code></td><td><code>None</code></td><td>Filename whose extension picks the parser. Required only when <code>source</code> is bytes.</td></tr></tbody></table>
+<p><strong>Returns.</strong> The log as a DataFrame, exactly as stored.</p>
+<h3 id="api-map_columns"><code>map_columns</code></h3>
+<p>Rename picked columns to canonical names, coerce types, and sort by case and time.</p>
+<pre><code>map_columns(df: pd.DataFrame, picked: dict[str, str | None]) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>df</code></td><td><code>pd.DataFrame</code></td><td><em>required</em></td><td>The raw log returned by <code>read_log</code>.</td></tr><tr><td><code>picked</code></td><td><code>dict[str, str | None]</code></td><td><em>required</em></td><td><code>{role: column}</code> where role is one of <code>case ID</code>, <code>activity</code>, <code>timestamp</code>, <code>resource</code>, <code>event duration</code>. A <code>None</code> value skips an optional role and drops any column already carrying that canonical name.</td></tr></tbody></table>
+<p><strong>Returns.</strong> The mapped log, sorted by case then timestamp, with unparseable timestamps dropped.</p>
+<h3 id="api-log_statistics"><code>log_statistics</code></h3>
+<p>Compute the summary metrics shown on the dashboard&#x27;s upload page.</p>
+<pre><code>log_statistics(log: pd.DataFrame, case_attributes: dict[str, str] | None = None) -&gt; LogStatistics</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>log</code></td><td><code>pd.DataFrame</code></td><td><em>required</em></td><td>A mapped event log (canonical columns <code>case:concept:name</code>, <code>concept:name</code>, <code>time:timestamp</code>).</td></tr><tr><td><code>case_attributes</code></td><td><code>dict[str, str] | None</code></td><td><code>None</code></td><td><code>{column: &quot;numeric&quot;|&quot;categorical&quot;}</code> to record alongside the statistics.</td></tr></tbody></table>
+<p><strong>Returns.</strong> A <code>LogStatistics</code> dataclass.</p>
+<h2 id="api-pipelines">Pipelines</h2>
+<p>Each runner chains the whole pipeline and returns everything it computed.</p>
+<h3 id="api-run_intra_case"><code>run_intra_case</code></h3>
+<p>Run the full intra-case pipeline.</p>
+<pre><code>run_intra_case(log: pd.DataFrame, config: IntraConfig = IntraConfig()) -&gt; StateResult</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>log</code></td><td><code>pd.DataFrame</code></td><td><em>required</em></td><td>A mapped event log (canonical columns <code>case:concept:name</code>, <code>concept:name</code>, <code>time:timestamp</code>).</td></tr><tr><td><code>config</code></td><td><code>IntraConfig</code></td><td><code>IntraConfig()</code></td><td>An <code>IntraConfig</code>; the default runs every feature with a 3×3 SOM.</td></tr></tbody></table>
+<p><strong>Returns.</strong> A <code>StateResult</code>.</p>
+<h3 id="api-run_resource"><code>run_resource</code></h3>
+<p>Run the full resource pipeline.</p>
+<pre><code>run_resource(log: pd.DataFrame, config: ResourceConfig = ResourceConfig()) -&gt; StateResult</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>log</code></td><td><code>pd.DataFrame</code></td><td><em>required</em></td><td>A mapped event log (canonical columns <code>case:concept:name</code>, <code>concept:name</code>, <code>time:timestamp</code>).</td></tr><tr><td><code>config</code></td><td><code>ResourceConfig</code></td><td><code>ResourceConfig()</code></td><td>A <code>ResourceConfig</code>.</td></tr></tbody></table>
+<p><strong>Returns.</strong> A <code>StateResult</code>.</p>
+<h3 id="api-run_inter_case"><code>run_inter_case</code></h3>
+<p>Run the full inter-case pipeline.</p>
+<pre><code>run_inter_case(log: pd.DataFrame, config: InterConfig = InterConfig()) -&gt; StateResult</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>log</code></td><td><code>pd.DataFrame</code></td><td><em>required</em></td><td>A mapped event log (canonical columns <code>case:concept:name</code>, <code>concept:name</code>, <code>time:timestamp</code>).</td></tr><tr><td><code>config</code></td><td><code>InterConfig</code></td><td><code>InterConfig()</code></td><td>An <code>InterConfig</code>.</td></tr></tbody></table>
+<p><strong>Returns.</strong> A <code>StateResult</code>.</p>
+<h3 id="api-run"><code>run</code></h3>
+<p>Run a perspective&#x27;s pipeline by name.</p>
+<pre><code>run(log: pd.DataFrame, perspective: str, config=None) -&gt; StateResult</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>log</code></td><td><code>pd.DataFrame</code></td><td><em>required</em></td><td>A mapped event log (canonical columns <code>case:concept:name</code>, <code>concept:name</code>, <code>time:timestamp</code>).</td></tr><tr><td><code>perspective</code></td><td><code>str</code></td><td><em>required</em></td><td><code>intra_case</code>, <code>resource</code>, or <code>inter_case</code>.</td></tr><tr><td><code>config</code></td><td><code></code></td><td><code>None</code></td><td>The matching config; <code>None</code> uses that perspective&#x27;s defaults.</td></tr></tbody></table>
+<p><strong>Returns.</strong> A <code>StateResult</code>.</p>
+<h3>Configs</h3>
+<p>Frozen dataclasses; every field is keyword-settable and defaults are shown below. A config
+   fully describes a run, so it is reproducible and serializable.</p>
+<h4 id="api-IntraConfig"><code>IntraConfig</code></h4>
+<table><thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>features</code></td><td><code>tuple[str, ...]</code></td><td>Feature keys to compute; empty or default means all available.</td></tr><tr><td><code>history</code></td><td><code>int</code></td><td>How many preceding events the <code>history</code> feature encodes.</td></tr><tr><td><code>skip_pca</code></td><td><code>bool</code></td><td>Cluster the raw feature columns instead of PCA output.</td></tr><tr><td><code>pca_components</code></td><td><code>int | None</code></td><td>Fixed component count; <code>None</code> applies the elbow rule.</td></tr><tr><td><code>scaling</code></td><td><code>str</code></td><td><code>none</code> or <code>standardize</code>.</td></tr><tr><td><code>clustering</code></td><td><code>str</code></td><td><code>som</code>, <code>kmeans</code>, or <code>dbscan</code>.</td></tr><tr><td><code>metric</code></td><td><code>str</code></td><td>Distance measure for the clustering.</td></tr><tr><td><code>grid</code></td><td><code>tuple[int, int]</code></td><td>SOM grid <code>(height, width)</code>.</td></tr><tr><td><code>som_init</code></td><td><code>str</code></td><td><code>random</code> or <code>pca</code>.</td></tr><tr><td><code>n_clusters</code></td><td><code>int</code></td><td>k, when clustering is k-means.</td></tr><tr><td><code>eps</code></td><td><code>float</code></td><td>Neighbourhood radius, when clustering is DBSCAN.</td></tr><tr><td><code>min_samples</code></td><td><code>int</code></td><td>Core-point threshold, when clustering is DBSCAN.</td></tr><tr><td><code>window_minutes</code></td><td><code>int</code></td><td>Width of the state-distribution windows, in minutes.</td></tr><tr><td><code>divergence</code></td><td><code>str</code></td><td><code>kl</code>, <code>js</code>, <code>tv</code>, or <code>hellinger</code>.</td></tr><tr><td><code>reference</code></td><td><code>str</code></td><td><code>previous</code>, <code>recent</code>, or <code>baseline</code>.</td></tr><tr><td><code>lookback</code></td><td><code>int</code></td><td>l — windows averaged by the <code>recent</code> reference.</td></tr><tr><td><code>seed</code></td><td><code>int</code></td><td>Random seed for SOM and k-means.</td></tr></tbody></table>
+<h4 id="api-ResourceConfig"><code>ResourceConfig</code></h4>
+<table><thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>features</code></td><td><code>tuple[str, ...]</code></td><td>Feature keys to compute; empty or default means all available.</td></tr><tr><td><code>resources</code></td><td><code>tuple[str, ...]</code></td><td>Restrict which resources get columns; empty means all.</td></tr><tr><td><code>activities</code></td><td><code>tuple[str, ...]</code></td><td>Restrict activity-resource columns; empty means all.</td></tr><tr><td><code>window_minutes</code></td><td><code>int</code></td><td>Window width in minutes.</td></tr><tr><td><code>skip_pca</code></td><td><code>bool</code></td><td>Cluster the raw feature columns instead of PCA output.</td></tr><tr><td><code>pca_components</code></td><td><code>int | None</code></td><td>Fixed component count; <code>None</code> applies the elbow rule.</td></tr><tr><td><code>scaling</code></td><td><code>str</code></td><td><code>none</code> or <code>standardize</code>.</td></tr><tr><td><code>clustering</code></td><td><code>str</code></td><td><code>som</code>, <code>kmeans</code>, or <code>dbscan</code>.</td></tr><tr><td><code>metric</code></td><td><code>str</code></td><td>Distance measure for the clustering.</td></tr><tr><td><code>grid</code></td><td><code>tuple[int, int]</code></td><td>SOM grid <code>(height, width)</code>.</td></tr><tr><td><code>som_init</code></td><td><code>str</code></td><td><code>random</code> or <code>pca</code>.</td></tr><tr><td><code>n_clusters</code></td><td><code>int</code></td><td>k, when clustering is k-means.</td></tr><tr><td><code>eps</code></td><td><code>float</code></td><td>Neighbourhood radius, when clustering is DBSCAN.</td></tr><tr><td><code>min_samples</code></td><td><code>int</code></td><td>Core-point threshold, when clustering is DBSCAN.</td></tr><tr><td><code>signal_metric</code></td><td><code>str</code></td><td>Distance used for the window-to-window drift signal.</td></tr><tr><td><code>signal_reference</code></td><td><code>str</code></td><td>What each window is compared against: <code>previous</code>, <code>recent</code>, or <code>baseline</code>.</td></tr><tr><td><code>signal_lookback</code></td><td><code>int</code></td><td>l — windows averaged by the <code>recent</code> reference.</td></tr><tr><td><code>seed</code></td><td><code>int</code></td><td>Random seed for SOM and k-means.</td></tr></tbody></table>
+<h4 id="api-InterConfig"><code>InterConfig</code></h4>
+<table><thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>features</code></td><td><code>tuple[str, ...]</code></td><td>Feature keys to compute; empty or default means all available.</td></tr><tr><td><code>window_minutes</code></td><td><code>int</code></td><td>Window width in minutes.</td></tr><tr><td><code>stall_minutes</code></td><td><code>int</code></td><td>τ — idle time after which a running case counts as stalled.</td></tr><tr><td><code>numeric_attrs</code></td><td><code>tuple[str, ...]</code></td><td>Case attributes offering mean and std features.</td></tr><tr><td><code>categorical_attrs</code></td><td><code>tuple[str, ...]</code></td><td>Case attributes offering value-share features.</td></tr><tr><td><code>skip_pca</code></td><td><code>bool</code></td><td>Cluster the raw feature columns instead of PCA output.</td></tr><tr><td><code>pca_components</code></td><td><code>int | None</code></td><td>Fixed component count; <code>None</code> applies the elbow rule.</td></tr><tr><td><code>scaling</code></td><td><code>str</code></td><td><code>none</code> or <code>standardize</code>.</td></tr><tr><td><code>clustering</code></td><td><code>str</code></td><td><code>som</code>, <code>kmeans</code>, or <code>dbscan</code>.</td></tr><tr><td><code>metric</code></td><td><code>str</code></td><td>Distance measure for the clustering.</td></tr><tr><td><code>grid</code></td><td><code>tuple[int, int]</code></td><td>SOM grid <code>(height, width)</code>.</td></tr><tr><td><code>som_init</code></td><td><code>str</code></td><td><code>random</code> or <code>pca</code>.</td></tr><tr><td><code>n_clusters</code></td><td><code>int</code></td><td>k, when clustering is k-means.</td></tr><tr><td><code>eps</code></td><td><code>float</code></td><td>Neighbourhood radius, when clustering is DBSCAN.</td></tr><tr><td><code>min_samples</code></td><td><code>int</code></td><td>Core-point threshold, when clustering is DBSCAN.</td></tr><tr><td><code>signal_metric</code></td><td><code>str</code></td><td>Distance used for the window-to-window drift signal.</td></tr><tr><td><code>signal_reference</code></td><td><code>str</code></td><td>What each window is compared against: <code>previous</code>, <code>recent</code>, or <code>baseline</code>.</td></tr><tr><td><code>signal_lookback</code></td><td><code>int</code></td><td>l — windows averaged by the <code>recent</code> reference.</td></tr><tr><td><code>seed</code></td><td><code>int</code></td><td>Random seed for SOM and k-means.</td></tr></tbody></table>
+<h2 id="api-results">Result objects</h2>
+<p>You never build these — a runner returns them.</p>
+<h3 id="api-StateResult"><code>StateResult</code></h3>
+<table><thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>perspective</code></td><td><code>str</code></td><td>Which pipeline produced this.</td></tr><tr><td><code>config</code></td><td><code>IntraConfig | ResourceConfig | InterConfig</code></td><td>The config the run used.</td></tr><tr><td><code>features</code></td><td><code>FeatureSet</code></td><td>The feature matrix — a <code>FeatureSet</code>.</td></tr><tr><td><code>pca</code></td><td><code>PCAResult | None</code></td><td>A <code>PCAResult</code>, or <code>None</code> when PCA was skipped.</td></tr><tr><td><code>reduced</code></td><td><code>np.ndarray</code></td><td>The matrix that was clustered.</td></tr><tr><td><code>states</code></td><td><code>StateModel</code></td><td>The fitted <code>StateModel</code>.</td></tr><tr><td><code>trajectories</code></td><td><code>pd.DataFrame</code></td><td>State over time, one row per sample.</td></tr><tr><td><code>transitions</code></td><td><code>pd.DataFrame</code></td><td>State changes with their dominant feature deltas.</td></tr><tr><td><code>distribution</code></td><td><code>pd.DataFrame</code></td><td>Per-window state fractions.</td></tr><tr><td><code>signal</code></td><td><code>pd.DataFrame</code></td><td>The drift score per window.</td></tr></tbody></table>
+<p><code>result.to_dict()</code> gives a JSON-ready summary without the matrices.
+   The three nested objects carry what the plot and abstraction functions read:</p>
+<table><thead><tr><th>Object</th><th>Attributes</th></tr></thead><tbody>
+<tr><td><code>FeatureSet</code></td>
+    <td><code>matrix</code>, <code>index</code>, <code>groups</code>, <code>meta</code>,
+        <code>columns</code>, <code>frame</code>, <code>values(columns=None)</code></td></tr>
+<tr><td><code>StateModel</code></td>
+    <td><code>method</code>, <code>state_ids</code>, <code>labels</code>, <code>counts</code>,
+        <code>dominant</code>, <code>centroids</code>, <code>codebook</code>,
+        <code>grid_h</code>/<code>grid_w</code>, <code>n_states</code>, <code>params</code></td></tr>
+<tr><td><code>PCAResult</code></td>
+    <td><code>explained_variance_ratio</code>, <code>components</code>, <code>transformed</code>,
+        <code>n_components</code>, <code>raw_dim</code>, <code>top_loadings(columns, k=5)</code></td></tr>
+</tbody></table>
+<p>A <code>LogStatistics</code> from <code>log_statistics</code> carries <code>cases</code>,
+   <code>events</code>, <code>activities</code>, <code>resources</code>, <code>start</code>,
+   <code>end</code>, <code>span_minutes</code>, the <code>tpt_days_*</code> and
+   <code>length_*</code> quantiles, <code>activity_counts</code>, <code>resource_counts</code>,
+   and <code>case_attributes</code>.</p>
+<h2 id="api-plots">Plots</h2>
+<p>Each returns a plotly <code>go.Figure</code> and renders nothing; the two
+   <code>add_*</code> helpers mutate and return the figure passed in. States keep the same colour
+   across every figure.</p>
+<h3 id="api-plot_activity_frequency"><code>plot_activity_frequency</code></h3>
+<p>Horizontal bar chart of activity counts.</p>
+<pre><code>plot_activity_frequency(stats: LogStatistics) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>stats</code></td><td><code>LogStatistics</code></td><td><em>required</em></td><td>A <code>LogStatistics</code>.</td></tr></tbody></table>
+<p><strong>Returns.</strong> A figure.</p>
+<h3 id="api-plot_pca_variance"><code>plot_pca_variance</code></h3>
+<p>Explained variance per component with the elbow line.</p>
+<pre><code>plot_pca_variance(pca: PCAResult) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>pca</code></td><td><code>PCAResult</code></td><td><em>required</em></td><td>A <code>PCAResult</code>.</td></tr></tbody></table>
+<p><strong>Returns.</strong> A figure.</p>
+<h3 id="api-plot_k_distance"><code>plot_k_distance</code></h3>
+<p>The sorted k-distance curve whose knee suggests DBSCAN&#x27;s eps.</p>
+<pre><code>plot_k_distance(distances: np.ndarray, k: int) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>distances</code></td><td><code>np.ndarray</code></td><td><em>required</em></td><td>Output of <code>k_distances</code>.</td></tr><tr><td><code>k</code></td><td><code>int</code></td><td><em>required</em></td><td>The k those distances were computed for — shown in the title.</td></tr></tbody></table>
+<p><strong>Returns.</strong> A figure.</p>
+<h3 id="api-plot_state_grid"><code>plot_state_grid</code></h3>
+<p>The state grid as an annotated heatmap.</p>
+<pre><code>plot_state_grid(model: StateModel, monochrome: bool = False, title: str = ) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>model</code></td><td><code>StateModel</code></td><td><em>required</em></td><td>A fitted <code>StateModel</code> from any of the clustering functions.</td></tr><tr><td><code>monochrome</code></td><td><code>bool</code></td><td><code>False</code></td><td>Shade by frequency instead of giving each state its own colour.</td></tr><tr><td><code>title</code></td><td><code>str</code></td><td><code>&#x27;&#x27;</code></td><td>Optional figure title.</td></tr></tbody></table>
+<p><strong>Returns.</strong> A figure. On-cell labels are dropped past a 5×5 grid; hover keeps them.</p>
+<h3 id="api-plot_state_distances"><code>plot_state_distances</code></h3>
+<p>Pairwise state-vector distances as an annotated matrix.</p>
+<pre><code>plot_state_distances(model: StateModel, metric: str = euclidean) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>model</code></td><td><code>StateModel</code></td><td><em>required</em></td><td>A fitted <code>StateModel</code> from any of the clustering functions.</td></tr><tr><td><code>metric</code></td><td><code>str</code></td><td><code>&#x27;euclidean&#x27;</code></td><td>Distance measure: <code>euclidean</code>, <code>manhattan</code>, <code>chebyshev</code>, or <code>cosine</code>.</td></tr></tbody></table>
+<p><strong>Returns.</strong> A figure.</p>
+<h3 id="api-plot_transition_matrix"><code>plot_transition_matrix</code></h3>
+<p>State-to-state transition counts as a heatmap.</p>
+<pre><code>plot_transition_matrix(matrix: pd.DataFrame) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>matrix</code></td><td><code>pd.DataFrame</code></td><td><em>required</em></td><td>Output of <code>transition_matrix</code>.</td></tr></tbody></table>
+<p><strong>Returns.</strong> A figure.</p>
+<h3 id="api-plot_trajectory"><code>plot_trajectory</code></h3>
+<p>State segments over time; consecutive equal states merge into one block.</p>
+<pre><code>plot_trajectory(timestamps: pd.Series, state_ids: np.ndarray, model: StateModel, title: str = , height: int = 180, window_ticks: bool = False) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>timestamps</code></td><td><code>pd.Series</code></td><td><em>required</em></td><td>Timestamp of each sample.</td></tr><tr><td><code>state_ids</code></td><td><code>np.ndarray</code></td><td><em>required</em></td><td>State of each sample.</td></tr><tr><td><code>model</code></td><td><code>StateModel</code></td><td><em>required</em></td><td>A fitted <code>StateModel</code> from any of the clustering functions.</td></tr><tr><td><code>title</code></td><td><code>str</code></td><td><code>&#x27;&#x27;</code></td><td>Optional figure title.</td></tr><tr><td><code>height</code></td><td><code>int</code></td><td><code>180</code></td><td>Figure height in pixels.</td></tr><tr><td><code>window_ticks</code></td><td><code>bool</code></td><td><code>False</code></td><td>Draw a boundary line per window so windows stay visible inside long runs.</td></tr></tbody></table>
+<p><strong>Returns.</strong> A figure.</p>
+<h3 id="api-plot_state_distribution"><code>plot_state_distribution</code></h3>
+<p>Stacked area chart of per-window state fractions.</p>
+<pre><code>plot_state_distribution(distribution: pd.DataFrame, model: StateModel) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>distribution</code></td><td><code>pd.DataFrame</code></td><td><em>required</em></td><td>Output of <code>state_distribution</code>.</td></tr><tr><td><code>model</code></td><td><code>StateModel</code></td><td><em>required</em></td><td>A fitted <code>StateModel</code> from any of the clustering functions. Supplies the state labels.</td></tr></tbody></table>
+<p><strong>Returns.</strong> A figure.</p>
+<h3 id="api-plot_drift_signal"><code>plot_drift_signal</code></h3>
+<p>Line plot of a per-window drift score.</p>
+<pre><code>plot_drift_signal(signal: pd.DataFrame, title: str = , height: int = 220) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>signal</code></td><td><code>pd.DataFrame</code></td><td><em>required</em></td><td>Output of <code>drift_signal</code> or <code>window_vector_shift</code>.</td></tr><tr><td><code>title</code></td><td><code>str</code></td><td><code>&#x27;&#x27;</code></td><td>Optional figure title.</td></tr><tr><td><code>height</code></td><td><code>int</code></td><td><code>220</code></td><td>Figure height in pixels.</td></tr></tbody></table>
+<p><strong>Returns.</strong> A figure; the x axis is ticked by window index.</p>
+<h3 id="api-add_transition_markers"><code>add_transition_markers</code></h3>
+<p>Overlay dashed vertical lines at transition times.</p>
+<pre><code>add_transition_markers(fig: go.Figure, timestamps: pd.Series) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>fig</code></td><td><code>go.Figure</code></td><td><em>required</em></td><td>The figure to annotate.</td></tr><tr><td><code>timestamps</code></td><td><code>pd.Series</code></td><td><em>required</em></td><td>Where to draw the markers.</td></tr></tbody></table>
+<p><strong>Returns.</strong> The same figure, mutated.</p>
+<h3 id="api-add_window_boundaries"><code>add_window_boundaries</code></h3>
+<p>Overlay faint vertical lines at window starts.</p>
+<pre><code>add_window_boundaries(fig: go.Figure, window_starts: pd.Series, y_min: float = 0, y_max: float = 1) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>fig</code></td><td><code>go.Figure</code></td><td><em>required</em></td><td>The figure to annotate.</td></tr><tr><td><code>window_starts</code></td><td><code>pd.Series</code></td><td><em>required</em></td><td>Where to draw the lines.</td></tr><tr><td><code>y_min</code></td><td><code>float</code></td><td><code>0</code></td><td>Bottom of the lines.</td></tr><tr><td><code>y_max</code></td><td><code>float</code></td><td><code>1</code></td><td>Top of the lines — set it to the signal&#x27;s maximum.</td></tr></tbody></table>
+<p><strong>Returns.</strong> The same figure, mutated.</p>
+<h3 id="api-save_figure"><code>save_figure</code></h3>
+<p>Render a figure to PNG — for reports, or as LLM vision input.</p>
+<pre><code>save_figure(fig: go.Figure, path: str | Path | None = None, scale: int = 2) -&gt; Path</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>fig</code></td><td><code>go.Figure</code></td><td><em>required</em></td><td>The figure to write.</td></tr><tr><td><code>path</code></td><td><code>str | Path | None</code></td><td><code>None</code></td><td>Destination; <code>None</code> writes a temporary file.</td></tr><tr><td><code>scale</code></td><td><code>int</code></td><td><code>2</code></td><td>Resolution multiplier.</td></tr></tbody></table>
+<p><strong>Returns.</strong> The path written.</p>
+<h2 id="api-abstractions">Abstractions</h2>
+<p>All fourteen share the shape
+   <code>abstract_x(subject, …, max_len=10000, include_header=True) -&gt; str</code> and make no
+   network call. <code>max_len</code> is a character budget, cut with a
+   <code>... [truncated]</code> marker; <code>include_header</code> drops the leading descriptive
+   line. <code>abstract_result</code> composes a whole run under one budget.</p>
+<table><thead><tr><th>Function</th><th>Parameters</th><th>Renders</th></tr></thead><tbody><tr><td><code>abstract_config</code></td><td><code>config</code></td><td>Every parameter of a pipeline config, one per line.</td></tr><tr><td><code>abstract_drift_signal</code></td><td><code>signal, top_k</code></td><td>The drift score series and its strongest windows.</td></tr><tr><td><code>abstract_features</code></td><td><code>fs</code></td><td>The feature matrix: shape, groups, and per-column value ranges.</td></tr><tr><td><code>abstract_log_attributes</code></td><td><code>log</code></td><td>The columns of the log with dtypes, quantiles, and top categorical values.</td></tr><tr><td><code>abstract_log_statistics</code></td><td><code>stats</code></td><td>The basic statistics of the log as text.</td></tr><tr><td><code>abstract_pca</code></td><td><code>pca, columns</code></td><td>The PCA reduction: kept components, explained variance, top loadings.</td></tr><tr><td><code>abstract_result</code></td><td><code>result</code></td><td>One pipeline run, fully described: config, features, PCA, states,</td></tr><tr><td><code>abstract_state_distribution</code></td><td><code>distribution</code></td><td>The per-window state frequency table as text rows.</td></tr><tr><td><code>abstract_state_grid</code></td><td><code>model</code></td><td>The SOM grid as a text matrix with counts, plus neighbour distances.</td></tr><tr><td><code>abstract_state_profiles</code></td><td><code>profiles</code></td><td>Per state: size and the features that distinguish it from the rest.</td></tr><tr><td><code>abstract_states</code></td><td><code>model, profiles</code></td><td>The clustered states: method, geometry, per-state size and character.</td></tr><tr><td><code>abstract_trajectory</code></td><td><code>result, case_id</code></td><td>One trajectory as a state sequence with timestamps and dwell lengths.</td></tr><tr><td><code>abstract_transition_matrix</code></td><td><code>matrix</code></td><td>The state-to-state transition counts, one line per non-zero pair.</td></tr><tr><td><code>abstract_transitions</code></td><td><code>transitions</code></td><td>The observed state transitions with their dominant feature changes.</td></tr></tbody></table>
+<h2 id="api-llms">Language models</h2>
+<p><code>anthropic_query</code>, <code>openai_query</code>, <code>google_query</code>, and
+   <code>local_query</code> share one signature. Keys are read from the environment at call time,
+   <code>KAIRO_*</code> first; local servers need none.</p>
+<pre><code>anthropic_query(prompt: str, model: str | None = None, api_key: str | None = None, api_url: str | None = None, system: str | None = None, max_tokens: int = 16000, image_path: str | Path | None = None, extra_payload: dict | None = None, timeout: int = 600) -&gt; str</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>prompt</code></td><td><code>str</code></td><td><em>required</em></td><td>The prompt text.</td></tr>
+<tr><td><code>model</code></td><td><code>str | None</code></td><td><code>None</code></td>
+    <td>Provider default when omitted — <code>claude-opus-5</code>, <code>gpt-5</code>,
+        <code>gemini-2.5-flash</code>; for <code>local_query</code>, the first model the server has loaded.</td></tr>
+<tr><td><code>api_key</code></td><td><code>str | None</code></td><td><code>None</code></td><td>Overrides the environment.</td></tr>
+<tr><td><code>api_url</code></td><td><code>str | None</code></td><td><code>None</code></td>
+    <td>Base URL override — e.g. Ollama at <code>http://localhost:11434/v1</code>.</td></tr>
+<tr><td><code>system</code></td><td><code>str | None</code></td><td><code>None</code></td><td>System prompt.</td></tr>
+<tr><td><code>max_tokens</code></td><td><code>int</code></td><td><code>16000</code></td>
+    <td>Output cap; on thinking models it covers reasoning plus the answer.</td></tr>
+<tr><td><code>image_path</code></td><td><code>str | Path | None</code></td><td><code>None</code></td>
+    <td>An image to attach, encoded into the provider's own format.</td></tr>
+<tr><td><code>extra_payload</code></td><td><code>dict | None</code></td><td><code>None</code></td>
+    <td>Merged into the request body.</td></tr>
+<tr><td><code>timeout</code></td><td><code>int</code></td><td><code>600</code></td><td>Request timeout in seconds.</td></tr>
+</tbody></table>
+<p><strong>Returns.</strong> The response text.</p>
+<h3 id="api-query"><code>query</code></h3>
+<p>Execute a prompt against a provider chosen by name.</p>
+<pre><code>query(prompt: str, provider: str | None = None, **kwargs) -&gt; str</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>prompt</code></td><td><code>str</code></td><td><em>required</em></td><td>The prompt text.</td></tr><tr><td><code>provider</code></td><td><code>str | None</code></td><td><code>None</code></td><td><code>anthropic</code>, <code>openai</code>, <code>google</code>, or <code>local</code>; falls back to <code>KAIRO_LLM_PROVIDER</code>, then <code>anthropic</code>.</td></tr><tr><td><code>**kwargs</code></td><td><code></code></td><td><em>required</em></td><td>Forwarded to that provider&#x27;s function.</td></tr></tbody></table>
+<p><strong>Returns.</strong> The response text.</p>
+<h3 id="api-build_prompt"><code>build_prompt</code></h3>
+<p>Assemble the full prompt without contacting any model.</p>
+<pre><code>build_prompt(question: str, result=None, log: pd.DataFrame | None = None, parts: tuple[str, ...] = (drift_detection, process_mining, method, statistics, log), max_len: int = 12000) -&gt; str</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>question</code></td><td><code>str</code></td><td><em>required</em></td><td>The question to place in the <code>&lt;question&gt;</code> block.</td></tr><tr><td><code>result</code></td><td><code></code></td><td><code>None</code></td><td>A <code>StateResult</code> rendered into the <code>&lt;analysis&gt;</code> block.</td></tr><tr><td><code>log</code></td><td><code>pd.DataFrame | None</code></td><td><code>None</code></td><td>A log rendered into the knowledge block.</td></tr><tr><td><code>parts</code></td><td><code>tuple[str, ...]</code></td><td><code>(&#x27;drift_detection&#x27;, &#x27;process_mining&#x27;, &#x27;method&#x27;, &#x27;statistics&#x27;, &#x27;log&#x27;)</code></td><td>Which knowledge blocks to include.</td></tr><tr><td><code>max_len</code></td><td><code>int</code></td><td><code>12000</code></td><td>Total budget, split across the blocks.</td></tr></tbody></table>
+<p><strong>Returns.</strong> The prompt string.</p>
+<h3 id="api-ask"><code>ask</code></h3>
+<p>Ask a question about an analysis and/or a log.</p>
+<pre><code>ask(question: str, result=None, log: pd.DataFrame | None = None, executor=anthropic_query, parts: tuple[str, ...] = (drift_detection, process_mining, method, statistics, log), max_len: int = 12000, **kwargs) -&gt; str</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>question</code></td><td><code>str</code></td><td><em>required</em></td><td>What to ask.</td></tr><tr><td><code>result</code></td><td><code></code></td><td><code>None</code></td><td>A <code>StateResult</code> to describe.</td></tr><tr><td><code>log</code></td><td><code>pd.DataFrame | None</code></td><td><code>None</code></td><td>The log to describe.</td></tr><tr><td><code>executor</code></td><td><code></code></td><td><code>anthropic_query</code></td><td>Any callable <code>(prompt, **kwargs) -&gt; str</code> — a kairo connector or your own function.</td></tr><tr><td><code>parts</code></td><td><code>tuple[str, ...]</code></td><td><code>(&#x27;drift_detection&#x27;, &#x27;process_mining&#x27;, &#x27;method&#x27;, &#x27;statistics&#x27;, &#x27;log&#x27;)</code></td><td>Which knowledge blocks to include.</td></tr><tr><td><code>max_len</code></td><td><code>int</code></td><td><code>12000</code></td><td>Total prompt budget.</td></tr><tr><td><code>**kwargs</code></td><td><code></code></td><td><em>required</em></td><td>Forwarded to the executor (<code>model</code>, <code>api_key</code>, <code>max_tokens</code>, …).</td></tr></tbody></table>
+<p><strong>Returns.</strong> The model&#x27;s answer.</p>
+<h3 id="api-explain_plot"><code>explain_plot</code></h3>
+<p>Send a figure to a vision-capable model and return its reading.</p>
+<pre><code>explain_plot(fig, question: str | None = None, result=None, log: pd.DataFrame | None = None, executor=anthropic_query, parts: tuple[str, ...] = (drift_detection, method, statistics), max_len: int = 8000, **kwargs) -&gt; str</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>fig</code></td><td><code></code></td><td><em>required</em></td><td>Any kairo figure.</td></tr><tr><td><code>question</code></td><td><code>str | None</code></td><td><code>None</code></td><td>What to ask; a sensible default is used when omitted.</td></tr><tr><td><code>result</code></td><td><code></code></td><td><code>None</code></td><td>Optional <code>StateResult</code> for context.</td></tr><tr><td><code>log</code></td><td><code>pd.DataFrame | None</code></td><td><code>None</code></td><td>Optional log for context.</td></tr><tr><td><code>executor</code></td><td><code></code></td><td><code>anthropic_query</code></td><td>A connector accepting an <code>image_path</code> keyword — all kairo connectors do.</td></tr><tr><td><code>parts</code></td><td><code>tuple[str, ...]</code></td><td><code>(&#x27;drift_detection&#x27;, &#x27;method&#x27;, &#x27;statistics&#x27;)</code></td><td>Which knowledge blocks to include.</td></tr><tr><td><code>max_len</code></td><td><code>int</code></td><td><code>8000</code></td><td>Total prompt budget.</td></tr><tr><td><code>**kwargs</code></td><td><code></code></td><td><em>required</em></td><td>Forwarded to the executor.</td></tr></tbody></table>
+<p><strong>Returns.</strong> The model&#x27;s reading.</p>
+<h3 id="api-nlp_to_config"><code>nlp_to_config</code></h3>
+<p>Turn a natural-language request into a validated pipeline config.</p>
+<pre><code>nlp_to_config(request: str, perspective: str, log: pd.DataFrame | None = None, executor=anthropic_query, obtain_config: bool = True, **kwargs)</code></pre>
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>request</code></td><td><code>str</code></td><td><em>required</em></td><td>What you want, in plain language.</td></tr><tr><td><code>perspective</code></td><td><code>str</code></td><td><em>required</em></td><td><code>intra_case</code>, <code>resource</code>, or <code>inter_case</code> — picks the config class.</td></tr><tr><td><code>log</code></td><td><code>pd.DataFrame | None</code></td><td><code>None</code></td><td>Optional log, so the model can reference real resources and activities.</td></tr><tr><td><code>executor</code></td><td><code></code></td><td><code>anthropic_query</code></td><td>The connector to run the prompt with.</td></tr><tr><td><code>obtain_config</code></td><td><code>bool</code></td><td><code>True</code></td><td><code>False</code> returns the prompt instead of executing it.</td></tr><tr><td><code>**kwargs</code></td><td><code></code></td><td><em>required</em></td><td>Forwarded to the executor.</td></tr></tbody></table>
+<p><strong>Returns.</strong> A config dataclass, or the prompt string when <code>obtain_config=False</code>.</p>
+<h2 id="api-constants">Constants</h2>
+<table><thead><tr><th>Constant</th><th>Keys</th></tr></thead><tbody><tr><td><code>kairo.METHODS</code></td><td><code>som, kmeans, dbscan</code></td></tr><tr><td><code>kairo.DISTANCES</code></td><td><code>euclidean, manhattan, chebyshev, cosine</code></td></tr><tr><td><code>kairo.SUPPORTED_DISTANCES</code></td><td><code>som, dbscan, kmeans</code></td></tr><tr><td><code>kairo.SOM_INIT</code></td><td><code>random, pca</code></td></tr><tr><td><code>kairo.SCALING</code></td><td><code>none, standardize</code></td></tr><tr><td><code>kairo.DIVERGENCES</code></td><td><code>kl, js, tv, hellinger</code></td></tr><tr><td><code>kairo.REFERENCES</code></td><td><code>previous, recent, baseline</code></td></tr><tr><td><code>kairo.PROVIDERS</code></td><td><code>anthropic, openai, google, local</code></td></tr><tr><td><code>kairo.FEATURE_LABELS</code></td><td><code>intra_case, resource, inter_case</code></td></tr></tbody></table>
+<p><code>SUPPORTED_DISTANCES</code> maps each clustering method to the metrics it accepts —
+   k-means takes only <code>euclidean</code> and <code>cosine</code>.
+   <code>FEATURE_LABELS</code> is keyed by perspective and lists the valid
+   <code>features=</code> keys.</p>
+</section>
   </main>
 </div>
 
@@ -867,6 +795,5 @@ tests/
     });
   });
 </script>
-
 </body>
 </html>
