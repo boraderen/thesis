@@ -437,12 +437,6 @@ result = kairo.run_intra_case(log, kairo.IntraConfig(
 kairo.plot_state_grid(result.states).show()
 kairo.plot_drift_signal(result.signal).show()</code></pre>
 
-  <h3>Or drive the steps yourself</h3>
-  <pre><code>fs = kairo.build_features(log, "inter_case", window_minutes=1440)
-reduced, pca = kairo.reduce(fs.values(), n_components=3, scaling="standardize")
-model = kairo.cluster_kmeans(reduced, n_clusters=4)
-shift = kairo.window_vector_shift(fs.index["window_start"], reduced)</code></pre>
-
   <h3>Turn it into text</h3>
   <pre><code>print(kairo.abstract_result(result))        # the whole run
 print(kairo.abstract_states(result.states)) # just the states</code></pre>
@@ -456,9 +450,6 @@ print(kairo.abstract_states(result.states)) # just the states</code></pre>
 
 prompt = kairo.build_prompt("Where is the drift?", result=result, log=log)  # no network call</code></pre>
 
-  <p>The demo notebook <code>notebooks/kairo_demo.ipynb</code> walks every layer, including a local
-    model through LM Studio. The dashboard runs on the same functions:
-    <code>streamlit run dashboard/app.py</code>.</p>
 </section>
 <section class="page" id="package-structure">
   <h1>Package structure</h1>
