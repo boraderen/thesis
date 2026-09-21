@@ -1,22 +1,14 @@
-"""Kairo dashboard entry point: navigation, branding, and shared chrome."""
 from __future__ import annotations
 
 from pathlib import Path
 
 import streamlit as st
 
-ROOT = Path(__file__).resolve().parent
-ICON = ROOT.parent / "kairo" / "kairo.png"
-
 st.set_page_config(
     page_title="Kairo Dashboard",
-    page_icon=str(ICON) if ICON.exists() else "🌀",
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-if ICON.exists():
-    st.logo(str(ICON), icon_image=str(ICON), size="large")
 
 # Light global polish: calmer headers, bordered metric cards, roomier sidebar.
 st.markdown(
