@@ -12,7 +12,8 @@ FEATURES = [
 
 def compute_features_intra(log: pd.DataFrame, features: list = FEATURES, sliding_window_size: int = 0) -> pd.DataFrame:
     # Every feature looks at the events of a case up to and including the current one,
-    # so the log has to be in chronological order first
+    # so the features are computed in chronological order, no matter how the log came in
+    order = log.index
     log = log.sort_values("time:timestamp", kind="stable")
 
     blocks = []
@@ -38,9 +39,14 @@ def compute_features_intra(log: pd.DataFrame, features: list = FEATURES, sliding
     if not blocks:
         raise ValueError(f"No known feature requested, pick from: {FEATURES}")
 
+    # the case id and the timestamp ride along with the features, the index says
+    # which event of the log a row belongs to
+    meta = log[["case:concept:name", "time:timestamp"]]
+
     # concat leaves the blocks lying next to each other in memory, the copy packs
-    # them into one array, which makes standardizing and PCA a lot faster later on
-    result = pd.concat(blocks, axis=1).copy()
+    # them into one array, which makes standardizing and PCA a lot faster later on.
+    # reindex hands the rows back in the order they came in, not the sorted one
+    result = pd.concat([meta] + blocks, axis=1).reindex(order).copy()
 
     return result
 

@@ -6,7 +6,9 @@ from .data import (
 from .analysis import (
     standardize,
     compute_pca,
+    apply_pca,
     compute_som,
+    get_som_winners,
 )
 
 from .analysis.intra import (
@@ -15,7 +17,11 @@ from .analysis.intra import (
 
 from .analysis.plots import (
     plot_activity_counts,
-    plot_pca_variances
+    plot_pca_variances,
+    plot_som_u_matrix,
+    plot_som_heatmap,
+    compute_som_color_mapping,
+    plot_som_colors,
 )
 
 from .llm import (
