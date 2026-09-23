@@ -10,7 +10,7 @@ FEATURES = [
     "past_acts",
 ]
 
-def compute_features_intra(log: pd.DataFrame, features: list = [""], sliding_window_size: int = 0) -> pd.DataFrame:
+def compute_features_intra(log: pd.DataFrame, features: list = FEATURES, sliding_window_size: int = 0) -> pd.DataFrame:
     # Every feature looks at the events of a case up to and including the current one,
     # so the log has to be in chronological order first
     log = log.sort_values("time:timestamp", kind="stable")
@@ -38,10 +38,11 @@ def compute_features_intra(log: pd.DataFrame, features: list = [""], sliding_win
     if not blocks:
         raise ValueError(f"No known feature requested, pick from: {FEATURES}")
 
-    result = pd.concat(blocks, axis=1)
+    # concat leaves the blocks lying next to each other in memory, the copy packs
+    # them into one array, which makes standardizing and PCA a lot faster later on
+    result = pd.concat(blocks, axis=1).copy()
 
     return result
-
 
 def compute_activity_freqs(log: pd.DataFrame) -> pd.DataFrame:
     # Share of every activity among the events of the case so far
@@ -52,7 +53,7 @@ def compute_activity_freqs(log: pd.DataFrame) -> pd.DataFrame:
 
     freqs = counts.div(seen_events, axis=0)
 
-    return freqs.add_prefix("act_freq:")
+    return freqs.add_prefix("act_freqs:")
 
 def compute_directly_follow_counts(log: pd.DataFrame) -> pd.DataFrame:
     # How often every directly follows pair happened in the case so far.
@@ -63,7 +64,7 @@ def compute_directly_follow_counts(log: pd.DataFrame) -> pd.DataFrame:
     one_hot = pd.get_dummies(pairs, dtype=float)
     counts = one_hot.groupby(log["case:concept:name"]).cumsum()
 
-    return counts.add_prefix("df_count:")
+    return counts.add_prefix("df_counts:")
 
 def compute_activity_set(log: pd.DataFrame) -> pd.DataFrame:
     # 1 for every activity the case has already executed, ignoring how often
@@ -71,7 +72,7 @@ def compute_activity_set(log: pd.DataFrame) -> pd.DataFrame:
 
     seen = one_hot.groupby(log["case:concept:name"]).cummax()
 
-    return seen.add_prefix("act_seen:")
+    return seen.add_prefix("act_set:")
 
 def compute_case_progress(log: pd.DataFrame) -> pd.DataFrame:
     # Position of the event inside its case, as a fraction of the whole case
@@ -97,7 +98,7 @@ def compute_past_activities(log: pd.DataFrame, n: int) -> pd.DataFrame:
 
     for lag in range(1, n + 1):
         previous = one_hot.groupby(log["case:concept:name"]).shift(lag).fillna(0.0)
-        blocks.append(previous.add_prefix(f"past_act_{lag}:"))
+        blocks.append(previous.add_prefix(f"past_acts_{lag}:"))
 
     if not blocks:
         return pd.DataFrame(index=log.index)
