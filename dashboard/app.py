@@ -38,7 +38,15 @@ pages = st.navigation(
         "": [st.Page("views/home.py", title="Overview", icon=":material/home:", default=True)],
         "Pipeline": [
             st.Page("views/upload.py", title="Upload log", icon=":material/upload_file:"),
-            st.Page("views/intra.py", title="Intra-case states", icon=":material/route:"),
+        ],
+        "Intra-case states": [
+            st.Page("views/intra/features.py", title="Features", icon=":material/table_chart:"),
+            st.Page("views/intra/pca.py", title="PCA", icon=":material/compress:"),
+            st.Page("views/intra/states.py", title="States & Trajectories", icon=":material/route:"),
+            st.Page("views/intra/drift.py", title="Drift Signal", icon=":material/monitoring:"),
+            st.Page("views/intra/copilot.py", title="Copilot", icon=":material/smart_toy:"),
+        ],
+        "Other perspectives": [
             st.Page("views/resource.py", title="Resource states", icon=":material/group:"),
             st.Page("views/inter.py", title="Inter-case states", icon=":material/hub:"),
         ],

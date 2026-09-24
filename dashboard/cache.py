@@ -1,66 +1,39 @@
-"""Streamlit memoization for the kairo calls that run on every rerun.
-
-kairo itself is pure and uncached; this is the one place the dashboard
-re-attaches caching. Only functions whose arguments Streamlit can hash
-(DataFrames, arrays, primitives) belong here — results objects stay in
-session_state instead.
-"""
+"""Streamlit memoization for reading the uploaded log, which runs on every rerun of the
+upload page. The pipeline steps run on their buttons and keep their results in session
+state instead."""
 from __future__ import annotations
 
-import numpy as np
+import tempfile
+from pathlib import Path
+
 import pandas as pd
+import pm4py
 import streamlit as st
 
 import kairo
 
 
-@st.cache_data(show_spinner=False)
-def read_log(name: str, raw: bytes) -> pd.DataFrame:
-    return kairo.read_log(raw, name=name)
+def _with_file(name: str, raw: bytes, read):
+    # pm4py and kairo read from a path, so the upload goes into a temporary file first
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / Path(name).name
+        path.write_bytes(raw)
+        return read(str(path))
 
 
 @st.cache_data(show_spinner=False)
-def map_columns(df: pd.DataFrame, picked: dict) -> pd.DataFrame:
-    return kairo.map_columns(df, picked)
+def read_raw(name: str, raw: bytes) -> pd.DataFrame:
+    # the file as it is, so its columns can be mapped to their roles
+    if name.lower().endswith(".xes"):
+        return _with_file(name, raw, pm4py.read_xes)
+    return _with_file(name, raw, pd.read_csv)
 
 
 @st.cache_data(show_spinner=False)
-def build_features(log: pd.DataFrame, perspective: str, **kwargs) -> kairo.features.FeatureSet:
-    return kairo.features.build_features(log, perspective, **kwargs)
-
-
-@st.cache_data(show_spinner=False)
-def reduce_matrix(matrix: np.ndarray, skip_pca: bool, n_components: int | None, scaling: str):
-    return kairo.analysis.reduce(matrix, skip_pca=skip_pca, n_components=n_components, scaling=scaling)
-
-
-@st.cache_data(show_spinner=False)
-def cluster(matrix: np.ndarray, method: str, annotations: tuple[str, ...] | None, params: dict):
-    return kairo.analysis.cluster(matrix, method=method, annotations=annotations, **params)
-
-
-@st.cache_data(show_spinner=False)
-def state_distribution(timestamps: pd.Series, state_ids: np.ndarray, n_states: int, window_minutes: int):
-    return kairo.analysis.state_distribution(timestamps, state_ids, n_states, window_minutes)
-
-
-@st.cache_data(show_spinner=False)
-def drift_signal(distribution: pd.DataFrame, divergence: str, reference: str, lookback: int):
-    return kairo.analysis.drift_signal(distribution, divergence, reference, lookback)
-
-
-@st.cache_data(show_spinner=False)
-def window_vector_shift(window_starts: pd.Series, vectors: np.ndarray, metric: str,
-                        reference: str = "previous", lookback: int = 5):
-    return kairo.analysis.window_vector_shift(window_starts, vectors, metric, reference, lookback)
-
-
-@st.cache_data(show_spinner=False)
-def k_distances(matrix: np.ndarray, k: int, metric: str) -> np.ndarray:
-    return kairo.analysis.k_distances(matrix, k=k, metric=metric)
-
-
-@st.cache_data(show_spinner=False)
-def find_transitions(timestamps: pd.Series, state_ids: np.ndarray, labels: tuple[str, ...],
-                     features: pd.DataFrame) -> pd.DataFrame:
-    return kairo.analysis.find_transitions(timestamps, state_ids, list(labels), features)
+def load_log(name: str, raw: bytes, picked: dict) -> pd.DataFrame:
+    # the log with its columns renamed to their roles. a csv keeps its timestamps as
+    # text, so they are parsed here
+    columns = {role: column for role, column in picked.items() if column}
+    log = _with_file(name, raw, lambda path: kairo.read_log(path, **columns))
+    log["time:timestamp"] = pd.to_datetime(log["time:timestamp"])
+    return log

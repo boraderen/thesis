@@ -23,14 +23,14 @@ with cards[0], st.container(border=True):
 with cards[1], st.container(border=True):
     st.markdown("**2 · Intra-case**")
     st.caption("Features per event → PCA → clustered states → per-case trajectories.")
-    st.page_link("views/intra.py", label="Intra-case states", icon=":material/route:")
+    st.page_link("views/intra/features.py", label="Intra-case states", icon=":material/route:")
 with cards[2], st.container(border=True):
     st.markdown("**3 · Resource**")
-    st.caption("Windowed features → PCA → clustered states → log-level trajectories.")
+    st.caption("Not built yet.")
     st.page_link("views/resource.py", label="Resource states", icon=":material/group:")
 with cards[3], st.container(border=True):
     st.markdown("**4 · Inter-case**")
-    st.caption("Windowed features → PCA → clustered states → log-level trajectories.")
+    st.caption("Not built yet.")
     st.page_link("views/inter.py", label="Inter-case states", icon=":material/hub:")
 
 st.title("Overview of the pipelines")

@@ -21,7 +21,15 @@ def read_log(
     elif path_obj.suffix.lower() == ".csv":
         df = pd.read_csv(path)
     else:
-        raise ValueError(f"Unsupported file type: {path.suffix}")
+        raise ValueError(f"Unsupported file type: {path_obj.suffix}")
+
+    # every given column name has to exist in the log, a typo would otherwise
+    # be skipped by the renaming below without any error
+    given = [case_id, activity, timestamp, event_id, start_timestamp, resource, event_duration]
+    missing = [c for c in given if c is not None and c not in df.columns]
+
+    if missing:
+        raise ValueError(f"Columns {missing} not found in the log, available columns are {list(df.columns)}")
 
     # Rename the standart columns
     df = df.rename(columns={
@@ -53,7 +61,9 @@ def compute_log_stats(
     events = len(log)
     activities = log["concept:name"].nunique()
     
-    resources = log["org:resource"].nunique()
+    # the resource column is optional in read_log
+    has_resource = "org:resource" in log.columns
+    resources = log["org:resource"].nunique() if has_resource else 0
     start = log["time:timestamp"].min()
     end = log["time:timestamp"].max()
     span_minutes = (end - start).total_seconds() / 60
@@ -68,7 +78,7 @@ def compute_log_stats(
     case_lengths = log.groupby("case:concept:name").size()
 
     activity_counts = log["concept:name"].value_counts()
-    resource_counts = log["org:resource"].value_counts()
+    resource_counts = log["org:resource"].value_counts() if has_resource else pd.Series(dtype=int)
 
     stats = {
         "cases": cases,
