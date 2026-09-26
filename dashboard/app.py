@@ -33,9 +33,12 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+st.logo(str(Path(__file__).parent.parent / "kairo" / "kairo.png"), size="large")
+
 pages = st.navigation(
     {
-        "": [st.Page("views/home.py", title="Overview", icon=":material/home:", default=True)],
+        "Kairo Dashboard": [st.Page("views/home.py", title="Overview", icon=":material/home:", default=True)],
         "Pipeline": [
             st.Page("views/upload.py", title="Upload log", icon=":material/upload_file:"),
         ],
