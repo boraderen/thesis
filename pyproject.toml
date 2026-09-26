@@ -14,7 +14,7 @@ dependencies = [
     "pm4py>=2.7",
     "python-dotenv>=1.2.3",
     "kairo",
-    "rheon",
+    #"rheon",
     "scikit-learn>=1.4",
     "seaborn>=0.13",
     "streamlit>=1.35",
