@@ -12,9 +12,12 @@ INTRA_STEPS = {
     "features": ["intra_features", "intra_log_signature"],
     "pca": ["intra_scaled", "intra_pca", "intra_plot_variance"],
     "cut": ["intra_cut", "intra_compressed", "intra_plot_cut", "intra_plot_kdistance"],
-    "states": ["intra_method", "intra_model", "intra_states", "intra_colors", "intra_distances",
-               "intra_plot_colors", "intra_plot_frequencies", "intra_plot_distances",
-               "intra_trajectories", "intra_last_case"],
+    "states": ["intra_method", "intra_model", "intra_states", "intra_frequencies", "intra_colors", "intra_distances",
+               "intra_plot_colors", "intra_plot_distances", "intra_plot_frequencies_1",
+               "intra_plot_frequencies_2", "intra_trajectories", "intra_last_case",
+               "intra_range_trajectories", "intra_plot_trajectories"],
+    "drift": ["intra_distributions", "intra_divergences", "intra_divergence_config",
+              "intra_plot_distribution", "intra_plot_divergence"],
 }
 
 # the plots a page stores, by the name the copilot offers them under
@@ -23,8 +26,12 @@ INTRA_PLOTS = {
     "intra_plot_cut": "PCA explained variance with the cut",
     "intra_plot_kdistance": "DBSCAN k-distance curve",
     "intra_plot_colors": "State colors",
-    "intra_plot_frequencies": "State frequencies",
     "intra_plot_distances": "Distances between states",
+    "intra_plot_frequencies_1": "State frequencies, first range",
+    "intra_plot_frequencies_2": "State frequencies, second range",
+    "intra_plot_trajectories": "Trajectories of the cases in a range",
+    "intra_plot_distribution": "State distribution per window",
+    "intra_plot_divergence": "Divergence per window",
 }
 
 

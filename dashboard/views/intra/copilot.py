@@ -18,16 +18,18 @@ PROVIDERS = {
 }
 KEY_VARIABLES = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY", "google": "GOOGLE_API_KEY"}
 
-SYSTEM_PROMPT = (
-    "You help to analyse an event log with state-based process monitoring. Every event got a "
-    "feature vector describing its case up to that event, PCA compressed these vectors, and a "
-    "clustering (SOM, k-means or DBSCAN) turned them into states. The user shares text summaries "
-    "of these steps and may attach plots. Answer from what is shared, and say so when it is not "
-    "enough to answer."
-)
+SUGGESTIONS = [
+    "Which range should be analyzed in detail for an intra-case drift?",
+    "Which cases should be analyzed in detail for an intra-case drift?",
+    "Which pipeline configuration and hyperparameters can I use to further inspect the drift signals?",
+    "Is there an intra-case drift, and is it sudden, gradual or recurring?",
+    "Which states change most around the strongest drift signal, and what behaviour do they stand for?",
+    "What do the states stand for, in terms of activities and case progress?",
+    "Are the states well separated, or would more or fewer states fit the log better?",
+]
 
 ui.keep_widgets()
-ui.intra_log()
+log = ui.intra_log()
 load_dotenv(find_dotenv())
 
 seed_widget("intra_sel_provider", "anthropic")
@@ -36,6 +38,19 @@ seed_widget("intra_sel_api_key", "")
 seed_widget("intra_sel_model", "claude-sonnet-5")
 seed_widget("intra_sel_max_tokens", 2000)
 seed_widget("intra_sel_question", "")
+seed_widget("intra_sel_system_prompt", kairo.DEFAULT_SYSTEM_PROMPT)
+
+
+def reset_system_prompt() -> None:
+    st.session_state["intra_sel_system_prompt"] = kairo.DEFAULT_SYSTEM_PROMPT
+
+
+def use_suggestion() -> None:
+    # the picked suggestion becomes the question, and the pills are cleared for the next one
+    if st.session_state["intra_suggestion"]:
+        st.session_state["intra_sel_question"] = st.session_state["intra_suggestion"]
+    st.session_state["intra_suggestion"] = None
+
 
 with st.sidebar:
     st.header("Copilot")
@@ -46,11 +61,14 @@ with st.sidebar:
                   help=f"Left empty, {KEY_VARIABLES.get(provider, 'no key')} from the environment is used.")
     st.text_input("Model", key="intra_sel_model")
     st.number_input("Max tokens", min_value=100, max_value=64000, step=100, key="intra_sel_max_tokens")
+    st.text_area("System prompt", key="intra_sel_system_prompt", height=320,
+                 help="What the llm is told about kairo and the approach before every question.")
+    st.button("Reset system prompt", on_click=reset_system_prompt, icon=":material/restart_alt:")
 
 
 def available_abstractions() -> dict:
     """Every step that ran, as a function turning its results into text, run only when picked."""
-    texts = {}
+    texts = {"Log statistics": lambda: kairo.abstract_log_stats(kairo.compute_log_stats(log))}
 
     if "intra_features" in st.session_state:
         texts["Features"] = lambda: kairo.abstract_features(st.session_state["intra_features"])
@@ -60,11 +78,22 @@ def available_abstractions() -> dict:
 
     if "intra_states" in st.session_state:
         texts["States"] = lambda: kairo.abstract_states(
-            st.session_state["intra_states"], st.session_state["intra_distances"], st.session_state["intra_colors"])
+            st.session_state["intra_frequencies"], st.session_state["intra_distances"], st.session_state["intra_colors"])
 
     for case_id, trajectory in st.session_state.get("intra_trajectories", {}).items():
         texts[f"Trajectory of case {case_id}"] = (
             lambda visits=trajectory["visits"], case_id=case_id: kairo.abstract_case_trajectory(visits, case_id))
+
+    if "intra_range_trajectories" in st.session_state:
+        texts["Trajectories of the cases in a range"] = lambda: kairo.abstract_case_trajectories(
+            st.session_state["intra_range_trajectories"])
+
+    if "intra_distributions" in st.session_state:
+        texts["State distributions"] = lambda: kairo.abstract_distributions(st.session_state["intra_distributions"])
+
+    if "intra_divergences" in st.session_state:
+        texts["Drift signal"] = lambda: kairo.abstract_divergences(
+            st.session_state["intra_divergences"], **st.session_state["intra_divergence_config"])
 
     return texts
 
@@ -89,6 +118,7 @@ context = "\n\n".join(abstractions[name]() for name in st.session_state["intra_s
 with st.expander("The text that is shared"):
     st.text(context or "Nothing picked.")
 
+st.pills("Suggestions", SUGGESTIONS, key="intra_suggestion", on_change=use_suggestion)
 st.text_area("Question", key="intra_sel_question", height=120)
 
 if st.button("Ask", type="primary", icon=":material/send:"):
@@ -106,18 +136,25 @@ if st.button("Ask", type="primary", icon=":material/send:"):
 
     with st.spinner("Asking…"):
         try:
-            response = connector.call(
-                prompt=f"{context}\n\nQuestion: {question}" if context else question,
-                system_prompt=SYSTEM_PROMPT,
-                plots=[plots[name] for name in st.session_state["intra_sel_plots"]],
-                max_tokens=int(st.session_state["intra_sel_max_tokens"]),
+            input_tokens, messages = kairo.count_input_tokens(
+                provider,
+                st.session_state["intra_sel_system_prompt"],
+                [context, f"Question: {question}"] if context else [question],
+                [plots[name] for name in st.session_state["intra_sel_plots"]],
             )
+            response = connector.call(messages=messages, max_tokens=int(st.session_state["intra_sel_max_tokens"]))
         except Exception as exc:
             st.error(f"The request failed: {exc}")
             st.stop()
 
     st.session_state["intra_answer"] = kairo.get_response_text(response)
+    st.session_state["intra_answer_tokens"] = (input_tokens, kairo.count_output_tokens(provider, response))
 
 if st.session_state.get("intra_answer"):
     st.subheader("Answer")
     st.markdown(st.session_state["intra_answer"])
+
+if "intra_answer_tokens" in st.session_state:
+    input_tokens, output_tokens = st.session_state["intra_answer_tokens"]
+    st.caption(f"About {input_tokens:,} input tokens, estimated before sending · {output_tokens:,} output tokens, "
+               f"reasoning included, of at most {st.session_state['intra_sel_max_tokens']:,}")

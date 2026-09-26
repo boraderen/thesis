@@ -8,6 +8,12 @@ from sklearn.metrics import pairwise_distances
 # carried along with every feature matrix, never part of the maths
 META = ["case:concept:name", "time:timestamp"]
 
+DIVERGENCES = {"kl": "KL divergence", "js": "Jensen–Shannon", "tv": "Total variation", "hellinger": "Hellinger"}
+REFERENCES = {"previous": "previous window", "recent": "mean of the recent windows", "baseline": "mean of all windows"}
+
+
+# scaling and PCA
+
 def standardize(feature_matrix: pd.DataFrame, method: str, exclude: list = ["current_act", "past_acts", "act_set"]) -> pd.DataFrame:
     # column groups in exclude are ignored, by default they are set to kairo's standard features but can adjusted for manual usage
     # supported methods are zscore and minmax to 0-1
@@ -63,6 +69,9 @@ def apply_pca(feature_matrix: pd.DataFrame, pca: PCA, cut_component: int) -> pd.
 
     return pd.concat([feature_matrix[meta], compressed], axis=1)
 
+
+# SOM
+
 def compute_som(df: pd.DataFrame, size: tuple[int, int] = (5, 5), learning_rate: float = 0.5, distance: str = "euclidean") -> MiniSom:
     # every neuron of the grid becomes one cluster, so a 5x5 map can hold 25 of them.
     # supported distances are euclidean, cosine, manhattan and chebyshev
@@ -97,6 +106,36 @@ def get_som_winners(df: pd.DataFrame, som: MiniSom) -> pd.DataFrame:
 
     return winners
 
+def get_som_state_frequencies(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None) -> pd.Series:
+    # how many events every cell holds between the dates, cells without events left out
+    counts = _events_between(df, start_date, end_date).groupby(["i", "j"]).size()
+    counts.index = [f"({i}, {j})" for i, j in counts.index]
+
+    return counts.rename("events").rename_axis("state")
+
+def get_som_state_distances(som: MiniSom, distance: str = "euclidean") -> pd.DataFrame:
+    # distance between the weights of every two neurons, similar states are close
+    weights = som.get_weights()
+    rows, cols, dims = weights.shape
+
+    names = [f"({i}, {j})" for i in range(rows) for j in range(cols)]
+    distances = pairwise_distances(weights.reshape(-1, dims), metric=distance)
+
+    return pd.DataFrame(distances, index=names, columns=names)
+
+def get_som_trajectories(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None, max_cases: int = 10000) -> pd.DataFrame:
+    # the states every case in the range went through, one row per visit of a state
+    events = _events_in_range(df, start_date, end_date, max_cases, ["i", "j"])
+    events["state"] = [f"({i}, {j})" for i, j in zip(events["i"], events["j"])]
+
+    return _state_visits(events)
+
+def get_som_case_trajectory(df: pd.DataFrame, case_id: str) -> pd.DataFrame:
+    return get_som_trajectories(_get_case(df, case_id)).drop(columns="case")
+
+
+# k-means
+
 def compute_kmeans(df: pd.DataFrame, k: int = 5) -> KMeans:
     # k-means moves every center to the mean of its cluster, which only works with
     # euclidean distance, so there is no distance to choose
@@ -111,6 +150,25 @@ def compute_kmeans(df: pd.DataFrame, k: int = 5) -> KMeans:
 def get_kmeans_clusters(df: pd.DataFrame, kmeans: KMeans) -> pd.DataFrame:
     # the cluster of every row the model was fitted on, so df has to be that same frame
     return pd.DataFrame({"cluster": kmeans.labels_}, index=df.index)
+
+def get_kmeans_state_frequencies(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None) -> pd.Series:
+    return _cluster_frequencies(df, start_date, end_date)
+
+def get_kmeans_state_distances(kmeans: KMeans) -> pd.DataFrame:
+    # distance between every two cluster centers
+    names = [_cluster_name(c) for c in range(kmeans.n_clusters)]
+    distances = pairwise_distances(kmeans.cluster_centers_)
+
+    return pd.DataFrame(distances, index=names, columns=names)
+
+def get_kmeans_trajectories(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None, max_cases: int = 1000) -> pd.DataFrame:
+    return _cluster_trajectories(df, start_date, end_date, max_cases)
+
+def get_kmeans_case_trajectory(df: pd.DataFrame, case_id: str) -> pd.DataFrame:
+    return get_kmeans_trajectories(_get_case(df, case_id)).drop(columns="case")
+
+
+# DBSCAN
 
 def compute_dbscan(df: pd.DataFrame, eps: float = 0.5, min_samples: int = 5, distance: str = "euclidean") -> DBSCAN:
     # dense regions become clusters: a row with at least min_samples rows (itself
@@ -146,22 +204,8 @@ def get_dbscan_clusters(df: pd.DataFrame, dbscan: DBSCAN) -> pd.DataFrame:
 
     return pd.DataFrame({"cluster": dbscan.labels_[inverse]}, index=df.index)
 
-def get_som_state_distances(som: MiniSom, distance: str = "euclidean") -> pd.DataFrame:
-    # distance between the weights of every two neurons, similar states are close
-    weights = som.get_weights()
-    rows, cols, dims = weights.shape
-
-    names = [f"({i}, {j})" for i in range(rows) for j in range(cols)]
-    distances = pairwise_distances(weights.reshape(-1, dims), metric=distance)
-
-    return pd.DataFrame(distances, index=names, columns=names)
-
-def get_kmeans_state_distances(kmeans: KMeans) -> pd.DataFrame:
-    # distance between every two cluster centers
-    names = [_cluster_name(c) for c in range(kmeans.n_clusters)]
-    distances = pairwise_distances(kmeans.cluster_centers_)
-
-    return pd.DataFrame(distances, index=names, columns=names)
+def get_dbscan_state_frequencies(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None) -> pd.Series:
+    return _cluster_frequencies(df, start_date, end_date)
 
 def get_dbscan_state_distances(dbscan: DBSCAN) -> pd.DataFrame:
     # dbscan has no centers, so every cluster stands in with the mean of its distinct
@@ -175,18 +219,59 @@ def get_dbscan_state_distances(dbscan: DBSCAN) -> pd.DataFrame:
 
     return pd.DataFrame(distances, index=names, columns=names)
 
-def get_som_case_trajectory(df: pd.DataFrame, case_id: str) -> pd.DataFrame:
-    # the states a case went through, one row per visit of a state
-    case = _get_case(df, case_id, ["i", "j"])
-    case["state"] = [f"({i}, {j})" for i, j in zip(case["i"], case["j"])]
-
-    return _state_visits(case)
-
-def get_kmeans_case_trajectory(df: pd.DataFrame, case_id: str) -> pd.DataFrame:
-    return _cluster_case_trajectory(df, case_id)
+def get_dbscan_trajectories(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None, max_cases: int = 1000) -> pd.DataFrame:
+    return _cluster_trajectories(df, start_date, end_date, max_cases)
 
 def get_dbscan_case_trajectory(df: pd.DataFrame, case_id: str) -> pd.DataFrame:
-    return _cluster_case_trajectory(df, case_id)
+    return get_dbscan_trajectories(_get_case(df, case_id)).drop(columns="case")
+
+
+# drift
+
+def compute_state_distributions(df: pd.DataFrame, window: str = "7D") -> pd.DataFrame:
+    # the share of every state among the events of every calendar window, one row per
+    # window. window is a pandas frequency like "12h", "1D" or "7D", windows without
+    # events are left out
+    windows = df["time:timestamp"].dt.floor(window).rename("window")
+
+    if "cluster" in df.columns:
+        counts = pd.crosstab(windows, df["cluster"]).rename(columns=_cluster_name)
+    else:
+        counts = pd.crosstab(windows, [df["i"], df["j"]])
+        counts.columns = [f"({i}, {j})" for i, j in counts.columns]
+
+    counts.columns.name = "state"
+
+    return counts.div(counts.sum(axis=1), axis=0)
+
+def compute_divergences(distributions: pd.DataFrame, divergence: str = "kl", reference: str = "previous", lookback: int = 5) -> pd.DataFrame:
+    # how far every window's distribution is from a reference: the previous window,
+    # the mean of the lookback windows before it, or the mean of all windows. windows
+    # without a reference yet get no score
+    if reference == "previous":
+        references = distributions.shift(1)
+    elif reference == "recent":
+        references = distributions.rolling(lookback).mean().shift(1)
+    elif reference == "baseline":
+        references = distributions * 0 + distributions.mean()
+    else:
+        raise ValueError(f"Unknown reference: {reference}, pick from {list(REFERENCES)}")
+
+    p = distributions.to_numpy()
+    q = references.to_numpy()
+
+    if divergence == "kl":
+        scores = _kl(p, q)
+    elif divergence == "js":
+        scores = 0.5 * _kl(p, (p + q) / 2) + 0.5 * _kl(q, (p + q) / 2)
+    elif divergence == "tv":
+        scores = 0.5 * np.abs(p - q).sum(axis=1)
+    elif divergence == "hellinger":
+        scores = np.sqrt(0.5 * ((np.sqrt(p) - np.sqrt(q)) ** 2).sum(axis=1))
+    else:
+        raise ValueError(f"Unknown divergence: {divergence}, pick from {list(DIVERGENCES)}")
+
+    return pd.DataFrame({"window": distributions.index, "score": scores})
 
 
 # shared by the functions above
@@ -195,34 +280,76 @@ def _cluster_name(cluster: int) -> str:
     # dbscan marks its noise rows as cluster -1
     return "noise" if cluster == -1 else str(cluster)
 
-def _get_case(df: pd.DataFrame, case_id: str, state_columns: list) -> pd.DataFrame:
+def _get_case(df: pd.DataFrame, case_id: str) -> pd.DataFrame:
     # compared as text, so a case id typed in works for number ids too
-    case = df.loc[df["case:concept:name"].astype(str) == str(case_id), ["time:timestamp"] + state_columns]
+    case = df[df["case:concept:name"].astype(str) == str(case_id)]
 
     if case.empty:
         raise ValueError(f"No events found for case {case_id}")
 
     return case
 
-def _cluster_case_trajectory(df: pd.DataFrame, case_id: str) -> pd.DataFrame:
-    case = _get_case(df, case_id, ["cluster"])
-    case["state"] = case["cluster"].map(_cluster_name)
+def _events_between(df: pd.DataFrame, start_date, end_date) -> pd.DataFrame:
+    # the events that happened between the dates, either can be left open
+    if start_date:
+        df = df[df["time:timestamp"] >= start_date]
 
-    return _state_visits(case)
+    if end_date:
+        df = df[df["time:timestamp"] <= end_date]
 
-def _state_visits(case: pd.DataFrame) -> pd.DataFrame:
-    # consecutive events in the same state are one visit of that state. a visit lasts
-    # until the next one starts, the last one until the last event of the case
-    case = case.sort_values("time:timestamp", kind="stable")
-    visit = (case["state"] != case["state"].shift()).cumsum()
+    return df
 
-    visits = case.groupby(visit).agg(
+def _cluster_frequencies(df: pd.DataFrame, start_date, end_date) -> pd.Series:
+    counts = _events_between(df, start_date, end_date)["cluster"].value_counts().sort_index()
+    counts.index = counts.index.map(_cluster_name)
+
+    return counts.rename("events").rename_axis("state")
+
+def _events_in_range(df: pd.DataFrame, start_date, end_date, max_cases: int, state_columns: list) -> pd.DataFrame:
+    # the events of the cases whose first and last event both lie in the range. with
+    # more than max_cases of them, the ones that started first
+    df = df[["case:concept:name", "time:timestamp"] + state_columns]
+    times = df.groupby("case:concept:name")["time:timestamp"].agg(["min", "max"])
+
+    if start_date:
+        times = times[times["min"] >= start_date]
+
+    if end_date:
+        times = times[times["max"] <= end_date]
+
+    cases = times.sort_values("min").index[:max_cases]
+
+    return df[df["case:concept:name"].isin(cases)]
+
+def _cluster_trajectories(df: pd.DataFrame, start_date, end_date, max_cases: int) -> pd.DataFrame:
+    events = _events_in_range(df, start_date, end_date, max_cases, ["cluster"])
+    events["state"] = events["cluster"].map(_cluster_name)
+
+    return _state_visits(events)
+
+def _state_visits(events: pd.DataFrame) -> pd.DataFrame:
+    # consecutive events of a case in the same state are one visit of that state. a
+    # visit lasts until the case's next visit starts, the last one until its last event
+    events = events.sort_values(["case:concept:name", "time:timestamp"], kind="stable")
+    case = events["case:concept:name"]
+    visit = ((events["state"] != events["state"].shift()) | (case != case.shift())).cumsum()
+
+    visits = events.groupby(visit).agg(
+        case=("case:concept:name", "first"),
         state=("state", "first"),
         start=("time:timestamp", "first"),
         events=("state", "size"),
     ).reset_index(drop=True)
 
-    visits["end"] = visits["start"].shift(-1).fillna(case["time:timestamp"].iloc[-1])
+    last_events = events.groupby("case:concept:name")["time:timestamp"].max()
+    visits["end"] = visits.groupby("case")["start"].shift(-1).fillna(visits["case"].map(last_events))
     visits["duration"] = visits["end"] - visits["start"]
 
-    return visits[["state", "start", "end", "duration", "events"]]
+    return visits[["case", "state", "start", "end", "duration", "events"]]
+
+def _kl(p: np.ndarray, q: np.ndarray) -> np.ndarray:
+    # a tiny share for every state, so a state missing on one side does not divide by 0
+    p = p + 1e-9
+    q = q + 1e-9
+
+    return (p * np.log(p / q)).sum(axis=1)

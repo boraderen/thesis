@@ -1,4 +1,4 @@
-"""Upload page: read an event log (XES / CSV) and map its columns by clicking them."""
+"""Upload page: read an event log (XES / CSV) once, then rename its columns by clicking them."""
 from __future__ import annotations
 
 import pandas as pd
@@ -7,17 +7,17 @@ import streamlit as st
 import cache
 import kairo
 
-# the column roles of kairo.read_log, the last four are optional
+# the name every role's column gets, as kairo expects it, the last four are optional
 ROLES = {
-    "case_id": "case id",
-    "activity": "activity",
-    "timestamp": "timestamp",
+    "case:concept:name": "case id",
+    "concept:name": "activity",
+    "time:timestamp": "timestamp",
     "event_id": "event id",
     "start_timestamp": "start timestamp",
-    "resource": "resource",
+    "org:resource": "resource",
     "event_duration": "event duration",
 }
-OPTIONAL_ROLES = ("event_id", "start_timestamp", "resource", "event_duration")
+OPTIONAL_ROLES = ("event_id", "start_timestamp", "org:resource", "event_duration")
 
 st.title("Upload event log")
 st.caption("Load an XES or CSV file, then map its columns to their roles by clicking them.")
@@ -74,7 +74,7 @@ if uploaded is not None and st.session_state.get("file") != uploaded.name:
 if "file" not in st.session_state:
     st.stop()
 
-raw = cache.read_raw(st.session_state["file"], st.session_state["file_bytes"])
+raw = cache.read_log(st.session_state["file"], st.session_state["file_bytes"])
 picked: dict[str, str | None] = st.session_state.setdefault("picked", {})
 
 left, right, _ = st.columns([1, 1, 6])
@@ -94,14 +94,21 @@ for role, label in ROLES.items():
     picked[role] = column
     st.rerun()
 
-# --- mapping complete: load the log ---------------------------------------
-try:
-    log = cache.load_log(st.session_state["file"], st.session_state["file_bytes"], picked)
-except ValueError as exc:
-    st.error(str(exc))
-    st.stop()
+# --- mapping complete: rename the columns to their roles ----------------------
+if "log" not in st.session_state:
+    mapping = {column: role for role, column in picked.items() if column}
+    # a column already named like a role another column was picked for would appear twice
+    log = raw.drop(columns=[role for role in mapping.values() if role in raw.columns and role not in mapping])
+    log = log.rename(columns=mapping)
+    # a csv keeps its timestamps as text
+    try:
+        log["time:timestamp"] = pd.to_datetime(log["time:timestamp"])
+    except ValueError as exc:
+        st.error(f"The timestamp column cannot be read as dates: {exc}")
+        st.stop()
+    st.session_state["log"] = log
 
-st.session_state["log"] = log
+log = st.session_state["log"]
 stats = kairo.compute_log_stats(log)
 
 st.success(
