@@ -80,8 +80,9 @@ def require(key: str, message: str, page: str, label: str):
 
 
 def show_plot(key: str, hint: str) -> None:
+    # the key keeps two identical plots, e.g. frequencies of the same range, from colliding
     if key in st.session_state:
-        st.plotly_chart(st.session_state[key], width="stretch")
+        st.plotly_chart(st.session_state[key], width="stretch", key=f"{key}_chart")
     else:
         st.caption(hint)
 

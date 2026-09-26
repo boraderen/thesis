@@ -13,8 +13,6 @@ from . import (
     DIVERGENCES,
     REFERENCES,
     _cluster_name,
-    get_kmeans_state_distances,
-    get_dbscan_state_distances,
 )
 
 
@@ -163,12 +161,13 @@ def compute_kmeans_color_mapping(k: int) -> dict:
     # a very different color for every cluster
     return dict(zip(range(k), _distinct_colors(k)))
 
-def plot_kmeans_frequencies(df: pd.DataFrame, color_mapping: dict, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None) -> go.Figure:
-    return _plot_cluster_frequencies(df, color_mapping, start_date, end_date, "Events per k-means cluster")
+def plot_kmeans_frequencies(frequencies: pd.Series, color_mapping: dict) -> go.Figure:
+    # frequencies is what get_kmeans_state_frequencies returns
+    return _plot_cluster_frequencies(frequencies, color_mapping, "Events per k-means cluster")
 
-def plot_kmeans_distances(kmeans: KMeans) -> go.Figure:
-    # how far apart the cluster centers are, close clusters are similar states
-    return _plot_state_distances(get_kmeans_state_distances(kmeans), "Distances between k-means clusters")
+def plot_kmeans_distances(distances: pd.DataFrame) -> go.Figure:
+    # distances is what get_kmeans_state_distances returns
+    return _plot_state_distances(distances, "Distances between k-means clusters")
 
 def plot_kmeans_case_trajectory(trajectory: pd.DataFrame, color_mapping: dict, case_id: str) -> go.Figure:
     # trajectory is what get_kmeans_case_trajectory returns for the case
@@ -208,12 +207,13 @@ def compute_dbscan_color_mapping(dbscan: DBSCAN) -> dict:
 
     return color_mapping
 
-def plot_dbscan_frequencies(df: pd.DataFrame, color_mapping: dict, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None) -> go.Figure:
-    return _plot_cluster_frequencies(df, color_mapping, start_date, end_date, "Events per DBSCAN cluster")
+def plot_dbscan_frequencies(frequencies: pd.Series, color_mapping: dict) -> go.Figure:
+    # frequencies is what get_dbscan_state_frequencies returns
+    return _plot_cluster_frequencies(frequencies, color_mapping, "Events per DBSCAN cluster")
 
-def plot_dbscan_distances(dbscan: DBSCAN) -> go.Figure:
-    # dbscan has no centers, see get_dbscan_state_distances for what stands in for them
-    return _plot_state_distances(get_dbscan_state_distances(dbscan), "Distances between DBSCAN clusters")
+def plot_dbscan_distances(distances: pd.DataFrame) -> go.Figure:
+    # distances is what get_dbscan_state_distances returns
+    return _plot_state_distances(distances, "Distances between DBSCAN clusters")
 
 def plot_dbscan_case_trajectory(trajectory: pd.DataFrame, color_mapping: dict, case_id: str) -> go.Figure:
     # trajectory is what get_dbscan_case_trajectory returns for the case
@@ -278,29 +278,21 @@ def _state_colors(color_mapping: dict) -> dict:
         for key, color in color_mapping.items()
     }
 
-def _plot_cluster_frequencies(df: pd.DataFrame, color_mapping: dict, start_date, end_date, title: str) -> go.Figure:
-    df = df[["time:timestamp", "cluster"]]
+def _plot_cluster_frequencies(frequencies: pd.Series, color_mapping: dict, title: str) -> go.Figure:
+    colors = _state_colors(color_mapping)
 
-    if start_date:
-        df = df[df["time:timestamp"] >= start_date]
-
-    if end_date:
-        df = df[df["time:timestamp"] <= end_date]
-
-    # every cluster is drawn, also the ones no row landed on in this range,
-    # so the plots of different date ranges can be compared
-    clusters = list(color_mapping)
-    counts = df["cluster"].value_counts().reindex(clusters, fill_value=0)
-    names = [_cluster_name(c) for c in clusters]
+    # every cluster is drawn, also the ones without events in the range, so the plots of
+    # different date ranges can be compared
+    frequencies = frequencies.reindex(list(colors), fill_value=0)
 
     fig = px.bar(
-        x=names,
-        y=counts.to_numpy(),
-        color=names,
-        color_discrete_map={_cluster_name(c): color for c, color in color_mapping.items()},
-        text_auto=",d" if len(clusters) <= 10 else False,
+        x=frequencies.index,
+        y=frequencies.to_numpy(),
+        color=frequencies.index,
+        color_discrete_map=colors,
+        text_auto=",d" if len(frequencies) <= 10 else False,
         labels={"x": "Cluster", "y": "Events"},
-        title=f"{title} ({start_date or 'start'} to {end_date or 'end'})",
+        title=title,
     )
 
     fig.update_layout(showlegend=False)

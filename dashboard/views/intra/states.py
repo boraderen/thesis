@@ -155,9 +155,9 @@ with distances_column:
         if computed == "SOM":
             fig = kairo.plot_som_u_matrix(model)
         elif computed == "k-means":
-            fig = kairo.plot_kmeans_distances(model)
+            fig = kairo.plot_kmeans_distances(st.session_state["intra_distances"])
         else:
-            fig = kairo.plot_dbscan_distances(model)
+            fig = kairo.plot_dbscan_distances(st.session_state["intra_distances"])
         st.session_state["intra_plot_distances"] = fig
     ui.show_plot("intra_plot_distances",
                  "For a SOM the u-matrix, the distance of every neuron to its neighbours. "
@@ -173,9 +173,12 @@ for column, number in zip(st.columns(2), (1, 2)):
             if computed == "SOM":
                 fig = kairo.plot_som_heatmap(states, model.get_weights().shape[:2], start_date, end_date)
             elif computed == "k-means":
-                fig = kairo.plot_kmeans_frequencies(states, colors, start_date, end_date)
+                fig = kairo.plot_kmeans_frequencies(kairo.get_kmeans_state_frequencies(states, start_date, end_date), colors)
             else:
-                fig = kairo.plot_dbscan_frequencies(states, colors, start_date, end_date)
+                fig = kairo.plot_dbscan_frequencies(kairo.get_dbscan_state_frequencies(states, start_date, end_date), colors)
+            if computed != "SOM":
+                # the range was picked for the getter, the title shows it like the som heatmap's
+                fig.update_layout(title=f"{fig.layout.title.text} ({start_date or 'start'} to {end_date or 'end'})")
             st.session_state[f"intra_plot_frequencies_{number}"] = fig
         ui.show_plot(f"intra_plot_frequencies_{number}", "Events per state between the two dates.")
 

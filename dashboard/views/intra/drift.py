@@ -18,8 +18,8 @@ states = ui.require("intra_states", "Compute the states on the **States & Trajec
                     "views/intra/states.py", "States & Trajectories")
 
 seed_widget("intra_sel_drift_window", "7D")
-seed_widget("intra_sel_divergence", "js")
-seed_widget("intra_sel_reference", "previous")
+seed_widget("intra_sel_divergence", "kl")
+seed_widget("intra_sel_reference", "recent")
 seed_widget("intra_sel_lookback", 5)
 
 with st.sidebar:

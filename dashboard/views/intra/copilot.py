@@ -36,7 +36,7 @@ seed_widget("intra_sel_provider", "anthropic")
 seed_widget("intra_sel_host", "http://127.0.0.1:1234/v1")
 seed_widget("intra_sel_api_key", "")
 seed_widget("intra_sel_model", "claude-sonnet-5")
-seed_widget("intra_sel_max_tokens", 2000)
+seed_widget("intra_sel_max_tokens", 64000)
 seed_widget("intra_sel_question", "")
 seed_widget("intra_sel_system_prompt", kairo.DEFAULT_SYSTEM_PROMPT)
 
@@ -60,7 +60,7 @@ with st.sidebar:
     st.text_input("API key", type="password", key="intra_sel_api_key",
                   help=f"Left empty, {KEY_VARIABLES.get(provider, 'no key')} from the environment is used.")
     st.text_input("Model", key="intra_sel_model")
-    st.number_input("Max tokens", min_value=100, max_value=64000, step=100, key="intra_sel_max_tokens")
+    st.number_input("Max tokens", min_value=100, step=1000, key="intra_sel_max_tokens")
     st.text_area("System prompt", key="intra_sel_system_prompt", height=320,
                  help="What the llm is told about kairo and the approach before every question.")
     st.button("Reset system prompt", on_click=reset_system_prompt, icon=":material/restart_alt:")

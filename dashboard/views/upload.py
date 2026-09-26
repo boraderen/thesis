@@ -1,10 +1,13 @@
 """Upload page: read an event log (XES / CSV) once, then rename its columns by clicking them."""
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
+
 import pandas as pd
+import pm4py
 import streamlit as st
 
-import cache
 import kairo
 
 # the name every role's column gets, as kairo expects it, the last four are optional
@@ -33,8 +36,20 @@ def remove_log() -> None:
     """Forget the mapping and the file, and hand the uploader a fresh key."""
     reset()
     st.session_state.pop("file", None)
-    st.session_state.pop("file_bytes", None)
+    st.session_state.pop("raw", None)
     st.session_state["uploader"] = st.session_state.get("uploader", 0) + 1
+
+
+def read_log(uploaded) -> pd.DataFrame:
+    # the uploaded file read once, as it is. pandas reads a csv straight from the upload,
+    # pm4py reads an xes only from a path, so it goes into a temporary file first
+    if uploaded.name.lower().endswith(".csv"):
+        return pd.read_csv(uploaded)
+
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / Path(uploaded.name).name
+        path.write_bytes(uploaded.getbuffer())
+        return pm4py.read_xes(str(path))
 
 
 def mapping_table() -> None:
@@ -66,15 +81,22 @@ def pick(prompt: str, key: str) -> str | None:
 uploaded = st.file_uploader(
     "Event log", type=["xes", "csv"], key=f"upload_{st.session_state.get('uploader', 0)}"
 )
+# a new file is read once and only the table is kept, so a log of up to 1 GB is not
+# read, hashed or copied again on every click
 if uploaded is not None and st.session_state.get("file") != uploaded.name:
     reset()
+    with st.spinner(f"Reading {uploaded.name}…"):
+        try:
+            st.session_state["raw"] = read_log(uploaded)
+        except Exception as exc:
+            st.error(f"The file cannot be read: {exc}")
+            st.stop()
     st.session_state["file"] = uploaded.name
-    st.session_state["file_bytes"] = uploaded.getvalue()
 
-if "file" not in st.session_state:
+if "raw" not in st.session_state:
     st.stop()
 
-raw = cache.read_log(st.session_state["file"], st.session_state["file_bytes"])
+raw = st.session_state["raw"]
 picked: dict[str, str | None] = st.session_state.setdefault("picked", {})
 
 left, right, _ = st.columns([1, 1, 6])

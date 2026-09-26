@@ -98,7 +98,8 @@ class _AnthropicConnector:
         )
 
     def call(self, messages: list, max_tokens: int):
-        # anthropic takes the system prompt apart from the messages
+        # anthropic takes the system prompt apart from the messages. the answer is streamed,
+        # the sdk refuses to wait for more than about 21,000 tokens otherwise
         kwargs = {
             "model": self.model,
             "max_tokens": max_tokens,
@@ -110,7 +111,8 @@ class _AnthropicConnector:
         if system:
             kwargs["system"] = system[0]
 
-        return self.client.messages.create(**kwargs)
+        with self.client.messages.stream(**kwargs) as stream:
+            return stream.get_final_message()
 
 
 # the system prompt the copilot starts with. it describes the approach and every step
