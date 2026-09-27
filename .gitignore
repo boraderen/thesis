@@ -33,6 +33,7 @@ __pycache__/
 .coverage
 coverage.xml
 htmlcov/
+.devcontainer/
 
 # Jupyter
 .ipynb_checkpoints/
