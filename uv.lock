@@ -3198,6 +3198,7 @@ version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
     { name = "anthropic" },
+    { name = "jupyterlab" },
     { name = "kairo" },
     { name = "matplotlib" },
     { name = "minisom" },
@@ -3227,6 +3228,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anthropic", specifier = ">=1.7.0" },
+    { name = "jupyterlab", specifier = ">=4.5.6" },
     { name = "kairo", editable = "kairo" },
     { name = "matplotlib", specifier = ">=3.10" },
     { name = "minisom", specifier = ">=2.3.1" },

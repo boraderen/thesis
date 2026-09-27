@@ -24,6 +24,7 @@ dependencies = [
     "anthropic>=1.7.0",
     "r4pm>=0.6.2",
     "polars>=1.44.2",
+    "jupyterlab>=4.5.6",
 ]
 
 [tool.uv.sources]
