@@ -438,110 +438,612 @@ print(kairo.get_response_text(response))</code></pre>
 </section>
 <section class="page" id="api">
 <h1>API</h1>
-<p class="subtitle">Everything is callable as <code>kairo.<em>name</em></code>. In a name, <code>*</code> stands for
-  <code>som</code>, <code>kmeans</code> or <code>dbscan</code>.</p>
+<p class="subtitle">Everything is callable as <code>kairo.<em>name</em></code>, in the order of the pipeline.</p>
+<p>A <code>*</code> in a name stands for <code>som</code>, <code>kmeans</code> or <code>dbscan</code>, the three
+  functions then take the same arguments. Dates are text such as <code>"2020-07-01"</code> or
+  <code>"2020-07-01 12:00"</code>, or pandas Timestamps. The rows of every frame are events for the
+  intra-case perspective and calendar windows for the resource and inter-case perspectives.</p>
 <div class="card-grid toc-grid">
   <a class="card" href="#api-logs"><h3>Logs</h3><p>Read a log and describe it.</p></a>
-  <a class="card" href="#api-features"><h3>Features</h3><p>One per perspective.</p></a>
+  <a class="card" href="#api-features"><h3>Features</h3><p>One function per perspective.</p></a>
   <a class="card" href="#api-pca"><h3>Scaling and PCA</h3><p>Compress the features.</p></a>
-  <a class="card" href="#api-states"><h3>States</h3><p>Cluster the rows.</p></a>
-  <a class="card" href="#api-drift"><h3>Trajectories and drift</h3><p>States over time.</p></a>
-  <a class="card" href="#api-plots"><h3>Plots</h3><p>A figure per result.</p></a>
+  <a class="card" href="#api-som"><h3>SOM</h3><p>States on a grid.</p></a>
+  <a class="card" href="#api-kmeans"><h3>k-means</h3><p>k states.</p></a>
+  <a class="card" href="#api-dbscan"><h3>DBSCAN</h3><p>Dense regions as states.</p></a>
+  <a class="card" href="#api-trajectories"><h3>Frequencies and trajectories</h3><p>States over time.</p></a>
+  <a class="card" href="#api-drift"><h3>Drift</h3><p>Signals per window.</p></a>
   <a class="card" href="#api-llm"><h3>Language models</h3><p>Text and connectors.</p></a>
+  <a class="card" href="#api-constants"><h3>Constants</h3><p>Accepted values.</p></a>
 </div>
 
 <h2 id="api-logs">Logs</h2>
-<table><thead><tr><th>Function</th><th>Returns</th></tr></thead><tbody>
-<tr><td><code>read_log(path, case_id, activity, timestamp, event_id=None, start_timestamp=None, resource=None, event_duration=None)</code></td>
-  <td>An XES or CSV log with the given columns renamed to kairo's names.</td></tr>
-<tr><td><code>compute_log_stats(log)</code></td><td>A dict of counts, throughput times and case lengths.</td></tr>
+
+<h3 id="api-read_log"><code>read_log</code></h3>
+<p>Reads an event log and renames the columns of the given roles to the names kairo works with.</p>
+<pre><code>read_log(path, case_id="case:concept:name", activity="concept:name", timestamp="time:timestamp",
+         event_id=None, start_timestamp=None, resource=None, event_duration=None) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>path</code></td><td>path to a <code>.xes</code> or <code>.csv</code> file</td><td>The file to read, an XES with pm4py, a CSV with pandas.</td></tr>
+<tr><td><code>case_id</code></td><td>column name</td><td>The column holding the case id, renamed to <code>case:concept:name</code>.</td></tr>
+<tr><td><code>activity</code></td><td>column name</td><td>The column holding the activity, renamed to <code>concept:name</code>.</td></tr>
+<tr><td><code>timestamp</code></td><td>column name</td><td>The column holding when the event happened, renamed to <code>time:timestamp</code>.</td></tr>
+<tr><td><code>event_id</code></td><td>column name or <code>None</code></td><td>Optional event id, renamed to <code>event_id</code>.</td></tr>
+<tr><td><code>start_timestamp</code></td><td>column name or <code>None</code></td><td>Optional start time of the event, renamed to <code>start_timestamp</code>.</td></tr>
+<tr><td><code>resource</code></td><td>column name or <code>None</code></td><td>Optional resource, renamed to <code>org:resource</code>. The resource features need it.</td></tr>
+<tr><td><code>event_duration</code></td><td>column name or <code>None</code></td><td>Optional duration of the event in minutes, renamed to <code>event_duration</code>. The feature <code>res_durations</code> needs it.</td></tr>
 </tbody></table>
+<p><strong>Returns</strong> a DataFrame with one row per event and all columns of the file. Raises a
+  <code>ValueError</code> for another file type or a column name the file does not have. A CSV is read as
+  it is, so its timestamps stay text until converted with <code>pd.to_datetime</code>.</p>
+
+<h3 id="api-compute_log_stats"><code>compute_log_stats</code></h3>
+<p>Summarises a log in numbers.</p>
+<pre><code>compute_log_stats(log) -&gt; dict</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>log</code></td><td>a log from <code>read_log</code></td><td>The log to describe.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a dict with <code>cases</code>, <code>events</code>, <code>activities</code>,
+  <code>resources</code> (0 without a resource column), <code>start</code> and <code>end</code> (the first and
+  last timestamp), <code>span_minutes</code>, <code>tpt_days_min</code>/<code>_mean</code>/<code>_median</code>/<code>_max</code>
+  (throughput time of the cases in days), <code>length_min</code>/<code>_mean</code>/<code>_median</code>/<code>_max</code>
+  (events per case), and <code>activity_counts</code> and <code>resource_counts</code> (events per activity and
+  per resource, as Series).</p>
+
+<h3 id="api-plot_activity_counts"><code>plot_activity_counts</code></h3>
+<p>Draws the events per activity as horizontal bars.</p>
+<pre><code>plot_activity_counts(stats) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>stats</code></td><td>a dict from <code>compute_log_stats</code></td><td>Its <code>activity_counts</code> are drawn.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure.</p>
 
 <h2 id="api-features">Features</h2>
-<p>A DataFrame with the feature columns, named <code>group:name</code>, next to
-  <code>time:timestamp</code>, and for intra-case also <code>case:concept:name</code>. A missing
-  column a picked feature needs raises a <code>ValueError</code>.</p>
-<table><thead><tr><th>Function</th><th>Feature groups</th></tr></thead><tbody>
-<tr><td><code>compute_features_intra(log, features, sliding_window_size=0)</code></td>
-  <td>One row per event: <code>act_freqs</code>, <code>df_counts</code>, <code>act_set</code>,
-    <code>case_progress</code>, <code>current_act</code>, <code>past_acts</code>.</td></tr>
-<tr><td><code>compute_features_resource(log, window="1D", features, resources=None)</code></td>
-  <td>One row per calendar window: <code>res_events</code>, <code>res_cases</code>, <code>res_durations</code>
-    (needs an event duration), <code>res_waits</code>, <code>act_res_shares</code>, <code>handover_shares</code>.
-    <code>resources</code> picks the columns, <code>None</code> keeps all.</td></tr>
-<tr><td><code>compute_features_inter(log, window="1D", features, case_attributes={}, stall_threshold="1D")</code></td>
-  <td>One row per calendar window: <code>active_cases</code>, <code>new_arrivals</code>, <code>completions</code>,
-    <code>events_per_case</code>, <code>mean_delta_t</code>, <code>std_delta_t</code>, <code>stalled_cases</code>,
-    <code>attr_means</code>, <code>attr_stds</code>, <code>attr_shares</code>. <code>case_attributes</code>
-    maps a column to <code>"numerical"</code> or <code>"categorical"</code>.</td></tr>
+<p>Every function returns one row per event (intra-case) or per calendar window (resource, inter-case). The
+  feature columns are named <code>group:name</code> and come next to <code>time:timestamp</code>, the time of
+  the event or the start of the window, and for intra-case also <code>case:concept:name</code>. These two
+  columns travel along every later step but never enter the maths. A picked feature that needs a column the
+  log does not have raises a <code>ValueError</code>.</p>
+<p>A calendar window is a pandas frequency of fixed length, such as <code>"1h"</code>, <code>"6h"</code>,
+  <code>"12h"</code>, <code>"1D"</code>, <code>"3D"</code>, <code>"7D"</code> or <code>"30D"</code>. Windows count
+  from 1 January 1970, so <code>"7D"</code> windows start on Thursdays. Every window from the first to the last
+  event gets a row, windows without events get zeros.</p>
+
+<h3 id="api-compute_features_intra"><code>compute_features_intra</code></h3>
+<p>Describes every event by its case up to and including that event, its prefix.</p>
+<pre><code>compute_features_intra(log, features=FEATURES, sliding_window_size=0) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>log</code></td><td>a log from <code>read_log</code></td><td>Needs a case id, an activity and a timestamp.</td></tr>
+<tr><td><code>features</code></td><td>list of the keys below, default all of them</td><td>The feature groups to compute.</td></tr>
+<tr><td><code>sliding_window_size</code></td><td>integer from 0</td><td>How many previous events <code>past_acts</code> looks back. 0 gives it no columns.</td></tr>
 </tbody></table>
-<p>A window is a pandas frequency such as <code>"12h"</code>, <code>"1D"</code> or <code>"7D"</code>.
-  Leaving out <code>features</code> computes all of them.</p>
+<table><thead><tr><th>Key</th><th>Columns</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>act_freqs</code></td><td><code>act_freqs:&lt;activity&gt;</code></td><td>The share of the activity among the case's events so far.</td></tr>
+<tr><td><code>df_counts</code></td><td><code>df_counts:&lt;a&gt; -&gt; &lt;b&gt;</code></td><td>How often the directly-follows pair a → b occurred in the case so far.</td></tr>
+<tr><td><code>act_set</code></td><td><code>act_set:&lt;activity&gt;</code></td><td>1 once the activity has occurred in the case, else 0.</td></tr>
+<tr><td><code>case_progress</code></td><td><code>case_progress</code></td><td>The position of the event in its case, divided by the case length, so the last event has 1.</td></tr>
+<tr><td><code>current_act</code></td><td><code>current_act:&lt;activity&gt;</code></td><td>1 for the activity of the event itself.</td></tr>
+<tr><td><code>past_acts</code></td><td><code>past_acts_&lt;k&gt;:&lt;activity&gt;</code></td><td>1 for the activity of the event k steps back, 0 while the case has fewer events before.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> one row per event, in the order and with the index of the log.</p>
+
+<h3 id="api-compute_features_resource"><code>compute_features_resource</code></h3>
+<p>Describes how the resources worked in every calendar window.</p>
+<pre><code>compute_features_resource(log, window="1D", features=FEATURES, resources=None) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>log</code></td><td>a log from <code>read_log</code> with a resource</td><td>The events to describe.</td></tr>
+<tr><td><code>window</code></td><td>pandas frequency</td><td>The size of the calendar windows, one row each.</td></tr>
+<tr><td><code>features</code></td><td>list of the keys below, default all of them</td><td>The feature groups to compute. Without an event duration column, leave <code>res_durations</code> out.</td></tr>
+<tr><td><code>resources</code></td><td>list of resource names, or <code>None</code> for all</td><td>The resources that get columns. The shares and waits still count every resource.</td></tr>
+</tbody></table>
+<table><thead><tr><th>Key</th><th>Columns</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>res_events</code></td><td><code>res_events:&lt;r&gt;</code></td><td>Events resource r executed in the window.</td></tr>
+<tr><td><code>res_cases</code></td><td><code>res_cases:&lt;r&gt;</code></td><td>Distinct cases r touched in the window.</td></tr>
+<tr><td><code>res_durations</code></td><td><code>res_durations:&lt;r&gt;</code></td><td>Mean duration of r's events in minutes.</td></tr>
+<tr><td><code>res_waits</code></td><td><code>res_waits:&lt;r&gt;</code></td><td>Mean minutes between an event of r and the previous event of its case, over the events r took over from another resource.</td></tr>
+<tr><td><code>act_res_shares</code></td><td><code>act_res_shares:&lt;a&gt; by &lt;r&gt;</code></td><td>The share of the window's events of activity a that r executed.</td></tr>
+<tr><td><code>handover_shares</code></td><td><code>handover_shares:&lt;r1&gt; -&gt; &lt;r2&gt;</code></td><td>The share of r1's handovers in the window that went to r2.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> one row per calendar window. Raises a <code>ValueError</code> without a resource
+  column, for <code>res_durations</code> without an event duration column, and for a resource the log does not have.</p>
+
+<h3 id="api-compute_features_inter"><code>compute_features_inter</code></h3>
+<p>Describes all cases running in every calendar window.</p>
+<pre><code>compute_features_inter(log, window="1D", features=FEATURES, case_attributes={},
+                       stall_threshold="1D") -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>log</code></td><td>a log from <code>read_log</code></td><td>The events to describe.</td></tr>
+<tr><td><code>window</code></td><td>pandas frequency</td><td>The size of the calendar windows, one row each.</td></tr>
+<tr><td><code>features</code></td><td>list of the keys below, default all of them</td><td>The feature groups to compute.</td></tr>
+<tr><td><code>case_attributes</code></td><td>dict of column name to <code>"numerical"</code> or <code>"categorical"</code></td><td>The case attributes the attribute features cover, e.g. <code>{"case:amount": "numerical", "case:region": "categorical"}</code>. Numbers stored as text work too.</td></tr>
+<tr><td><code>stall_threshold</code></td><td>pandas duration, e.g. <code>"1h"</code>, <code>"12h"</code>, <code>"1D"</code>, <code>"3D"</code></td><td>How long a running case may go without an event before it counts as stalled.</td></tr>
+</tbody></table>
+<table><thead><tr><th>Key</th><th>Columns</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>active_cases</code></td><td><code>active_cases</code></td><td>Cases with at least one event in the window.</td></tr>
+<tr><td><code>new_arrivals</code></td><td><code>new_arrivals</code></td><td>Cases whose first event falls into the window.</td></tr>
+<tr><td><code>completions</code></td><td><code>completions</code></td><td>Cases whose last event falls into the window.</td></tr>
+<tr><td><code>events_per_case</code></td><td><code>events_per_case</code></td><td>Events in the window divided by its active cases.</td></tr>
+<tr><td><code>mean_delta_t</code></td><td><code>mean_delta_t</code></td><td>Mean minutes between an event and the previous event of its case, in the window of the later one.</td></tr>
+<tr><td><code>std_delta_t</code></td><td><code>std_delta_t</code></td><td>Standard deviation of those minutes.</td></tr>
+<tr><td><code>stalled_cases</code></td><td><code>stalled_cases</code></td><td>Cases still running at the end of the window whose most recent event is older than the stall threshold.</td></tr>
+<tr><td><code>attr_means</code></td><td><code>attr_means:&lt;c&gt;</code></td><td>Mean of every numerical attribute c over the window's events.</td></tr>
+<tr><td><code>attr_stds</code></td><td><code>attr_stds:&lt;c&gt;</code></td><td>Standard deviation of every numerical attribute c over the window's events.</td></tr>
+<tr><td><code>attr_shares</code></td><td><code>attr_shares:&lt;c&gt;=&lt;value&gt;</code></td><td>The share of the window's events carrying every value of a categorical attribute c.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> one row per calendar window. Raises a <code>ValueError</code> for an attribute
+  column the log does not have, a kind other than numerical or categorical, and a numerical attribute without numbers.</p>
 
 <h2 id="api-pca">Scaling and PCA</h2>
-<table><thead><tr><th>Function</th><th>Returns</th></tr></thead><tbody>
-<tr><td><code>standardize(feature_matrix, method, exclude=["current_act", "past_acts", "act_set"])</code></td>
-  <td>The features scaled by <code>"zscore"</code> or <code>"minmax"</code>, the excluded groups untouched.</td></tr>
-<tr><td><code>compute_pca(feature_matrix, num_components=None)</code></td><td>A fitted sklearn <code>PCA</code>.</td></tr>
-<tr><td><code>apply_pca(feature_matrix, pca, cut_component)</code></td><td>The first <code>cut_component</code> components, <code>pc_1</code> on.</td></tr>
-</tbody></table>
 
-<h2 id="api-states">States</h2>
-<table><thead><tr><th>Function</th><th>Returns</th></tr></thead><tbody>
-<tr><td><code>compute_som(df, size=(5, 5), learning_rate=0.5, distance="euclidean")</code>,
-  <code>get_som_winners(df, som)</code></td><td>A MiniSom, then the cell <code>i</code>, <code>j</code> of every row.</td></tr>
-<tr><td><code>compute_kmeans(df, k=5)</code>, <code>get_kmeans_clusters(df, kmeans)</code></td>
-  <td>A fitted KMeans, then the <code>cluster</code> of every row.</td></tr>
-<tr><td><code>compute_dbscan(df, eps=0.5, min_samples=5, distance="euclidean")</code>,
-  <code>get_dbscan_clusters(df, dbscan)</code></td><td>A fitted DBSCAN, then the <code>cluster</code> of every row, -1 for noise.</td></tr>
-<tr><td><code>get_*_state_frequencies(df, start_date=None, end_date=None)</code></td><td>Rows per state between the dates.</td></tr>
-<tr><td><code>get_som_state_distances(som, distance)</code>, <code>get_kmeans_state_distances(kmeans)</code>,
-  <code>get_dbscan_state_distances(dbscan)</code></td><td>The distance between every two states.</td></tr>
-<tr><td><code>compute_som_color_mapping(size)</code>, <code>compute_kmeans_color_mapping(k)</code>,
-  <code>compute_dbscan_color_mapping(dbscan)</code></td><td>A color per state, shared by all plots.</td></tr>
+<h3 id="api-standardize"><code>standardize</code></h3>
+<p>Scales every feature column, so no column outweighs the others by its unit.</p>
+<pre><code>standardize(feature_matrix, method, exclude=["current_act", "past_acts", "act_set"]) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>feature_matrix</code></td><td>features from <code>compute_features_*</code></td><td>The features to scale.</td></tr>
+<tr><td><code>method</code></td><td><code>"zscore"</code> or <code>"minmax"</code></td><td>zscore gives every column mean 0 and standard deviation 1, which turns rare columns into large outliers. minmax squeezes every column into 0 to 1.</td></tr>
+<tr><td><code>exclude</code></td><td>list of feature group names</td><td>Groups left as they are, by default the binary intra-case ones. <code>[]</code> scales every column.</td></tr>
 </tbody></table>
-<p>The distances are <code>euclidean</code>, <code>cosine</code>, <code>manhattan</code> and
-  <code>chebyshev</code>. <code>df</code> is the clustering's input with its states joined on.</p>
+<p><strong>Returns</strong> a copy with the scaled columns. A column that never changes becomes 0. Raises a
+  <code>ValueError</code> for another method. To skip scaling, go on with the features as they are.</p>
 
-<h2 id="api-drift">Trajectories and drift</h2>
-<table><thead><tr><th>Function</th><th>Returns</th></tr></thead><tbody>
-<tr><td><code>get_*_case_trajectory(df, case_id)</code></td><td>The visits of one case through the states.</td></tr>
-<tr><td><code>get_*_trajectories(df, start_date=None, end_date=None, max_cases)</code></td>
-  <td>The visits of every case that starts and ends between the dates.</td></tr>
-<tr><td><code>get_*_log_trajectory(df, start_date=None, end_date=None)</code></td>
-  <td>Resource and inter-case: the log's visits, window by window.</td></tr>
-<tr><td><code>compute_state_distributions(df, window="7D")</code></td><td>The share of every state per calendar window.</td></tr>
-<tr><td><code>compute_divergences(distributions, divergence="kl", reference="previous", lookback=5)</code></td>
-  <td>A score per window: <code>kl</code>, <code>js</code>, <code>tv</code> or <code>hellinger</code>
-    against the <code>previous</code> window, the <code>recent</code> mean or the <code>baseline</code>.</td></tr>
-<tr><td><code>compute_window_distances(df, distance="euclidean", reference="previous", lookback=5)</code></td>
-  <td>Resource and inter-case: a score per window, the distance of its vector to the reference.</td></tr>
+<h3 id="api-compute_pca"><code>compute_pca</code></h3>
+<p>Fits a PCA, so the explained variances show where to cut.</p>
+<pre><code>compute_pca(feature_matrix, num_components=None) -&gt; PCA</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>feature_matrix</code></td><td>scaled features, or the features themselves</td><td>The rows to fit on.</td></tr>
+<tr><td><code>num_components</code></td><td>integer from 1 to the number of rows or columns, whichever is smaller, or <code>None</code></td><td>How many components to fit, <code>None</code> fits all of them.</td></tr>
 </tbody></table>
+<p><strong>Returns</strong> a fitted sklearn <code>PCA</code>, its <code>explained_variance_ratio_</code> holds the
+  share of the variance every component explains.</p>
 
-<h2 id="api-plots">Plots</h2>
-<p>Each returns a plotly figure.</p>
-<table><thead><tr><th>Step</th><th>Functions</th></tr></thead><tbody>
-<tr><td>Log and PCA</td><td><code>plot_activity_counts(stats)</code>, <code>plot_pca_variances(pca, cut_component=None)</code></td></tr>
-<tr><td>States</td><td><code>plot_som_u_matrix</code>, <code>plot_som_heatmap</code>, <code>plot_som_colors</code>,
-  <code>plot_kmeans_frequencies</code>, <code>plot_dbscan_frequencies</code>, <code>plot_kmeans_distances</code>,
-  <code>plot_dbscan_distances</code>, <code>plot_dbscan_k_distance</code></td></tr>
-<tr><td>Trajectories</td><td><code>plot_*_case_trajectory</code>, <code>plot_*_trajectories</code>, <code>plot_*_log_trajectory</code></td></tr>
-<tr><td>Drift</td><td><code>plot_state_distributions</code>, <code>plot_divergences</code>, <code>plot_window_distances</code></td></tr>
+<h3 id="api-apply_pca"><code>apply_pca</code></h3>
+<p>Compresses the features to their strongest components.</p>
+<pre><code>apply_pca(feature_matrix, pca, cut_component) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>feature_matrix</code></td><td>the frame <code>pca</code> was fitted on</td><td>The rows to compress.</td></tr>
+<tr><td><code>pca</code></td><td>from <code>compute_pca</code></td><td>The fitted components.</td></tr>
+<tr><td><code>cut_component</code></td><td>integer from 1 to the fitted components</td><td>How many components to keep.</td></tr>
 </tbody></table>
+<p><strong>Returns</strong> the time (and case id) columns with <code>pc_1</code> to
+  <code>pc_&lt;cut_component&gt;</code>, keeping the index. This is the input of the clustering. To skip PCA, cluster
+  the scaled features directly.</p>
+
+<h3 id="api-plot_pca_variances"><code>plot_pca_variances</code></h3>
+<p>Draws the explained variance of every component as bars.</p>
+<pre><code>plot_pca_variances(pca, cut_component=None) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>pca</code></td><td>from <code>compute_pca</code></td><td>The fitted components.</td></tr>
+<tr><td><code>cut_component</code></td><td>integer or <code>None</code></td><td>Draws a dashed line after this component and titles the variance kept. <code>None</code> draws no line.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure.</p>
+
+<h2 id="api-som">SOM</h2>
+<p>The clustering functions of all three methods take <code>df</code>, the input of the clustering: the output of
+  <code>apply_pca</code>, or the scaled features when PCA is skipped. Joining the states onto it gives the
+  states frame the later functions take:</p>
+<pre><code>states = pd.concat([compressed, kairo.get_som_winners(compressed, som)], axis=1)</code></pre>
+
+<h3 id="api-compute_som"><code>compute_som</code></h3>
+<p>Trains a self-organizing map. Every cell of its grid is a state, and neighbouring cells hold similar states.</p>
+<pre><code>compute_som(df, size=(5, 5), learning_rate=0.5, distance="euclidean") -&gt; MiniSom</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>the input of the clustering</td><td>The rows to learn the states from.</td></tr>
+<tr><td><code>size</code></td><td>tuple of rows and columns, e.g. <code>(3, 3)</code> or <code>(10, 10)</code></td><td>The grid, so rows × columns states.</td></tr>
+<tr><td><code>learning_rate</code></td><td>number above 0, usually 0.1 to 1</td><td>How far the neurons move towards a row at the start of the training.</td></tr>
+<tr><td><code>distance</code></td><td><code>"euclidean"</code>, <code>"cosine"</code>, <code>"manhattan"</code> or <code>"chebyshev"</code></td><td>How a row finds its closest neuron.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> the trained <code>MiniSom</code>. The neurons start on random rows and see every row
+  once in random order, so the cell numbers change between runs.</p>
+
+<h3 id="api-get_som_winners"><code>get_som_winners</code></h3>
+<p>Gives every row the cell of its closest neuron, its state.</p>
+<pre><code>get_som_winners(df, som) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>the input of the clustering</td><td>The rows to place on the grid.</td></tr>
+<tr><td><code>som</code></td><td>from <code>compute_som</code></td><td>The trained map.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> the columns <code>i</code> and <code>j</code>, the cell of every row, with the index of <code>df</code>.</p>
+
+<h3 id="api-get_som_state_distances"><code>get_som_state_distances</code></h3>
+<p>Measures how far apart the neurons of every two cells are.</p>
+<pre><code>get_som_state_distances(som, distance="euclidean") -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>som</code></td><td>from <code>compute_som</code></td><td>The trained map.</td></tr>
+<tr><td><code>distance</code></td><td>the four distances of <code>compute_som</code></td><td>How to measure, best the one the map was trained with.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a square DataFrame, its rows and columns named <code>"(i, j)"</code>.</p>
+
+<h3 id="api-compute_som_color_mapping"><code>compute_som_color_mapping</code></h3>
+<p>Picks a clearly different color for every cell, shared by all plots.</p>
+<pre><code>compute_som_color_mapping(size) -&gt; dict</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>size</code></td><td>the <code>size</code> of <code>compute_som</code></td><td>The grid to color.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> <code>{(i, j): "#rrggbb"}</code>. The same size always gives the same colors.</p>
+
+<h3 id="api-plot_som_u_matrix"><code>plot_som_u_matrix</code></h3>
+<p>Shows how far every neuron is from its neighbours. Pale cells lie inside a group of similar states, dark
+  ridges are the borders between groups.</p>
+<pre><code>plot_som_u_matrix(som) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>som</code></td><td>from <code>compute_som</code></td><td>The trained map.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure.</p>
+
+<h3 id="api-plot_som_heatmap"><code>plot_som_heatmap</code></h3>
+<p>Counts the rows in every cell between two dates, empty cells included, so two ranges can be compared.</p>
+<pre><code>plot_som_heatmap(df, size, start_date=None, end_date=None) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>the states frame, with <code>i</code> and <code>j</code></td><td>The rows to count.</td></tr>
+<tr><td><code>size</code></td><td>the <code>size</code> of <code>compute_som</code></td><td>The grid to draw.</td></tr>
+<tr><td><code>start_date</code>, <code>end_date</code></td><td>dates, or <code>None</code> for an open end</td><td>The range to count in.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure, with the counts written on grids up to 10 × 10.</p>
+
+<h3 id="api-plot_som_colors"><code>plot_som_colors</code></h3>
+<p>Draws the grid in the colors of the states, with how many rows every cell holds.</p>
+<pre><code>plot_som_colors(df, color_mapping) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>the states frame</td><td>The rows to count.</td></tr>
+<tr><td><code>color_mapping</code></td><td>from <code>compute_som_color_mapping</code></td><td>The color of every cell.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure, with the counts written on grids up to 10 × 10.</p>
+
+<h2 id="api-kmeans">k-means</h2>
+
+<h3 id="api-compute_kmeans"><code>compute_kmeans</code></h3>
+<p>Groups the rows into k states around k centers. k-means only works with euclidean distance, and a fixed seed
+  keeps the cluster numbers between runs.</p>
+<pre><code>compute_kmeans(df, k=5) -&gt; KMeans</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>the input of the clustering</td><td>The rows to group.</td></tr>
+<tr><td><code>k</code></td><td>integer from 2 to the number of rows</td><td>The number of states.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a fitted sklearn <code>KMeans</code>.</p>
+
+<h3 id="api-get_kmeans_clusters"><code>get_kmeans_clusters</code></h3>
+<p>Gives every row its cluster, its state.</p>
+<pre><code>get_kmeans_clusters(df, kmeans) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>the frame <code>kmeans</code> was fitted on</td><td>Gives the index.</td></tr>
+<tr><td><code>kmeans</code></td><td>from <code>compute_kmeans</code></td><td>The fitted clusters.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> the column <code>cluster</code>, 0 to k − 1, with the index of <code>df</code>.</p>
+
+<h3 id="api-get_kmeans_state_distances"><code>get_kmeans_state_distances</code></h3>
+<p>Measures how far apart the centers of every two clusters are.</p>
+<pre><code>get_kmeans_state_distances(kmeans) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>kmeans</code></td><td>from <code>compute_kmeans</code></td><td>The fitted clusters.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a square DataFrame, its rows and columns named <code>"0"</code> to <code>"k-1"</code>.</p>
+
+<h3 id="api-compute_kmeans_color_mapping"><code>compute_kmeans_color_mapping</code></h3>
+<p>Picks a clearly different color for every cluster, shared by all plots.</p>
+<pre><code>compute_kmeans_color_mapping(k) -&gt; dict</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>k</code></td><td>the <code>k</code> of <code>compute_kmeans</code></td><td>The clusters to color.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> <code>{cluster: "#rrggbb"}</code>.</p>
+
+<h3 id="api-plot_kmeans_distances"><code>plot_kmeans_distances</code></h3>
+<p>Draws the distances between the clusters as a matrix.</p>
+<pre><code>plot_kmeans_distances(distances) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>distances</code></td><td>from <code>get_kmeans_state_distances</code></td><td>The distances to draw.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure, with the values written for up to 10 clusters.</p>
+
+<h2 id="api-dbscan">DBSCAN</h2>
+
+<h3 id="api-plot_dbscan_k_distance"><code>plot_dbscan_k_distance</code></h3>
+<p>Sorts the distance of every row to its <code>min_samples</code>-th nearest row, the row itself counted. The
+  knee of the curve is a good <code>eps</code>.</p>
+<pre><code>plot_dbscan_k_distance(df, min_samples=5, distance="euclidean") -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>the input of the clustering</td><td>The rows to measure.</td></tr>
+<tr><td><code>min_samples</code></td><td>integer from 1</td><td>The neighbour to measure to, the same as for <code>compute_dbscan</code>.</td></tr>
+<tr><td><code>distance</code></td><td>the four distances of <code>compute_som</code></td><td>How to measure, the same as for <code>compute_dbscan</code>.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure. On large intra-case logs it takes long, every row is measured.</p>
+
+<h3 id="api-compute_dbscan"><code>compute_dbscan</code></h3>
+<p>Turns dense regions of rows into states. Rows outside all of them are noise.</p>
+<pre><code>compute_dbscan(df, eps=0.5, min_samples=5, distance="euclidean") -&gt; DBSCAN</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>the input of the clustering</td><td>The rows to group.</td></tr>
+<tr><td><code>eps</code></td><td>number above 0</td><td>The radius of a row's neighbourhood, read off the knee of the k-distance curve.</td></tr>
+<tr><td><code>min_samples</code></td><td>integer from 1</td><td>How many rows within <code>eps</code>, the row itself counted, make it a core row of a cluster.</td></tr>
+<tr><td><code>distance</code></td><td>the four distances of <code>compute_som</code></td><td>How the neighbourhood is measured.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a fitted sklearn <code>DBSCAN</code>, fitted on the distinct rows weighted by how often
+  they occur. Raises a <code>ValueError</code> when every row is noise.</p>
+
+<h3 id="api-get_dbscan_clusters"><code>get_dbscan_clusters</code></h3>
+<p>Gives every row its cluster, its state.</p>
+<pre><code>get_dbscan_clusters(df, dbscan) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>the frame <code>dbscan</code> was fitted on</td><td>The rows to look up.</td></tr>
+<tr><td><code>dbscan</code></td><td>from <code>compute_dbscan</code></td><td>The fitted clusters.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> the column <code>cluster</code>, from 0, and −1 for noise, with the index of <code>df</code>.</p>
+
+<h3 id="api-get_dbscan_state_distances"><code>get_dbscan_state_distances</code></h3>
+<p>Measures how far apart every two clusters are, each standing in with the mean of its core rows. Noise is
+  left out, the distance is the one DBSCAN used.</p>
+<pre><code>get_dbscan_state_distances(dbscan) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>dbscan</code></td><td>from <code>compute_dbscan</code></td><td>The fitted clusters.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a square DataFrame, its rows and columns named <code>"0"</code> on.</p>
+
+<h3 id="api-compute_dbscan_color_mapping"><code>compute_dbscan_color_mapping</code></h3>
+<p>Picks a clearly different color for every cluster and grey for the noise.</p>
+<pre><code>compute_dbscan_color_mapping(dbscan) -&gt; dict</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>dbscan</code></td><td>from <code>compute_dbscan</code></td><td>The clusters to color.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> <code>{cluster: "#rrggbb"}</code>, with −1 for the noise.</p>
+
+<h3 id="api-plot_dbscan_distances"><code>plot_dbscan_distances</code></h3>
+<p>Draws the distances between the clusters as a matrix.</p>
+<pre><code>plot_dbscan_distances(distances) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>distances</code></td><td>from <code>get_dbscan_state_distances</code></td><td>The distances to draw.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure, with the values written for up to 10 clusters.</p>
+
+<h2 id="api-trajectories">Frequencies and trajectories</h2>
+<p>These take the states frame of any method, <code>*</code> being <code>som</code>, <code>kmeans</code> or
+  <code>dbscan</code>. States are named <code>"(i, j)"</code> for SOM cells, <code>"0"</code>, <code>"1"</code>, … for
+  clusters and <code>"noise"</code>. A visit is a run of consecutive rows of a case, or of the log, in the same
+  state, and lasts until the next visit starts.</p>
+
+<h3 id="api-get_state_frequencies"><code>get_*_state_frequencies</code></h3>
+<p>Counts the rows of every state between two dates.</p>
+<pre><code>get_*_state_frequencies(df, start_date=None, end_date=None) -&gt; pd.Series</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>the states frame</td><td>The rows to count.</td></tr>
+<tr><td><code>start_date</code>, <code>end_date</code></td><td>dates, or <code>None</code> for an open end</td><td>The range to count in.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a Series indexed by state and named after what it counts, <code>"events"</code> or
+  <code>"windows"</code>. States without rows are left out.</p>
+
+<h3 id="api-plot_frequencies"><code>plot_kmeans_frequencies</code>, <code>plot_dbscan_frequencies</code></h3>
+<p>Draws the frequencies as a bar per cluster in its color, clusters without rows included. For SOM,
+  <code>plot_som_heatmap</code> does this.</p>
+<pre><code>plot_kmeans_frequencies(frequencies, color_mapping) -&gt; go.Figure
+plot_dbscan_frequencies(frequencies, color_mapping) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>frequencies</code></td><td>from <code>get_*_state_frequencies</code></td><td>The counts to draw.</td></tr>
+<tr><td><code>color_mapping</code></td><td>from <code>compute_*_color_mapping</code></td><td>The color of every cluster.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure.</p>
+
+<h3 id="api-get_case_trajectory"><code>get_*_case_trajectory</code></h3>
+<p>Intra-case: follows one case through its states.</p>
+<pre><code>get_*_case_trajectory(df, case_id) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>an intra-case states frame</td><td>The events to follow.</td></tr>
+<tr><td><code>case_id</code></td><td>a case id of the log, as text</td><td>The case to follow. Compared as text, so number ids work too.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> one row per visit with <code>state</code>, <code>start</code>, <code>end</code>,
+  <code>duration</code> and <code>events</code>. Raises a <code>ValueError</code> for a case the log does not have.</p>
+
+<h3 id="api-plot_case_trajectory"><code>plot_*_case_trajectory</code></h3>
+<p>Draws the visits of one case over calendar time.</p>
+<pre><code>plot_*_case_trajectory(trajectory, color_mapping, case_id) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>trajectory</code></td><td>from <code>get_*_case_trajectory</code></td><td>The visits to draw.</td></tr>
+<tr><td><code>color_mapping</code></td><td>from <code>compute_*_color_mapping</code></td><td>The color of every state.</td></tr>
+<tr><td><code>case_id</code></td><td>the case id</td><td>Names the plot.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure.</p>
+
+<h3 id="api-get_trajectories"><code>get_*_trajectories</code></h3>
+<p>Intra-case: follows every case whose first and last event lie between two dates.</p>
+<pre><code>get_*_trajectories(df, start_date=None, end_date=None, max_cases=1000) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>an intra-case states frame</td><td>The events to follow.</td></tr>
+<tr><td><code>start_date</code>, <code>end_date</code></td><td>dates, or <code>None</code> for an open end</td><td>The range the cases have to lie in.</td></tr>
+<tr><td><code>max_cases</code></td><td>integer from 1, default 1000, for SOM 10000</td><td>With more cases in the range, the ones that started first.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> one row per visit with <code>case</code>, <code>state</code>, <code>start</code>,
+  <code>end</code>, <code>duration</code> and <code>events</code>.</p>
+
+<h3 id="api-plot_trajectories"><code>plot_*_trajectories</code></h3>
+<p>Draws the visits of many cases over calendar time, one row per case, the one that started first on top.</p>
+<pre><code>plot_*_trajectories(trajectories, color_mapping) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>trajectories</code></td><td>from <code>get_*_trajectories</code></td><td>The visits to draw.</td></tr>
+<tr><td><code>color_mapping</code></td><td>from <code>compute_*_color_mapping</code></td><td>The color of every state.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure.</p>
+
+<h3 id="api-get_log_trajectory"><code>get_*_log_trajectory</code></h3>
+<p>Resource and inter-case: follows the log through its states, window by window.</p>
+<pre><code>get_*_log_trajectory(df, start_date=None, end_date=None) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>a resource or inter-case states frame</td><td>The windows to follow.</td></tr>
+<tr><td><code>start_date</code>, <code>end_date</code></td><td>dates, or <code>None</code> for an open end</td><td>The range the windows start in.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> one row per visit with <code>state</code>, <code>start</code>, <code>end</code>,
+  <code>duration</code> and <code>windows</code>.</p>
+
+<h3 id="api-plot_log_trajectory"><code>plot_*_log_trajectory</code></h3>
+<p>Draws the log's visits as one bar over calendar time.</p>
+<pre><code>plot_*_log_trajectory(trajectory, color_mapping) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>trajectory</code></td><td>from <code>get_*_log_trajectory</code></td><td>The visits to draw.</td></tr>
+<tr><td><code>color_mapping</code></td><td>from <code>compute_*_color_mapping</code></td><td>The color of every state.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure.</p>
+
+<h2 id="api-drift">Drift</h2>
+
+<h3 id="api-compute_state_distributions"><code>compute_state_distributions</code></h3>
+<p>Counts the share of every state in every calendar window.</p>
+<pre><code>compute_state_distributions(df, window="7D") -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>a states frame</td><td>The rows to count.</td></tr>
+<tr><td><code>window</code></td><td>pandas frequency, e.g. <code>"12h"</code>, <code>"1D"</code>, <code>"7D"</code> or <code>"30D"</code></td><td>The windows to count in. For resource and inter-case states, pick one larger than the feature window, e.g. <code>"30D"</code> over daily features.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> one row per window with rows, indexed by its start, and one column per state. Every
+  row adds up to 1.</p>
+
+<h3 id="api-plot_state_distributions"><code>plot_state_distributions</code></h3>
+<p>Draws the shares of the states over time as stacked areas.</p>
+<pre><code>plot_state_distributions(distributions, color_mapping) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>distributions</code></td><td>from <code>compute_state_distributions</code></td><td>The shares to draw.</td></tr>
+<tr><td><code>color_mapping</code></td><td>from <code>compute_*_color_mapping</code></td><td>The color of every state.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure.</p>
+
+<h3 id="api-compute_divergences"><code>compute_divergences</code></h3>
+<p>Compares the distribution of every window with a reference. A spike means the mix of states changed.</p>
+<pre><code>compute_divergences(distributions, divergence="kl", reference="previous", lookback=5) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>distributions</code></td><td>from <code>compute_state_distributions</code></td><td>The windows to compare.</td></tr>
+<tr><td><code>divergence</code></td><td><code>"kl"</code>, <code>"js"</code>, <code>"tv"</code> or <code>"hellinger"</code></td><td>How two distributions are compared: KL divergence (unbounded, very sensitive to a state missing on one side), Jensen–Shannon (0 to ln 2), total variation (0 to 1) or Hellinger (0 to 1).</td></tr>
+<tr><td><code>reference</code></td><td><code>"previous"</code>, <code>"recent"</code> or <code>"baseline"</code></td><td>What every window is compared with: the window before it, the mean of the <code>lookback</code> windows before it, or the mean of all windows.</td></tr>
+<tr><td><code>lookback</code></td><td>integer from 1</td><td>How many windows <code>"recent"</code> averages, ignored otherwise.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> the columns <code>window</code> (its start) and <code>score</code>, indexed by the number
+  of the window. Windows without a reference yet have no score.</p>
+
+<h3 id="api-plot_divergences"><code>plot_divergences</code></h3>
+<p>Draws the score of every window as a line.</p>
+<pre><code>plot_divergences(divergences, divergence="kl", reference="previous") -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>divergences</code></td><td>from <code>compute_divergences</code></td><td>The scores to draw.</td></tr>
+<tr><td><code>divergence</code>, <code>reference</code></td><td>the values they were computed with</td><td>Name the axis and the title.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure.</p>
+
+<h3 id="api-compute_window_distances"><code>compute_window_distances</code></h3>
+<p>Resource and inter-case: compares the vector of every window with a reference directly, without states.</p>
+<pre><code>compute_window_distances(df, distance="euclidean", reference="previous", lookback=5) -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>the input of the clustering, one row per window</td><td>The vectors to compare.</td></tr>
+<tr><td><code>distance</code></td><td><code>"euclidean"</code>, <code>"cosine"</code>, <code>"manhattan"</code> or <code>"chebyshev"</code></td><td>How two vectors are compared.</td></tr>
+<tr><td><code>reference</code></td><td><code>"previous"</code>, <code>"recent"</code> or <code>"baseline"</code></td><td>What every window is compared with, as for <code>compute_divergences</code>.</td></tr>
+<tr><td><code>lookback</code></td><td>integer from 1</td><td>How many windows <code>"recent"</code> averages, ignored otherwise.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> the columns <code>window</code> and <code>score</code>, as <code>compute_divergences</code>.</p>
+
+<h3 id="api-plot_window_distances"><code>plot_window_distances</code></h3>
+<p>Draws the distance of every window as a line.</p>
+<pre><code>plot_window_distances(distances, distance="euclidean", reference="previous") -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>distances</code></td><td>from <code>compute_window_distances</code></td><td>The scores to draw.</td></tr>
+<tr><td><code>distance</code>, <code>reference</code></td><td>the values they were computed with</td><td>Name the axis and the title.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure.</p>
 
 <h2 id="api-llm">Language models</h2>
-<table><thead><tr><th>Function</th><th>Returns</th></tr></thead><tbody>
-<tr><td><code>abstract_log_stats</code>, <code>abstract_features</code>, <code>abstract_pca</code>, <code>abstract_states</code>,
-  <code>abstract_case_trajectory</code>, <code>abstract_case_trajectories</code>, <code>abstract_log_trajectory</code>,
-  <code>abstract_distributions</code>, <code>abstract_divergences</code>, <code>abstract_window_distances</code></td>
-  <td>A result as text, taking what its function returned.</td></tr>
-<tr><td><code>count_input_tokens(provider, system_prompt, prompts, plots)</code></td>
-  <td>The estimated input tokens and the messages to send.</td></tr>
-<tr><td><code>LLMConnector(provider, model, api_key, base_url=None).call(messages=..., max_tokens=1000)</code></td>
-  <td>The response of <code>anthropic</code>, <code>openai</code>, <code>google</code> or a <code>custom</code> OpenAI compatible host.</td></tr>
-<tr><td><code>get_response_text(response)</code>, <code>count_output_tokens(provider, response)</code></td>
-  <td>The answer, and how many tokens it took.</td></tr>
-<tr><td><code>DEFAULT_SYSTEM_PROMPT</code></td><td>Explains the approach and kairo to the model.</td></tr>
+
+<h3 id="api-LLMConnector"><code>LLMConnector</code></h3>
+<p>A connection to a language model.</p>
+<pre><code>LLMConnector(provider, model, api_key="EMPTY", base_url=None)</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>provider</code></td><td><code>"anthropic"</code>, <code>"openai"</code>, <code>"google"</code> or <code>"custom"</code></td><td>Who serves the model. <code>"custom"</code> is any OpenAI compatible server, such as LM Studio or vLLM.</td></tr>
+<tr><td><code>model</code></td><td>a model name</td><td>The model to ask, e.g. <code>"claude-sonnet-5"</code>, or a name the server lists.</td></tr>
+<tr><td><code>api_key</code></td><td>the provider's key</td><td>Signs the requests, <code>"EMPTY"</code> for servers without keys.</td></tr>
+<tr><td><code>base_url</code></td><td>URL or <code>None</code></td><td>Only for <code>"custom"</code>: where the server runs, e.g. <code>"http://127.0.0.1:1234/v1"</code>.</td></tr>
+</tbody></table>
+<p>Raises a <code>ValueError</code> for another provider.</p>
+
+<h3 id="api-call"><code>LLMConnector.call</code></h3>
+<p>Sends one request and waits for the answer.</p>
+<pre><code>call(prompt=None, system_prompt=None, plots=None, max_tokens=1000, messages=None)</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>messages</code></td><td>from <code>count_input_tokens</code>, or <code>None</code></td><td>Sent as they are. Without them, the next three arguments build them.</td></tr>
+<tr><td><code>prompt</code></td><td>text</td><td>The question.</td></tr>
+<tr><td><code>system_prompt</code></td><td>text or <code>None</code></td><td>What the model is told first, e.g. <code>DEFAULT_SYSTEM_PROMPT</code>.</td></tr>
+<tr><td><code>plots</code></td><td>list of plotly figures, or <code>None</code></td><td>Sent as images.</td></tr>
+<tr><td><code>max_tokens</code></td><td>integer from 1</td><td>The most tokens the answer may take, reasoning included.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> the provider's response, read with <code>get_response_text</code>.</p>
+
+<h3 id="api-count_input_tokens"><code>count_input_tokens</code></h3>
+<p>Builds the messages of a request and estimates their size before sending.</p>
+<pre><code>count_input_tokens(provider, system_prompt, prompts, plots) -&gt; tuple[int, list]</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>provider</code></td><td>the four providers of <code>LLMConnector</code></td><td>Decides the image format and the counting rule.</td></tr>
+<tr><td><code>system_prompt</code></td><td>text or <code>None</code></td><td>What the model is told first.</td></tr>
+<tr><td><code>prompts</code></td><td>list of texts</td><td>Joined with blank lines, e.g. abstractions and a question.</td></tr>
+<tr><td><code>plots</code></td><td>list of plotly figures, may be empty</td><td>Sent as PNG images.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> the estimated tokens, text counted as 4 characters a token and images by the
+  provider's rule, and the messages for <code>LLMConnector.call</code>.</p>
+
+<h3 id="api-count_output_tokens"><code>count_output_tokens</code></h3>
+<p>Reads how many tokens an answer took.</p>
+<pre><code>count_output_tokens(provider, response) -&gt; int</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>provider</code></td><td>the provider the request went to</td><td>Where the count sits in the response.</td></tr>
+<tr><td><code>response</code></td><td>from <code>LLMConnector.call</code></td><td>The answer.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> the output tokens the API reports, reasoning included.</p>
+
+<h3 id="api-get_response_text"><code>get_response_text</code></h3>
+<p>Reads the text of an answer, whatever the provider.</p>
+<pre><code>get_response_text(response) -&gt; str</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>response</code></td><td>from <code>LLMConnector.call</code></td><td>The answer.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> the answer as text.</p>
+
+<h3 id="api-abstractions">Abstractions</h3>
+<p>Turn a result into text a model can read. Each returns a string.</p>
+<table><thead><tr><th>Function</th><th>Arguments</th><th>The text covers</th></tr></thead><tbody>
+<tr><td><code>abstract_log_stats</code></td><td><code>stats</code>: from <code>compute_log_stats</code></td>
+  <td>The counts, throughput times, case lengths, activities and busiest resources.</td></tr>
+<tr><td><code>abstract_features</code></td><td><code>features</code>: from <code>compute_features_*</code></td>
+  <td>The size, the time span and every feature group with its strongest columns.</td></tr>
+<tr><td><code>abstract_pca</code></td><td><code>pca</code>: from <code>compute_pca</code><br>
+  <code>cut_component</code>: the cut given to <code>apply_pca</code></td>
+  <td>The variances, the cut and the strongest features of every kept component.</td></tr>
+<tr><td><code>abstract_states</code></td><td><code>frequencies</code>: from <code>get_*_state_frequencies</code><br>
+  <code>distances</code>: from <code>get_*_state_distances</code><br>
+  <code>color_mapping</code>: from <code>compute_*_color_mapping</code></td>
+  <td>The rows per state, the nearest and farthest state of each, and the colors by name.</td></tr>
+<tr><td><code>abstract_case_trajectory</code></td><td><code>visits</code>: from <code>get_*_case_trajectory</code><br>
+  <code>case_id</code>: the id of that case</td>
+  <td>Every visit of the case in order.</td></tr>
+<tr><td><code>abstract_case_trajectories</code></td><td><code>trajectories</code>: from <code>get_*_trajectories</code></td>
+  <td>One line with the number of cases, the first start and last end among them, the mean number of visits
+    per case and the median time a case takes. Then the 10 most common paths, a path being the states of a case
+    in order such as <code>0 -&gt; 2</code>, each with its cases and their share, and the 10 most common moves
+    from one state to the next with how often they happened. Last, the 5 states most cases start in and the 5
+    they end in, with their cases.</td></tr>
+<tr><td><code>abstract_log_trajectory</code></td><td><code>trajectory</code>: from <code>get_*_log_trajectory</code></td>
+  <td>One line with the first and last date, the number of calendar windows and the number of visits. Then one
+    line per state, the most frequent first, with its windows, their share and when the state first and last
+    occurs, so a state that only occurs before or after some date points at a change. Then the 10 most common
+    moves from one state to the next with how often they happened, and last the visits in order with their
+    state, start, end and windows, only the 200 longest when there are more.</td></tr>
+<tr><td><code>abstract_distributions</code></td><td><code>distributions</code>: from <code>compute_state_distributions</code></td>
+  <td>The shares of every state and the largest changes between windows.</td></tr>
+<tr><td><code>abstract_divergences</code></td><td><code>divergences</code>: from <code>compute_divergences</code><br>
+  <code>divergence</code>, <code>reference</code>, <code>lookback=5</code>: the values it was computed with</td>
+  <td>The scores and the windows with the highest ones.</td></tr>
+<tr><td><code>abstract_window_distances</code></td><td><code>distances</code>: from <code>compute_window_distances</code><br>
+  <code>distance</code>, <code>reference</code>, <code>lookback=5</code>: the values it was computed with</td>
+  <td>The scores and the windows with the highest ones.</td></tr>
+</tbody></table>
+
+<h2 id="api-constants">Constants</h2>
+<p>The values the functions accept, as dicts from the value to its name, e.g. for labels and select boxes, and
+  the default system prompt.</p>
+<table><thead><tr><th>Constant</th><th>Value</th><th>Used by</th></tr></thead><tbody>
+<tr><td><code>kairo.DIVERGENCES</code></td><td>dict of <code>kl</code>, <code>js</code>, <code>tv</code> and <code>hellinger</code></td><td><code>compute_divergences</code></td></tr>
+<tr><td><code>kairo.REFERENCES</code></td><td>dict of <code>previous</code>, <code>recent</code> and <code>baseline</code></td><td><code>compute_divergences</code>, <code>compute_window_distances</code></td></tr>
+<tr><td><code>kairo.DISTANCES</code></td><td>dict of <code>euclidean</code>, <code>cosine</code>, <code>manhattan</code> and <code>chebyshev</code></td><td><code>compute_som</code>, <code>compute_dbscan</code>, <code>compute_window_distances</code> and the state distances</td></tr>
+<tr><td><code>kairo.DEFAULT_SYSTEM_PROMPT</code></td><td>text</td><td>The <code>system_prompt</code> of <code>count_input_tokens</code> or <code>LLMConnector.call</code>. It tells the
+  model what kairo is, the approach, the three perspectives with their features, the five steps with their
+  parameters, kairo's functions, and how to answer: only from the shared results, naming states, windows and
+  cases as they do, and concretely.</td></tr>
 </tbody></table>
 </section>
   </main>
