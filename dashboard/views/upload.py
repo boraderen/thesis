@@ -21,14 +21,16 @@ ROLES = {
     "event_duration": "event duration",
 }
 OPTIONAL_ROLES = ("event_id", "start_timestamp", "org:resource", "event_duration")
+# the kinds a case attribute can be for the inter-case features
+KINDS = ["numerical", "categorical"]
 
 st.title("Upload event log")
-st.caption("Load an XES or CSV file, then map its columns to their roles by clicking them.")
+st.caption("Load an XES or CSV file, map its columns to their roles by clicking them, then pick the case attributes.")
 
 
 def reset() -> None:
     """Forget the mapping, keeping the uploaded file."""
-    for key in ("picked", "log"):
+    for key in ("picked", "case_attributes", "log"):
         st.session_state.pop(key, None)
 
 
@@ -55,6 +57,8 @@ def read_log(uploaded) -> pd.DataFrame:
 def mapping_table() -> None:
     """The mapping so far, one row per decided role."""
     rows = [{"role": ROLES[role], "column": column or "— skipped"} for role, column in picked.items()]
+    rows += [{"role": f"case attribute, {kind}", "column": column}
+             for column, kind in st.session_state.get("case_attributes", {}).items()]
     if rows:
         st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
 
@@ -115,6 +119,23 @@ for role, label in ROLES.items():
         st.stop()
     picked[role] = column
     st.rerun()
+
+# --- then the case attributes, for the inter-case features ---------------------------
+if "case_attributes" not in st.session_state:
+    st.markdown("Which columns are **case attributes** for the inter-case features? Pick them and say "
+                "whether each one is numerical or categorical, or skip them.")
+    free = [c for c in raw.columns if c not in set(picked.values()) and c not in ROLES]
+    columns = st.multiselect("Case attributes", free, key="attribute_columns")
+    kinds = {}
+    for column in columns:
+        # a guess from the column, numbers stored as text are categorical until switched
+        numerical = pd.api.types.is_numeric_dtype(raw[column])
+        kinds[column] = st.radio(column, KINDS, index=0 if numerical else 1, horizontal=True,
+                                 key=f"attribute_kind_{column}")
+    if st.button("Done" if columns else "Skip"):
+        st.session_state["case_attributes"] = kinds
+        st.rerun()
+    st.stop()
 
 # --- mapping complete: rename the columns to their roles ----------------------
 if "log" not in st.session_state:

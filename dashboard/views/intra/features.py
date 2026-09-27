@@ -6,8 +6,6 @@ import streamlit as st
 import kairo
 import ui
 from controls import log_signature, seed_widget
-from kairo.analysis import META
-from tables import styled_feature_table
 
 FEATURES = {
     "act_freqs": "Activity frequencies",
@@ -19,7 +17,7 @@ FEATURES = {
 }
 
 ui.keep_widgets()
-log = ui.intra_log()
+log = ui.perspective_log("intra")
 
 for feature in FEATURES:
     seed_widget(f"intra_sel_feature_{feature}", True)
@@ -43,7 +41,7 @@ if st.button("Compute features", type="primary", icon=":material/play_arrow:"):
         st.stop()
     with st.spinner("Computing features…"):
         features = kairo.compute_features_intra(log, picked, int(st.session_state["intra_sel_window"]))
-    ui.clear_from("features")
+    ui.clear_from("intra", "features")
     st.session_state["intra_features"] = features
     st.session_state["intra_log_signature"] = log_signature(log, "intra")
 
@@ -52,15 +50,12 @@ if features is None:
     st.info("Pick the feature groups in the sidebar and compute them.")
     st.stop()
 
-values = features.drop(columns=META)
-groups = values.columns.str.split(":").str[0]
-columns_per_group = {group: list(values.columns[groups == group]) for group in dict.fromkeys(groups)}
-
+groups = ui.feature_groups(features)
 ui.metrics_row([
     ("Events", f"{len(features):,}"),
     ("Cases", f"{features['case:concept:name'].nunique():,}"),
-    ("Feature columns", f"{values.shape[1]:,}"),
-    ("Feature groups", f"{len(columns_per_group)}"),
+    ("Feature columns", f"{sum(map(len, groups.values())):,}"),
+    ("Feature groups", f"{len(groups)}"),
 ])
 st.caption("The first 30 rows, every feature group in its own tint.")
-st.dataframe(styled_feature_table(features, columns_per_group), width="stretch", height=420)
+ui.show_features(features)

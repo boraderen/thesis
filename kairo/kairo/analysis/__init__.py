@@ -10,6 +10,7 @@ META = ["case:concept:name", "time:timestamp"]
 
 DIVERGENCES = {"kl": "KL divergence", "js": "Jensen–Shannon", "tv": "Total variation", "hellinger": "Hellinger"}
 REFERENCES = {"previous": "previous window", "recent": "mean of the recent windows", "baseline": "mean of all windows"}
+DISTANCES = {"euclidean": "Euclidean distance", "cosine": "Cosine distance", "manhattan": "Manhattan distance", "chebyshev": "Chebyshev distance"}
 
 
 # scaling and PCA
@@ -107,11 +108,11 @@ def get_som_winners(df: pd.DataFrame, som: MiniSom) -> pd.DataFrame:
     return winners
 
 def get_som_state_frequencies(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None) -> pd.Series:
-    # how many events every cell holds between the dates, cells without events left out
+    # how many rows every cell holds between the dates, cells without rows left out
     counts = _events_between(df, start_date, end_date).groupby(["i", "j"]).size()
     counts.index = [f"({i}, {j})" for i, j in counts.index]
 
-    return counts.rename("events").rename_axis("state")
+    return counts.rename(_unit(df)).rename_axis("state")
 
 def get_som_state_distances(som: MiniSom, distance: str = "euclidean") -> pd.DataFrame:
     # distance between the weights of every two neurons, similar states are close
@@ -132,6 +133,13 @@ def get_som_trajectories(df: pd.DataFrame, start_date: str | pd.Timestamp = None
 
 def get_som_case_trajectory(df: pd.DataFrame, case_id: str) -> pd.DataFrame:
     return get_som_trajectories(_get_case(df, case_id)).drop(columns="case")
+
+def get_som_log_trajectory(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None) -> pd.DataFrame:
+    # the states the log went through window by window, one row per visit of a state. for the
+    # resource and inter-case perspectives, where every row is a calendar window
+    windows = df[["time:timestamp"]].assign(state=[f"({i}, {j})" for i, j in zip(df["i"], df["j"])])
+
+    return _log_visits(windows, start_date, end_date)
 
 
 # k-means
@@ -166,6 +174,9 @@ def get_kmeans_trajectories(df: pd.DataFrame, start_date: str | pd.Timestamp = N
 
 def get_kmeans_case_trajectory(df: pd.DataFrame, case_id: str) -> pd.DataFrame:
     return get_kmeans_trajectories(_get_case(df, case_id)).drop(columns="case")
+
+def get_kmeans_log_trajectory(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None) -> pd.DataFrame:
+    return _cluster_log_trajectory(df, start_date, end_date)
 
 
 # DBSCAN
@@ -225,13 +236,17 @@ def get_dbscan_trajectories(df: pd.DataFrame, start_date: str | pd.Timestamp = N
 def get_dbscan_case_trajectory(df: pd.DataFrame, case_id: str) -> pd.DataFrame:
     return get_dbscan_trajectories(_get_case(df, case_id)).drop(columns="case")
 
+def get_dbscan_log_trajectory(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None) -> pd.DataFrame:
+    return _cluster_log_trajectory(df, start_date, end_date)
+
 
 # drift
 
 def compute_state_distributions(df: pd.DataFrame, window: str = "7D") -> pd.DataFrame:
-    # the share of every state among the events of every calendar window, one row per
+    # the share of every state among the rows of every calendar window, one row per
     # window. window is a pandas frequency like "12h", "1D" or "7D", windows without
-    # events are left out
+    # rows are left out. the rows are events, or for the resource and inter-case
+    # perspectives the feature windows, so there window has to be the larger one
     windows = df["time:timestamp"].dt.floor(window).rename("window")
 
     if "cluster" in df.columns:
@@ -273,12 +288,49 @@ def compute_divergences(distributions: pd.DataFrame, divergence: str = "kl", ref
 
     return pd.DataFrame({"window": distributions.index, "score": scores})
 
+def compute_window_distances(df: pd.DataFrame, distance: str = "euclidean", reference: str = "previous", lookback: int = 5) -> pd.DataFrame:
+    # how far every window's vector is from a reference: the previous window, the mean of the
+    # lookback windows before it, or the mean of all windows. for the resource and inter-case
+    # perspectives, df is what the clustering gets, one row per calendar window. windows
+    # without a reference yet get no score
+    vectors = df.drop(columns=META, errors="ignore")
+
+    if reference == "previous":
+        references = vectors.shift(1)
+    elif reference == "recent":
+        references = vectors.rolling(lookback).mean().shift(1)
+    elif reference == "baseline":
+        references = vectors * 0 + vectors.mean()
+    else:
+        raise ValueError(f"Unknown reference: {reference}, pick from {list(REFERENCES)}")
+
+    p = vectors.to_numpy()
+    q = references.to_numpy()
+
+    if distance == "euclidean":
+        scores = np.sqrt(((p - q) ** 2).sum(axis=1))
+    elif distance == "cosine":
+        scores = 1 - (p * q).sum(axis=1) / (np.linalg.norm(p, axis=1) * np.linalg.norm(q, axis=1))
+    elif distance == "manhattan":
+        scores = np.abs(p - q).sum(axis=1)
+    elif distance == "chebyshev":
+        scores = np.abs(p - q).max(axis=1)
+    else:
+        raise ValueError(f"Unknown distance: {distance}, pick from {list(DISTANCES)}")
+
+    return pd.DataFrame({"window": df["time:timestamp"].to_numpy(), "score": scores})
+
 
 # shared by the functions above
 
 def _cluster_name(cluster: int) -> str:
     # dbscan marks its noise rows as cluster -1
     return "noise" if cluster == -1 else str(cluster)
+
+def _unit(df: pd.DataFrame) -> str:
+    # what a row stands for, an event for the intra-case perspective, a calendar window
+    # for the resource and inter-case ones
+    return "events" if "case:concept:name" in df.columns else "windows"
 
 def _get_case(df: pd.DataFrame, case_id: str) -> pd.DataFrame:
     # compared as text, so a case id typed in works for number ids too
@@ -303,7 +355,7 @@ def _cluster_frequencies(df: pd.DataFrame, start_date, end_date) -> pd.Series:
     counts = _events_between(df, start_date, end_date)["cluster"].value_counts().sort_index()
     counts.index = counts.index.map(_cluster_name)
 
-    return counts.rename("events").rename_axis("state")
+    return counts.rename(_unit(df)).rename_axis("state")
 
 def _events_in_range(df: pd.DataFrame, start_date, end_date, max_cases: int, state_columns: list) -> pd.DataFrame:
     # the events of the cases whose first and last event both lie in the range. with
@@ -327,6 +379,11 @@ def _cluster_trajectories(df: pd.DataFrame, start_date, end_date, max_cases: int
 
     return _state_visits(events)
 
+def _cluster_log_trajectory(df: pd.DataFrame, start_date, end_date) -> pd.DataFrame:
+    windows = df[["time:timestamp"]].assign(state=df["cluster"].map(_cluster_name))
+
+    return _log_visits(windows, start_date, end_date)
+
 def _state_visits(events: pd.DataFrame) -> pd.DataFrame:
     # consecutive events of a case in the same state are one visit of that state. a
     # visit lasts until the case's next visit starts, the last one until its last event
@@ -346,6 +403,27 @@ def _state_visits(events: pd.DataFrame) -> pd.DataFrame:
     visits["duration"] = visits["end"] - visits["start"]
 
     return visits[["case", "state", "start", "end", "duration", "events"]]
+
+def _log_visits(windows: pd.DataFrame, start_date, end_date) -> pd.DataFrame:
+    # consecutive windows in the same state are one visit of that state. the windows follow each
+    # other without gaps, so a visit lasts until the next one starts, the last one until its last
+    # window ends
+    windows = windows.sort_values("time:timestamp")
+    step = windows["time:timestamp"].diff().min()
+
+    windows = _events_between(windows, start_date, end_date)
+    visit = (windows["state"] != windows["state"].shift()).cumsum()
+
+    visits = windows.groupby(visit).agg(
+        state=("state", "first"),
+        start=("time:timestamp", "first"),
+        windows=("state", "size"),
+    ).reset_index(drop=True)
+
+    visits["end"] = visits["start"].shift(-1).fillna(windows["time:timestamp"].max() + step)
+    visits["duration"] = visits["end"] - visits["start"]
+
+    return visits[["state", "start", "end", "duration", "windows"]]
 
 def _kl(p: np.ndarray, q: np.ndarray) -> np.ndarray:
     # a tiny share for every state, so a state missing on one side does not divide by 0

@@ -25,14 +25,27 @@ from .analysis import (
     get_som_trajectories,
     get_kmeans_trajectories,
     get_dbscan_trajectories,
+    get_som_log_trajectory,
+    get_kmeans_log_trajectory,
+    get_dbscan_log_trajectory,
     compute_state_distributions,
     compute_divergences,
+    compute_window_distances,
     DIVERGENCES,
     REFERENCES,
+    DISTANCES,
 )
 
 from .analysis.intra import (
     compute_features_intra,
+)
+
+from .analysis.resource import (
+    compute_features_resource,
+)
+
+from .analysis.inter import (
+    compute_features_inter,
 )
 
 from .analysis.plots import (
@@ -55,8 +68,12 @@ from .analysis.plots import (
     plot_som_trajectories,
     plot_kmeans_trajectories,
     plot_dbscan_trajectories,
+    plot_som_log_trajectory,
+    plot_kmeans_log_trajectory,
+    plot_dbscan_log_trajectory,
     plot_state_distributions,
     plot_divergences,
+    plot_window_distances,
 )
 
 from .llm import (
@@ -72,7 +89,9 @@ from .llm import (
     abstract_states,
     abstract_case_trajectory,
     abstract_case_trajectories,
+    abstract_log_trajectory,
     abstract_distributions,
+    abstract_window_distances,
 )
 
 __version__ = "0.1.0"

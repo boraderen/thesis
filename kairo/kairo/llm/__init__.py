@@ -9,7 +9,8 @@ from openai import OpenAI
 from anthropic import Anthropic
 from sklearn.decomposition import PCA
 
-from ..analysis import DIVERGENCES, META, REFERENCES
+from ..analysis import DISTANCES, DIVERGENCES, META, REFERENCES
+from ..analysis.resource import FEATURES as RESOURCE_FEATURES
 
 class LLMConnector:
     def __init__(
@@ -121,54 +122,78 @@ class _AnthropicConnector:
 DEFAULT_SYSTEM_PROMPT = """You are the copilot of kairo, a Python library and Streamlit dashboard for state-based process monitoring, written for a bachelor thesis on concept drift detection in traditional event logs. You help the user read the results of the pipeline and decide what to inspect next.
 
 THE APPROACH
-An event log has one row per event, with at least a case id, an activity and a timestamp, and optionally a resource, an event id, a start timestamp and a duration. The behaviour of the process is described through states, and how often every state occurs is followed over time. When the process changes (concept drift), the mix of states it produces changes, and comparing that mix between calendar windows turns the change into a signal.
+An event log has one row per event, with at least a case id, an activity and a timestamp, and optionally a resource, an event id, a start timestamp, a duration and case attributes. The behaviour of the process is described through states, and how often every state occurs is followed over time. When the process changes (concept drift), the mix of states it produces changes, and comparing that mix between calendar windows turns the change into a signal.
 
-Three perspectives are planned: intra-case states (the situation of a single running case), resource states and inter-case states (the situation across all cases). Only the intra-case pipeline is built so far. It has five steps.
+There are three perspectives, each with its own pipeline of the same five steps:
+- intra-case states: the situation of a single running case, one row per event
+- resource states: how the resources work, one row per calendar window
+- inter-case states: the situation across all running cases, one row per calendar window
+A calendar window is a pandas frequency such as 12h, 1D, 7D or 30D. Multi-day windows count from 1 January 1970, so weekly windows start on Thursdays.
 
-1. Features. Every event gets one row describing its case up to and including that event, its prefix. The feature groups are:
+1. Features.
+Intra-case: every event gets one row describing its case up to and including that event, its prefix. The feature groups are:
 - act_freqs: the share of every activity among the case's events so far
 - df_counts: how often every directly-follows pair of activities happened in the case so far
 - act_set: 1 for every activity the case has already executed
 - case_progress: the position of the event in its case, as a fraction of the case length
 - current_act: 1 for the activity of the event itself
 - past_acts: 1 for the activities of the previous events, one block per step back, as many steps as the sliding window size
-The case id and the timestamp are carried along every step but never enter the maths.
+Resource: every calendar window from the first to the last event gets one row, also the ones without events. The feature groups are, per resource or pair:
+- res_events: events the resource executed in the window
+- res_cases: distinct cases the resource touched in the window
+- res_durations: mean event duration of the resource in minutes, needs a mapped event duration column
+- res_waits: mean minutes between an event and the previous event of its case, over the resource's events whose previous event was executed by another resource
+- act_res_shares: for an activity a and a resource r, the share of a's events in the window executed by r
+- handover_shares: for resources r1 and r2, the share of r1's handovers in the window that went to r2
+The features can be limited to picked resources, the shares and waits still count every resource.
+Inter-case: every calendar window gets one row as well. The feature groups are:
+- active_cases, new_arrivals, completions: cases with an event in the window, cases whose first event falls into it, cases whose last event falls into it
+- events_per_case: the window's events divided by its active cases
+- mean_delta_t, std_delta_t: mean and standard deviation of the minutes between an event and the previous event of its case
+- stalled_cases: cases still running at the window end whose most recent event is older than the stall threshold
+- attr_means, attr_stds: mean and standard deviation of a numerical case attribute over the window's events
+- attr_shares: the share of the window's events carrying every value of a categorical case attribute
+The case id (intra-case only) and the timestamp (of the event, or where the window starts) are carried along every step but never enter the maths.
 
-2. Scaling and PCA. The features are scaled by z-score or by min-max to 0 to 1, the binary groups act_set, current_act and past_acts are left as they are. Z-scoring turns rare columns into large outliers, min-max avoids that. PCA is first fitted with a number of components, their explained variances show where to cut, and the components up to the cut are kept.
+2. Scaling and PCA. The features are scaled by z-score, by min-max to 0 to 1 or not at all, the binary intra-case groups act_set, current_act and past_acts are left as they are. Z-scoring turns rare columns into large outliers, min-max avoids that. PCA is first fitted with a number of components, their explained variances show where to cut, and the components up to the cut are kept. PCA can also be skipped, the states are then computed on the scaled features.
 
-3. States. A clustering of the compressed rows gives every event a state.
+3. States. A clustering of the rows gives every event, or every calendar window, a state.
 - SOM: a grid of neurons, every cell (i, j) is a state and neighbouring cells hold similar states. Parameters: grid rows and columns, learning rate, distance (euclidean, cosine, manhattan, chebyshev). The u-matrix shows the distance of every neuron to its neighbours, dark ridges are borders between groups of states. Training is random, so cell numbers change between runs.
 - k-means: k clusters under euclidean distance, the states are 0 to k-1.
-- DBSCAN: dense regions become clusters. Parameters: eps (the neighbourhood radius), min_samples (rows within eps, itself included, that make a core row) and distance. Rows outside every cluster are noise, cluster -1, named "noise". The k-distance curve (the distance of every row to its min_samples-th neighbour, sorted) suggests eps at its knee. Prefix features repeat a lot, so the curve stays at 0 for most rows with the knee at its far right end, and DBSCAN tends to find many states.
+- DBSCAN: dense regions become clusters. Parameters: eps (the neighbourhood radius), min_samples (rows within eps, itself included, that make a core row) and distance. Rows outside every cluster are noise, cluster -1, named "noise". The k-distance curve (the distance of every row to its min_samples-th neighbour, sorted) suggests eps at its knee. Intra-case prefix features repeat a lot, so there the curve stays at 0 for most rows with the knee at its far right end, and DBSCAN tends to find many states.
+State frequencies count events for intra-case states and calendar windows for resource and inter-case states.
 
-4. Trajectories. A case moves through states over time. Consecutive events of a case in the same state form one visit, which lasts until the case's next visit starts. Trajectories are shown in calendar time, for a single case or for all cases whose first and last event lie in a date range, at most the 1,000 that started first.
+4. Trajectories. Intra-case: a case moves through states over time. Consecutive events of a case in the same state form one visit, which lasts until the case's next visit starts. Trajectories are shown in calendar time, for a single case or for all cases whose first and last event lie in a date range, at most the 1,000 that started first. Resource and inter-case: the log itself moves through the states window by window. Consecutive windows in the same state form one visit, and a state that only occurs before or after some date marks a change.
 
-5. Drift signal. The share of every state is counted per calendar window, a pandas frequency such as 12h, 1D, 7D or 30D (multi-day windows count from 1 January 1970, so weekly windows start on Thursdays). Every window's distribution is compared with a reference, the previous window, the mean of the lookback windows before it or the mean of all windows, by a divergence:
+5. Drift signal. The share of every state is counted per calendar window, for resource and inter-case states in windows larger than the feature windows, e.g. daily features and 30D windows. Every window's distribution is compared with a reference, the previous window, the mean of the lookback windows before it or the mean of all windows, by a divergence:
 - KL divergence: unbounded, very sensitive to a state missing on one side
 - Jensen-Shannon: bounded by ln 2, about 0.693
 - total variation: 0 to 1, half the summed differences of the shares
 - Hellinger: 0 to 1
-A spike means the mix of states changed. One isolated spike points at a sudden drift, a stretch of raised scores at a gradual drift, repeated spikes at a recurring drift. Spikes at the very start or end of the log, around holidays or in windows with few events are often artefacts rather than drift.
+Resource and inter-case states have a second signal, the window distances: the distance (euclidean, cosine, manhattan or chebyshev) between the vector of every feature window, as the clustering gets it, and the same kind of reference.
+A spike means the process changed. One isolated spike points at a sudden drift, a stretch of raised scores at a gradual drift, repeated spikes at a recurring drift. Spikes at the very start or end of the log, around holidays or in windows with few events are often artefacts rather than drift.
 
 KAIRO FUNCTIONS
 Parameters with their defaults, dates are text like "2020-07-01" or timestamps, * is one of som, kmeans, dbscan.
 - read_log(path, case_id, activity, timestamp, event_id=None, start_timestamp=None, resource=None, event_duration=None), compute_log_stats(log)
 - compute_features_intra(log, features, sliding_window_size=0)
+- compute_features_resource(log, window="1D", features, resources=None)
+- compute_features_inter(log, window="1D", features, case_attributes={} as {column: "numerical" or "categorical"}, stall_threshold="1D")
 - standardize(feature_matrix, method "zscore" or "minmax", exclude=["current_act", "past_acts", "act_set"])
 - compute_pca(feature_matrix, num_components=None), apply_pca(feature_matrix, pca, cut_component)
 - compute_som(df, size=(5, 5), learning_rate=0.5, distance="euclidean"), get_som_winners(df, som)
 - compute_kmeans(df, k=5), get_kmeans_clusters(df, kmeans)
 - compute_dbscan(df, eps=0.5, min_samples=5, distance="euclidean"), get_dbscan_clusters(df, dbscan)
 - get_som_state_distances(som, distance="euclidean"), get_kmeans_state_distances(kmeans), get_dbscan_state_distances(dbscan)
-- get_*_state_frequencies(df, start_date=None, end_date=None), get_*_case_trajectory(df, case_id), get_*_trajectories(df, start_date=None, end_date=None, max_cases=1000)
-- compute_state_distributions(df, window="7D"), compute_divergences(distributions, divergence="kl" | "js" | "tv" | "hellinger", reference="previous" | "recent" | "baseline", lookback=5)
-- plots: plot_pca_variances, plot_som_u_matrix, plot_som_heatmap, plot_som_colors, plot_kmeans_frequencies, plot_dbscan_frequencies, plot_kmeans_distances, plot_dbscan_distances, plot_dbscan_k_distance, plot_*_case_trajectory, plot_*_trajectories, plot_state_distributions, plot_divergences
-The dashboard runs these steps on its pages Features, PCA, States & Trajectories and Drift Signal, with the same parameters.
+- get_*_state_frequencies(df, start_date=None, end_date=None), get_*_case_trajectory(df, case_id), get_*_trajectories(df, start_date=None, end_date=None, max_cases=1000), get_*_log_trajectory(df, start_date=None, end_date=None)
+- compute_state_distributions(df, window="7D"), compute_divergences(distributions, divergence="kl" | "js" | "tv" | "hellinger", reference="previous" | "recent" | "baseline", lookback=5), compute_window_distances(df, distance="euclidean", reference="previous", lookback=5)
+- plots: plot_pca_variances, plot_som_u_matrix, plot_som_heatmap, plot_som_colors, plot_kmeans_frequencies, plot_dbscan_frequencies, plot_kmeans_distances, plot_dbscan_distances, plot_dbscan_k_distance, plot_*_case_trajectory, plot_*_trajectories, plot_*_log_trajectory, plot_state_distributions, plot_divergences, plot_window_distances
+The dashboard runs these steps for every perspective on its pages Features, PCA, States & Trajectories and Drift Signal, with the same parameters.
 
 HOW TO ANSWER
-- What you know about the log is only what the user shares: text summaries of the steps they ran and attached plots. Do not invent numbers, states, dates or cases.
-- Name states as the summaries do: (i, j) for SOM cells, numbers for clusters, "noise" for DBSCAN noise. Name windows by their start dates and cases by their ids.
-- When asked what to inspect, be concrete: date ranges around the strongest signals, cases whose trajectories pass through the states that changed, and parameters with values to try, such as another window, another divergence or reference, or more or fewer states.
+- What you know about the log is only what the user shares: text summaries of the steps they ran and attached plots. Do not invent numbers, states, dates, cases or resources.
+- Name states as the summaries do: (i, j) for SOM cells, numbers for clusters, "noise" for DBSCAN noise. Name windows by their start dates, cases by their ids and resources by their names.
+- When asked what to inspect, be concrete: date ranges around the strongest signals, cases or resources behind the states that changed, and parameters with values to try, such as another window, another divergence, distance or reference, or more or fewer states.
 - When the shared information is not enough, say so and name the step or plot that would answer it."""
 
 def get_response_text(response) -> str:
@@ -238,12 +263,31 @@ def _image_tokens(provider: str, image: bytes) -> int:
 # abstractions: every step of the pipeline turned into text an llm can read
 
 FEATURE_GROUPS = {
+    # intra-case, one row per event
     "act_freqs": "share of every activity among the events of the case so far",
     "df_counts": "how often every directly-follows pair happened in the case so far",
     "act_set": "1 for every activity the case has already executed",
     "case_progress": "position of the event in its case, as a fraction of the case length",
     "current_act": "1 for the activity of the event itself",
     "past_acts": "1 for the activity of an earlier event, one block per step back",
+    # resource, one row per calendar window
+    "res_events": "events every resource executed in the window",
+    "res_cases": "distinct cases every resource touched in the window",
+    "res_durations": "mean event duration in minutes of every resource in the window",
+    "res_waits": "mean minutes since the previous event of the case, over the events a resource took over from another one",
+    "act_res_shares": "share of an activity's events in the window executed by a resource",
+    "handover_shares": "share of a resource's handovers in the window that went to another resource",
+    # inter-case, one row per calendar window
+    "active_cases": "cases with at least one event in the window",
+    "new_arrivals": "cases whose first event falls into the window",
+    "completions": "cases whose last event falls into the window",
+    "events_per_case": "events in the window divided by the active cases",
+    "mean_delta_t": "mean minutes between an event and the previous event of its case",
+    "std_delta_t": "standard deviation of those minutes",
+    "stalled_cases": "running cases whose most recent event is older than the stall threshold at the window end",
+    "attr_means": "mean of a numerical case attribute over the window's events",
+    "attr_stds": "standard deviation of a numerical case attribute over the window's events",
+    "attr_shares": "share of the window's events carrying a value of a categorical case attribute",
 }
 
 def abstract_log_stats(stats: dict) -> str:
@@ -264,19 +308,26 @@ def abstract_log_stats(stats: dict) -> str:
     return "\n".join(lines)
 
 def abstract_features(features: pd.DataFrame) -> str:
+    # the intra-case features have one row per event, the resource and inter-case ones one
+    # per calendar window
     values = features.drop(columns=META, errors="ignore")
     groups = values.columns.str.split(":").str[0]
-
-    lines = [
-        f"Intra-case feature matrix: {len(features):,} rows, one per event, each describing "
-        f"its case up to and including that event, with {values.shape[1]} feature columns.",
-    ]
+    times = features["time:timestamp"]
 
     if "case:concept:name" in features.columns:
-        lines.append(f"The events belong to {features['case:concept:name'].nunique():,} cases.")
-
-    if "time:timestamp" in features.columns:
-        lines.append(f"They happened from {features['time:timestamp'].min()} to {features['time:timestamp'].max()}.")
+        lines = [
+            f"Intra-case feature matrix: {len(features):,} rows, one per event, each describing "
+            f"its case up to and including that event, with {values.shape[1]} feature columns.",
+            f"The events belong to {features['case:concept:name'].nunique():,} cases and happened "
+            f"from {times.min()} to {times.max()}.",
+        ]
+    else:
+        perspective = "Resource" if set(groups) & set(RESOURCE_FEATURES) else "Inter-case"
+        lines = [
+            f"{perspective} feature matrix: {len(features):,} rows, one per calendar window of "
+            f"{times.diff().min()}, with {values.shape[1]} feature columns.",
+            f"The windows start from {times.min()} to {times.max()}.",
+        ]
 
     lines.append("Feature groups:")
 
@@ -316,18 +367,19 @@ def abstract_pca(pca: PCA, cut_component: int) -> str:
 
 def abstract_states(frequencies: pd.Series, distances: pd.DataFrame, color_mapping: dict) -> str:
     # frequencies is what get_som_state_frequencies, get_kmeans_state_frequencies or
-    # get_dbscan_state_frequencies return
+    # get_dbscan_state_frequencies return, named after what they count, events or windows
+    unit = frequencies.name
     total = frequencies.sum()
     never = [state for state in distances.index if state not in frequencies.index]
 
-    lines = [f"{len(frequencies)} states occur among the {total:,} events. Events per state:"]
+    lines = [f"{len(frequencies)} states occur among the {total:,} {unit}. {unit.capitalize()} per state:"]
     lines += [
-        f"- {state}: {count:,} events ({count / total:.1%})"
+        f"- {state}: {count:,} {unit} ({count / total:.1%})"
         for state, count in frequencies.sort_values(ascending=False).items()
     ]
 
     if never:
-        lines.append("States no event landed in: " + ", ".join(never))
+        lines.append(f"States without {unit}: " + ", ".join(never))
 
     lines.append("Nearest and farthest other state for every state, by the distance between them:")
 
@@ -389,7 +441,7 @@ def abstract_distributions(distributions: pd.DataFrame) -> str:
 
     lines = [
         f"State distribution over {len(distributions)} calendar windows from {distributions.index[0]} "
-        f"to {distributions.index[-1]}: the share of every state among the events of each window.",
+        f"to {distributions.index[-1]}: the share of every state in each window.",
         "Share of every state over the windows, mean, lowest and highest:",
     ]
 
@@ -411,21 +463,69 @@ def abstract_distributions(distributions: pd.DataFrame) -> str:
 
     return "\n".join(lines)
 
-def abstract_divergences(divergences: pd.DataFrame, divergence: str, reference: str, lookback: int = 5) -> str:
-    # divergences is what compute_divergences returns for this divergence, reference and lookback
-    against = f"the mean of the {lookback} windows before it" if reference == "recent" else f"the {REFERENCES[reference]}"
-    scores = divergences["score"].dropna()
+def abstract_log_trajectory(trajectory: pd.DataFrame) -> str:
+    # trajectory is what get_som_log_trajectory, get_kmeans_log_trajectory or
+    # get_dbscan_log_trajectory return, the resource and inter-case states window by window
+    states = trajectory.groupby("state")
+    windows = states["windows"].sum().sort_values(ascending=False)
+    total = windows.sum()
+    first, last = states["start"].min(), states["end"].max()
+    moves = (trajectory["state"] + " -> " + trajectory["state"].shift(-1)).dropna().value_counts()
 
     lines = [
-        f"Drift signal: the {DIVERGENCES[divergence]} between the state distribution of every calendar window "
-        f"and {against}, over {len(divergences)} windows from {divergences['window'].iloc[0]} to "
-        f"{divergences['window'].iloc[-1]}. The windows are numbered from 0 as in the plot.",
-        f"Scores: median {scores.median():.3f}, mean {scores.mean():.3f}, highest {scores.max():.3f}.",
+        f"Trajectory of the log through the states from {trajectory['start'].iloc[0]} to {trajectory['end'].iloc[-1]}: "
+        f"{total:,} calendar windows in {len(trajectory):,} visits, a visit being a run of consecutive windows "
+        "in the same state.",
+        "Windows per state, and when the state first and last occurs:",
+    ]
+    lines += [
+        f"- {state}: {count:,} windows ({count / total:.1%}), from {first[state]} to {last[state]}"
+        for state, count in windows.items()
+    ]
+
+    lines.append("The most common moves from one state to the next:")
+    lines += [f"- {move}: {count:,} times" for move, count in moves.head(10).items()]
+
+    # hundreds of short visits do not fit into a prompt, the long ones show the phases of the log
+    if len(trajectory) > 200:
+        lines.append(f"The 200 longest of the {len(trajectory):,} visits, in order:")
+        trajectory = trajectory.nlargest(200, "windows").sort_index()
+    else:
+        lines.append("The visits in order:")
+
+    lines += [
+        f"- {visit.state} from {visit.start} to {visit.end} ({visit.windows} windows)"
+        for visit in trajectory.itertuples()
+    ]
+
+    return "\n".join(lines)
+
+def abstract_divergences(divergences: pd.DataFrame, divergence: str, reference: str, lookback: int = 5) -> str:
+    # divergences is what compute_divergences returns for this divergence, reference and lookback
+    measure = f"the {DIVERGENCES[divergence]} between the state distribution of every calendar window"
+
+    return _abstract_scores(divergences, measure, reference, lookback)
+
+def abstract_window_distances(distances: pd.DataFrame, distance: str, reference: str, lookback: int = 5) -> str:
+    # distances is what compute_window_distances returns for this distance, reference and lookback
+    measure = f"the {DISTANCES[distance]} between the vector of every calendar window"
+
+    return _abstract_scores(distances, measure, reference, lookback)
+
+def _abstract_scores(scores: pd.DataFrame, measure: str, reference: str, lookback: int) -> str:
+    # a score for every window, as compute_divergences and compute_window_distances give them
+    against = f"the mean of the {lookback} windows before it" if reference == "recent" else f"the {REFERENCES[reference]}"
+    values = scores["score"].dropna()
+
+    lines = [
+        f"Drift signal: {measure} and {against}, over {len(scores)} windows from {scores['window'].iloc[0]} "
+        f"to {scores['window'].iloc[-1]}. The windows are numbered from 0 as in the plot.",
+        f"Scores: median {values.median():.3f}, mean {values.mean():.3f}, highest {values.max():.3f}.",
         "The windows with the highest scores:",
     ]
     lines += [
         f"- window {number}, starting {row['window']}: {row['score']:.3f}"
-        for number, row in divergences.dropna().nlargest(5, "score").iterrows()
+        for number, row in scores.dropna().nlargest(5, "score").iterrows()
     ]
 
     return "\n".join(lines)

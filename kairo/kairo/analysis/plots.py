@@ -12,7 +12,9 @@ from . import (
     META,
     DIVERGENCES,
     REFERENCES,
+    DISTANCES,
     _cluster_name,
+    _unit,
 )
 
 
@@ -70,6 +72,7 @@ def compute_som_color_mapping(size: tuple[int, int]) -> dict:
 def plot_som_colors(df: pd.DataFrame, color_mapping: dict) -> go.Figure:
     # plot the som grid with mapped colors, and how many rows landed on every cell
     counts = df[["i", "j"]].value_counts()
+    unit = _unit(df)
 
     rows = max(i for i, _ in color_mapping) + 1
     cols = max(j for _, j in color_mapping) + 1
@@ -92,7 +95,7 @@ def plot_som_colors(df: pd.DataFrame, color_mapping: dict) -> go.Figure:
 
     fig.update_layout(xaxis_dtick=1, yaxis_dtick=1, coloraxis_showscale=False)
 
-    fig.update_traces(text=text, hovertemplate="State (%{y}, %{x})<br>%{text} events<extra></extra>")
+    fig.update_traces(text=text, hovertemplate=f"State (%{{y}}, %{{x}})<br>%{{text}} {unit}<extra></extra>")
 
     if rows <= 10 and cols <= 10:
         fig.update_traces(texttemplate="%{text}")
@@ -102,6 +105,7 @@ def plot_som_colors(df: pd.DataFrame, color_mapping: dict) -> go.Figure:
 def plot_som_heatmap(df: pd.DataFrame, size: tuple[int, int], start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None) -> go.Figure:
     # how many rows every neuron won, an empty cell is behaviour the map has room
     # for but the log never shows
+    unit = _unit(df).capitalize()
     df = df[["time:timestamp", "i", "j"]]
 
     if start_date:
@@ -122,8 +126,8 @@ def plot_som_heatmap(df: pd.DataFrame, size: tuple[int, int], start_date: str | 
         counts,
         text_auto=",d" if show_counts else False,
         color_continuous_scale="Blues",
-        labels={"x": "j", "y": "i", "color": "Events"},
-        title=f"Events per SOM cell ({start_date or 'start'} to {end_date or 'end'})",
+        labels={"x": "j", "y": "i", "color": unit},
+        title=f"{unit} per SOM cell ({start_date or 'start'} to {end_date or 'end'})",
     )
 
     fig.update_layout(xaxis_dtick=1, yaxis_dtick=1)
@@ -154,6 +158,10 @@ def plot_som_trajectories(trajectories: pd.DataFrame, color_mapping: dict) -> go
     # trajectories is what get_som_trajectories returns
     return _plot_trajectories(trajectories, color_mapping)
 
+def plot_som_log_trajectory(trajectory: pd.DataFrame, color_mapping: dict) -> go.Figure:
+    # trajectory is what get_som_log_trajectory returns
+    return _plot_trajectories(trajectory.assign(case="log"), color_mapping, "Trajectory of the log")
+
 
 # k-means
 
@@ -163,7 +171,7 @@ def compute_kmeans_color_mapping(k: int) -> dict:
 
 def plot_kmeans_frequencies(frequencies: pd.Series, color_mapping: dict) -> go.Figure:
     # frequencies is what get_kmeans_state_frequencies returns
-    return _plot_cluster_frequencies(frequencies, color_mapping, "Events per k-means cluster")
+    return _plot_cluster_frequencies(frequencies, color_mapping, "k-means cluster")
 
 def plot_kmeans_distances(distances: pd.DataFrame) -> go.Figure:
     # distances is what get_kmeans_state_distances returns
@@ -176,6 +184,10 @@ def plot_kmeans_case_trajectory(trajectory: pd.DataFrame, color_mapping: dict, c
 def plot_kmeans_trajectories(trajectories: pd.DataFrame, color_mapping: dict) -> go.Figure:
     # trajectories is what get_kmeans_trajectories returns
     return _plot_trajectories(trajectories, color_mapping)
+
+def plot_kmeans_log_trajectory(trajectory: pd.DataFrame, color_mapping: dict) -> go.Figure:
+    # trajectory is what get_kmeans_log_trajectory returns
+    return _plot_trajectories(trajectory.assign(case="log"), color_mapping, "Trajectory of the log")
 
 
 # DBSCAN
@@ -209,7 +221,7 @@ def compute_dbscan_color_mapping(dbscan: DBSCAN) -> dict:
 
 def plot_dbscan_frequencies(frequencies: pd.Series, color_mapping: dict) -> go.Figure:
     # frequencies is what get_dbscan_state_frequencies returns
-    return _plot_cluster_frequencies(frequencies, color_mapping, "Events per DBSCAN cluster")
+    return _plot_cluster_frequencies(frequencies, color_mapping, "DBSCAN cluster")
 
 def plot_dbscan_distances(distances: pd.DataFrame) -> go.Figure:
     # distances is what get_dbscan_state_distances returns
@@ -222,6 +234,10 @@ def plot_dbscan_case_trajectory(trajectory: pd.DataFrame, color_mapping: dict, c
 def plot_dbscan_trajectories(trajectories: pd.DataFrame, color_mapping: dict) -> go.Figure:
     # trajectories is what get_dbscan_trajectories returns
     return _plot_trajectories(trajectories, color_mapping)
+
+def plot_dbscan_log_trajectory(trajectory: pd.DataFrame, color_mapping: dict) -> go.Figure:
+    # trajectory is what get_dbscan_log_trajectory returns
+    return _plot_trajectories(trajectory.assign(case="log"), color_mapping, "Trajectory of the log")
 
 
 # drift
@@ -254,6 +270,22 @@ def plot_divergences(divergences: pd.DataFrame, divergence: str = "kl", referenc
 
     return fig
 
+def plot_window_distances(distances: pd.DataFrame, distance: str = "euclidean", reference: str = "previous") -> go.Figure:
+    # distances is what compute_window_distances returns. x is the number of the window,
+    # hovering names its start
+    fig = px.line(
+        distances,
+        x=distances.index,
+        y="score",
+        hover_data=["window"],
+        labels={"index": "Window", "score": DISTANCES[distance], "window": "Window start"},
+        title=f"{DISTANCES[distance]} of every window to the {REFERENCES[reference]}",
+    )
+
+    _window_lines(fig, distances.index)
+
+    return fig
+
 
 # shared by the functions above
 
@@ -278,8 +310,10 @@ def _state_colors(color_mapping: dict) -> dict:
         for key, color in color_mapping.items()
     }
 
-def _plot_cluster_frequencies(frequencies: pd.Series, color_mapping: dict, title: str) -> go.Figure:
+def _plot_cluster_frequencies(frequencies: pd.Series, color_mapping: dict, clusters: str) -> go.Figure:
+    # the frequencies are named after what they count, events or windows
     colors = _state_colors(color_mapping)
+    unit = frequencies.name.capitalize()
 
     # every cluster is drawn, also the ones without events in the range, so the plots of
     # different date ranges can be compared
@@ -291,8 +325,8 @@ def _plot_cluster_frequencies(frequencies: pd.Series, color_mapping: dict, title
         color=frequencies.index,
         color_discrete_map=colors,
         text_auto=",d" if len(frequencies) <= 10 else False,
-        labels={"x": "Cluster", "y": "Events"},
-        title=title,
+        labels={"x": "Cluster", "y": unit},
+        title=f"{unit} per {clusters}",
     )
 
     fig.update_layout(showlegend=False)
@@ -324,7 +358,8 @@ def _plot_trajectories(visits: pd.DataFrame, color_mapping: dict, title: str = N
         color="state",
         color_discrete_map=_state_colors(color_mapping),
         category_orders={"case": list(cases)},
-        hover_data=["events"],
+        # events of a case's visit, windows of the log's
+        hover_data=[column for column in ("events", "windows") if column in visits],
         title=title,
     )
 
