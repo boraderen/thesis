@@ -2728,26 +2728,6 @@ wheels = [
 ]
 
 [[package]]
-name = "rheon"
-version = "0.1.0"
-source = { editable = "../rheon" }
-dependencies = [
-    { name = "numpy" },
-    { name = "pandas" },
-    { name = "pm4py" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "numpy", specifier = ">=1.26" },
-    { name = "pandas", specifier = ">=2.0" },
-    { name = "pm4py", specifier = ">=2.7" },
-]
-
-[package.metadata.requires-dev]
-dev = [{ name = "pytest", specifier = ">=9.0.0" }]
-
-[[package]]
 name = "rpds-py"
 version = "0.30.0"
 source = { registry = "https://pypi.org/simple" }
@@ -3166,7 +3146,6 @@ dependencies = [
     { name = "plotly" },
     { name = "pm4py" },
     { name = "python-dotenv" },
-    { name = "rheon" },
     { name = "scikit-learn" },
     { name = "seaborn" },
     { name = "streamlit" },
@@ -3193,7 +3172,6 @@ requires-dist = [
     { name = "plotly", specifier = ">=5.20" },
     { name = "pm4py", specifier = ">=2.7" },
     { name = "python-dotenv", specifier = ">=1.2.3" },
-    { name = "rheon", editable = "../rheon" },
     { name = "scikit-learn", specifier = ">=1.4" },
     { name = "seaborn", specifier = ">=0.13" },
     { name = "streamlit", specifier = ">=1.35" },
