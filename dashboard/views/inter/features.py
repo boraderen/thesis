@@ -23,11 +23,32 @@ ATTRIBUTE_FEATURES = {
     "attr_shares": ("categorical", "Value shares of the categorical attributes"),
 }
 THRESHOLDS = {"1h": "1 hour", "6h": "6 hours", "12h": "12 hours", "1D": "1 day", "3D": "3 days", "7D": "1 week"}
+GLOSSARY = {
+    "Active cases": "Number of distinct cases with at least one event in the calendar window.",
+    "New arrivals": "Number of cases whose first event falls inside the window.",
+    "Completions": "Number of cases whose last event falls inside the window.",
+    "Events per active case": "Events in the window divided by the number of cases active in it.",
+    "Mean Δt": "Mean gap between an event and the previous event of the same case, in minutes.",
+    "Std Δt": "Standard deviation of those within-case gaps, in minutes.",
+    "Stalled cases": "Number of cases still running at the window end whose most recent event is older than "
+                     "the stall threshold τ. Completed cases are not counted.",
+}
 
 ui.keep_widgets()
 log = ui.perspective_log("inter")
 attributes = st.session_state.get("case_attributes", {})
 kinds = set(attributes.values())
+
+# the attribute features are named after the case attributes mapped for this log
+glossary = dict(GLOSSARY)
+for column, kind in attributes.items():
+    if kind == "numerical":
+        glossary[f"Mean {column}"] = f"Mean of {column} over the events in the window."
+        glossary[f"Std {column}"] = f"Standard deviation of {column} over the events in the window."
+    else:
+        glossary[f"{column} value shares"] = (
+            f"One column per value of {column} ({log[column].nunique()} in this log) — the share of the window's "
+            "events carrying that value. The values come as a set, not one by one.")
 
 for feature in FEATURES | ATTRIBUTE_FEATURES:
     seed_widget(f"inter_sel_feature_{feature}", True)
@@ -49,6 +70,7 @@ with st.sidebar:
         st.caption("Case attributes: " + ", ".join(f"{column} ({kind})" for column, kind in attributes.items()))
     else:
         st.caption("No case attributes mapped, pick them on the **Upload log** page.")
+    ui.feature_glossary(glossary)
 
 st.title("Features")
 st.caption("One row per calendar window, describing all cases running in it.")

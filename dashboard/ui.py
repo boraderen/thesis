@@ -130,6 +130,13 @@ def show_features(features: pd.DataFrame) -> None:
         st.dataframe(features.head(30), width="stretch", height=420)
 
 
+def feature_glossary(entries: dict) -> None:
+    # what every feature means, collapsed below the parameters of a features page
+    with st.expander("Feature glossary"):
+        for term, meaning in entries.items():
+            st.markdown(f"**{term}:** {meaning}")
+
+
 def metrics_row(items: list[tuple[str, str]]) -> None:
     columns = st.columns(len(items))
     for column, (label, value) in zip(columns, items):

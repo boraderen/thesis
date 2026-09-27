@@ -15,6 +15,19 @@ FEATURES = {
     "act_res_shares": "Activity-resource event shares",
     "handover_shares": "Handover shares",
 }
+GLOSSARY = {
+    "Events per resource": "Number of events assigned to each resource in the calendar window.",
+    "Active cases per resource": "Number of distinct cases touched by each resource in the window.",
+    "Mean event duration per resource": "Mean event duration in minutes for each resource in the window "
+                                        "(requires a mapped event duration column).",
+    "Mean wait into resource": "Computed for each resource r: mean difference between this event's and the "
+                               "previous case event's timestamp, in minutes, over r's events in the window — "
+                               "counted only for events whose previous event was executed by a different resource.",
+    "Activity-resource event shares": "Computed for each activity a and each resource r: the share of a's events "
+                                      "in the window executed by r — a-events by r divided by all a-events in the window.",
+    "Handover shares": "Computed for each ordered resource pair r1→r2: the share of r1's within-case handovers in "
+                       "the window that go to r2 — handovers r1→r2 divided by all handovers from r1 in the window.",
+}
 
 ui.keep_widgets()
 log = ui.perspective_log("resource")
@@ -32,6 +45,7 @@ with st.sidebar:
     st.selectbox("Window", list(ui.WINDOWS), format_func=ui.WINDOWS.get, key="resource_sel_window")
     st.multiselect("Resources", resources, key="resource_sel_resources", placeholder="All resources",
                    help="The resources that get feature columns. Left empty, all of them.")
+    ui.feature_glossary(GLOSSARY)
 
 st.title("Features")
 st.caption("One row per calendar window, describing how the resources worked in it.")
