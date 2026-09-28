@@ -1,79 +1,97 @@
-"""kairo — state-based process monitoring and concept-drift detection.
-
-The top level is deliberately small: read a log, run one of the three
-pipelines, then plot, describe, or ask a language model about the result.
-
-    log    = kairo.read_log("log.xes")
-    log    = kairo.map_columns(log, {...})
-    result = kairo.run_intra_case(log, kairo.IntraConfig(...))
-
-    kairo.plot_state_grid(result.states).show()
-    print(kairo.abstract_result(result))
-    kairo.ask("Where does it drift?", result=result, log=log)
-
-The individual steps a runner chains — feature extraction, PCA, clustering,
-trajectories, drift measures — live in the subpackages and are equally usable
-on their own: ``kairo.features``, ``kairo.analysis``, ``kairo.data``,
-``kairo.viz``, ``kairo.llm``, ``kairo.pipeline``.
-"""
-from . import analysis, data, features, llm, pipeline, viz
-
-# --- the event log -------------------------------------------------------
-from .data.log import LogStatistics, log_statistics, map_columns, read_log
-
-# --- pipelines -----------------------------------------------------------
-from .pipeline.config import InterConfig, IntraConfig, ResourceConfig
-from .pipeline.run import StateResult, run, run_inter_case, run_intra_case, run_resource
-
-# --- figures -------------------------------------------------------------
-from .viz.plots import (
-    add_transition_markers,
-    add_window_boundaries,
-    plot_activity_frequency,
-    plot_drift_signal,
-    plot_k_distance,
-    plot_pca_variance,
-    plot_state_distances,
-    plot_state_distribution,
-    plot_state_grid,
-    plot_trajectory,
-    plot_transition_matrix,
-    save_figure,
+from .data import (
+    read_log,
+    compute_log_stats,
 )
 
-# --- text abstractions ---------------------------------------------------
-from .llm.abstract import (
-    abstract_config,
-    abstract_drift_signal,
+from .analysis import (
+    standardize,
+    compute_pca,
+    apply_pca,
+    compute_som,
+    get_som_winners,
+    get_som_state_frequencies,
+    compute_kmeans,
+    get_kmeans_clusters,
+    get_kmeans_state_frequencies,
+    compute_dbscan,
+    get_dbscan_clusters,
+    get_dbscan_state_frequencies,
+    get_som_state_distances,
+    get_kmeans_state_distances,
+    get_dbscan_state_distances,
+    get_som_case_trajectory,
+    get_kmeans_case_trajectory,
+    get_dbscan_case_trajectory,
+    get_som_trajectories,
+    get_kmeans_trajectories,
+    get_dbscan_trajectories,
+    get_som_log_trajectory,
+    get_kmeans_log_trajectory,
+    get_dbscan_log_trajectory,
+    compute_state_distributions,
+    compute_divergences,
+    compute_window_distances,
+    DIVERGENCES,
+    REFERENCES,
+    DISTANCES,
+)
+
+from .analysis.intra import (
+    compute_features_intra,
+)
+
+from .analysis.resource import (
+    compute_features_resource,
+)
+
+from .analysis.inter import (
+    compute_features_inter,
+)
+
+from .analysis.plots import (
+    plot_activity_counts,
+    plot_pca_variances,
+    plot_som_u_matrix,
+    plot_som_heatmap,
+    compute_som_color_mapping,
+    plot_som_colors,
+    plot_som_case_trajectory,
+    compute_kmeans_color_mapping,
+    plot_kmeans_frequencies,
+    plot_kmeans_distances,
+    plot_kmeans_case_trajectory,
+    compute_dbscan_color_mapping,
+    plot_dbscan_frequencies,
+    plot_dbscan_distances,
+    plot_dbscan_k_distance,
+    plot_dbscan_case_trajectory,
+    plot_som_trajectories,
+    plot_kmeans_trajectories,
+    plot_dbscan_trajectories,
+    plot_som_log_trajectory,
+    plot_kmeans_log_trajectory,
+    plot_dbscan_log_trajectory,
+    plot_state_distributions,
+    plot_divergences,
+    plot_window_distances,
+)
+
+from .llm import (
+    LLMConnector,
+    get_response_text,
+    count_input_tokens,
+    count_output_tokens,
+    DEFAULT_SYSTEM_PROMPT,
+    abstract_log_stats,
+    abstract_divergences,
     abstract_features,
-    abstract_log_attributes,
-    abstract_log_statistics,
     abstract_pca,
-    abstract_result,
-    abstract_state_distribution,
-    abstract_state_grid,
-    abstract_state_profiles,
     abstract_states,
-    abstract_trajectory,
-    abstract_transition_matrix,
-    abstract_transitions,
+    abstract_case_trajectory,
+    abstract_case_trajectories,
+    abstract_log_trajectory,
+    abstract_distributions,
+    abstract_window_distances,
 )
-
-# --- language models -----------------------------------------------------
-from .llm.connectors import (
-    PROVIDERS,
-    anthropic_query,
-    google_query,
-    local_query,
-    openai_query,
-    query,
-)
-from .llm.prompt import ask, build_prompt, explain_plot, nlp_to_config
-
-# --- the values a config accepts -----------------------------------------
-from .analysis.cluster import DISTANCES, METHODS, SOM_INIT, SUPPORTED_DISTANCES
-from .analysis.drift import DIVERGENCES, REFERENCES
-from .analysis.reduce import SCALING
-from .data.schema import FEATURE_LABELS
 
 __version__ = "0.1.0"

@@ -1,22 +1,14 @@
-"""Kairo dashboard entry point: navigation, branding, and shared chrome."""
 from __future__ import annotations
 
 from pathlib import Path
 
 import streamlit as st
 
-ROOT = Path(__file__).resolve().parent
-ICON = ROOT.parent / "kairo" / "kairo.png"
-
 st.set_page_config(
     page_title="Kairo Dashboard",
-    page_icon=str(ICON) if ICON.exists() else "🌀",
     layout="wide",
     initial_sidebar_state="expanded",
 )
-
-if ICON.exists():
-    st.logo(str(ICON), icon_image=str(ICON), size="large")
 
 # Light global polish: calmer headers, bordered metric cards, roomier sidebar.
 st.markdown(
@@ -41,15 +33,31 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+
+st.logo(str(Path(__file__).parent.parent / "kairo" / "kairo.png"), size="large")
+
+
+def pipeline(p: str) -> list:
+    # the same five pages for every perspective, each in the perspective's folder. the url
+    # paths carry the perspective, the file names alone would clash
+    return [
+        st.Page(f"views/{p}/features.py", title="Features", icon=":material/table_chart:", url_path=f"{p}_features"),
+        st.Page(f"views/{p}/pca.py", title="PCA", icon=":material/compress:", url_path=f"{p}_pca"),
+        st.Page(f"views/{p}/states.py", title="States & Trajectories", icon=":material/route:", url_path=f"{p}_states"),
+        st.Page(f"views/{p}/drift.py", title="Drift Signal", icon=":material/monitoring:", url_path=f"{p}_drift"),
+        st.Page(f"views/{p}/copilot.py", title="Copilot", icon=":material/smart_toy:", url_path=f"{p}_copilot"),
+    ]
+
+
 pages = st.navigation(
     {
-        "": [st.Page("views/home.py", title="Overview", icon=":material/home:", default=True)],
+        "Kairo Dashboard": [st.Page("views/home.py", title="Overview", icon=":material/home:", default=True)],
         "Pipeline": [
             st.Page("views/upload.py", title="Upload log", icon=":material/upload_file:"),
-            st.Page("views/intra.py", title="Intra-case states", icon=":material/route:"),
-            st.Page("views/resource.py", title="Resource states", icon=":material/group:"),
-            st.Page("views/inter.py", title="Inter-case states", icon=":material/hub:"),
         ],
+        "Intra-case states": pipeline("intra"),
+        "Resource states": pipeline("resource"),
+        "Inter-case states": pipeline("inter"),
     }
 )
 pages.run()

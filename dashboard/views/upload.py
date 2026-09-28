@@ -1,25 +1,36 @@
-"""Upload page: read an event log (XES / CSV) and map its columns by clicking them."""
+"""Upload page: read an event log (XES / CSV) once, then rename its columns by clicking them."""
 from __future__ import annotations
 
+import tempfile
+from pathlib import Path
+
 import pandas as pd
+import pm4py
 import streamlit as st
 
-import cache
 import kairo
-from kairo.data.schema import MAX_CASE_ATTRS, OPTIONAL_ROLES, ROLES
+
+# the name every role's column gets, as kairo expects it, the last four are optional
+ROLES = {
+    "case:concept:name": "case id",
+    "concept:name": "activity",
+    "time:timestamp": "timestamp",
+    "event_id": "event id",
+    "start_timestamp": "start timestamp",
+    "org:resource": "resource",
+    "event_duration": "event duration",
+}
+OPTIONAL_ROLES = ("event_id", "start_timestamp", "org:resource", "event_duration")
+# the kinds a case attribute can be for the inter-case features
+KINDS = ["numerical", "categorical"]
 
 st.title("Upload event log")
-st.caption("Load an XES or CSV file, then map its columns to their roles by clicking them.")
-
-STATE_KEYS = (
-    "picked", "attrs", "attr_types", "n_attrs",
-    "log", "case_numeric_attrs", "case_categorical_attrs",
-)
+st.caption("Load an XES or CSV file, map its columns to their roles by clicking them, then pick the case attributes.")
 
 
 def reset() -> None:
     """Forget the mapping, keeping the uploaded file."""
-    for key in STATE_KEYS:
+    for key in ("picked", "case_attributes", "log"):
         st.session_state.pop(key, None)
 
 
@@ -31,14 +42,23 @@ def remove_log() -> None:
     st.session_state["uploader"] = st.session_state.get("uploader", 0) + 1
 
 
+def read_log(uploaded) -> pd.DataFrame:
+    # the uploaded file read once, as it is. pandas reads a csv straight from the upload,
+    # pm4py reads an xes only from a path, so it goes into a temporary file first
+    if uploaded.name.lower().endswith(".csv"):
+        return pd.read_csv(uploaded)
+
+    with tempfile.TemporaryDirectory() as folder:
+        path = Path(folder) / Path(uploaded.name).name
+        path.write_bytes(uploaded.getbuffer())
+        return pm4py.read_xes(str(path))
+
+
 def mapping_table() -> None:
-    """The mapping so far — one row per decided role and per picked attribute."""
-    rows = [{"role": role, "column": picked[role] or "— skipped"} for role in ROLES if role in picked]
-    rows += [
-        {"role": f"case attribute ({attr_types[col]})" if col in attr_types else "case attribute",
-         "column": col}
-        for col in attrs
-    ]
+    """The mapping so far, one row per decided role."""
+    rows = [{"role": ROLES[role], "column": column or "— skipped"} for role, column in picked.items()]
+    rows += [{"role": f"case attribute, {kind}", "column": column}
+             for column, kind in st.session_state.get("case_attributes", {}).items()]
     if rows:
         st.dataframe(pd.DataFrame(rows), hide_index=True, width="stretch")
 
@@ -46,7 +66,7 @@ def mapping_table() -> None:
 def pick(prompt: str, key: str) -> str | None:
     """Show the unmapped columns and return the one whose header was clicked."""
     st.markdown(prompt)
-    free = [c for c in raw.columns if c not in set(picked.values()) and c not in attrs]
+    free = [c for c in raw.columns if c not in set(picked.values())]
     if not free:
         st.error("Every column is already mapped.")
         st.stop()
@@ -65,101 +85,96 @@ def pick(prompt: str, key: str) -> str | None:
 uploaded = st.file_uploader(
     "Event log", type=["xes", "csv"], key=f"upload_{st.session_state.get('uploader', 0)}"
 )
-if uploaded is not None:
-    if st.session_state.get("file") != uploaded.name:
-        reset()
-        st.session_state["file"] = uploaded.name
-    st.session_state["raw"] = cache.read_log(uploaded.name, uploaded.getvalue())
+# a new file is read once and only the table is kept, so a log of up to 1 GB is not
+# read, hashed or copied again on every click
+if uploaded is not None and st.session_state.get("file") != uploaded.name:
+    reset()
+    with st.spinner(f"Reading {uploaded.name}…"):
+        try:
+            st.session_state["raw"] = read_log(uploaded)
+        except Exception as exc:
+            st.error(f"The file cannot be read: {exc}")
+            st.stop()
+    st.session_state["file"] = uploaded.name
 
-raw: pd.DataFrame | None = st.session_state.get("raw")
-if raw is None:
+if "raw" not in st.session_state:
     st.stop()
 
+raw = st.session_state["raw"]
 picked: dict[str, str | None] = st.session_state.setdefault("picked", {})
-attrs: list[str] = st.session_state.setdefault("attrs", [])
-attr_types: dict[str, str] = st.session_state.setdefault("attr_types", {})
 
-with st.expander("Required columns per feature"):
-    st.dataframe(kairo.data.requirements_table(), hide_index=True, width="stretch")
 left, right, _ = st.columns([1, 1, 6])
 left.button("Reset mapping", on_click=reset, width="stretch")
 right.button("Remove log", on_click=remove_log, width="stretch")
 mapping_table()
 
 # --- one role at a time ----------------------------------------------------
-for role in ROLES:
+for role, label in ROLES.items():
     if role in picked:
         continue
-    col = pick(f"Which column holds the **{role}**?", f"pick_{role}")
+    column = pick(f"Which column holds the **{label}**?", f"pick_{role}")
     if role in OPTIONAL_ROLES and st.button("Skip"):
-        col = None
-    elif col is None:
+        column = None
+    elif column is None:
         st.stop()
-    picked[role] = col
+    picked[role] = column
     st.rerun()
 
-# --- then the case attributes, each one picked and typed before the next ---
-if "n_attrs" not in st.session_state:
-    n = st.number_input("How many case attributes?", 0, MAX_CASE_ATTRS, 0, 1)
-    if st.button("Confirm", type="primary"):
-        st.session_state["n_attrs"] = int(n)
+# --- then the case attributes, for the inter-case features ---------------------------
+if "case_attributes" not in st.session_state:
+    st.markdown("Which columns are **case attributes** for the inter-case features? Pick them and say "
+                "whether each one is numerical or categorical, or skip them.")
+    free = [c for c in raw.columns if c not in set(picked.values()) and c not in ROLES]
+    columns = st.multiselect("Case attributes", free, key="attribute_columns")
+    kinds = {}
+    for column in columns:
+        # a guess from the column, numbers stored as text are categorical until switched
+        numerical = pd.api.types.is_numeric_dtype(raw[column])
+        kinds[column] = st.radio(column, KINDS, index=0 if numerical else 1, horizontal=True,
+                                 key=f"attribute_kind_{column}")
+    if st.button("Done" if columns else "Skip"):
+        st.session_state["case_attributes"] = kinds
         st.rerun()
     st.stop()
 
-for i in range(st.session_state["n_attrs"]):
-    if i == len(attrs):
-        col = pick(
-            f"Which column holds case attribute {i + 1} of {st.session_state['n_attrs']}?",
-            f"pick_attr_{i}",
-        )
-        if col is None:
-            st.stop()
-        attrs.append(col)
-        st.rerun()
-    if attrs[i] not in attr_types:
-        st.markdown(f"Is **{attrs[i]}** numeric or categorical?")
-        num, cat, _ = st.columns([1, 1, 6])
-        for kind, box in (("numeric", num), ("categorical", cat)):
-            if box.button(kind.capitalize(), key=f"type_{i}_{kind}", width="stretch"):
-                attr_types[attrs[i]] = kind
-                st.rerun()
+# --- mapping complete: rename the columns to their roles ----------------------
+if "log" not in st.session_state:
+    mapping = {column: role for role, column in picked.items() if column}
+    # a column already named like a role another column was picked for would appear twice
+    log = raw.drop(columns=[role for role in mapping.values() if role in raw.columns and role not in mapping])
+    log = log.rename(columns=mapping)
+    # a csv keeps its timestamps as text
+    try:
+        log["time:timestamp"] = pd.to_datetime(log["time:timestamp"])
+    except ValueError as exc:
+        st.error(f"The timestamp column cannot be read as dates: {exc}")
         st.stop()
+    st.session_state["log"] = log
 
-# --- mapping complete: load the log ---------------------------------------
-try:
-    log = cache.map_columns(raw, picked)
-except ValueError as exc:
-    st.error(str(exc))
-    st.stop()
+log = st.session_state["log"]
+stats = kairo.compute_log_stats(log)
 
-numeric_attrs = [c for c in attrs if attr_types[c] == "numeric"]
-categorical_attrs = [c for c in attrs if c not in numeric_attrs]
-for col in numeric_attrs:
-    log[col] = pd.to_numeric(log[col], errors="coerce")
-st.session_state["log"] = log
-st.session_state["case_numeric_attrs"] = numeric_attrs
-st.session_state["case_categorical_attrs"] = categorical_attrs
-
-attr_kinds = {**{c: "numeric" for c in numeric_attrs}, **{c: "categorical" for c in categorical_attrs}}
-stats = kairo.log_statistics(log, case_attributes=attr_kinds)
-
-st.success(f"Log mapped — {kairo.data.span_label(log)}", icon=":material/check_circle:")
+st.success(
+    f"Log mapped — {stats['events']:,} events of {stats['cases']:,} cases, "
+    f"{stats['start']} to {stats['end']}",
+    icon=":material/check_circle:",
+)
 m1, m2, m3, m4, m5 = st.columns(5)
-m1.metric("Cases", f"{stats.cases:,}")
-m2.metric("Events", f"{stats.events:,}")
-m3.metric("Activities", f"{stats.activities:,}")
-m4.metric("Resources", f"{stats.resources:,}")
-m5.metric("Span (h)", f"{(stats.end - stats.start).total_seconds() / 3600:,.1f}")
+m1.metric("Cases", f"{stats['cases']:,}")
+m2.metric("Events", f"{stats['events']:,}")
+m3.metric("Activities", f"{stats['activities']:,}")
+m4.metric("Resources", f"{stats['resources']:,}" if "org:resource" in log.columns else "—")
+m5.metric("Span (h)", f"{stats['span_minutes'] / 60:,.1f}")
 
 t1, t2, t3, l1, l2, l3 = st.columns(6)
-t1.metric("Min TPT (d)", f"{stats.tpt_days_min:,.2f}")
-t2.metric("Avg TPT (d)", f"{stats.tpt_days_mean:,.2f}")
-t3.metric("Max TPT (d)", f"{stats.tpt_days_max:,.2f}")
-l1.metric("Min trace length", f"{stats.length_min:,}")
-l2.metric("Avg trace length", f"{stats.length_mean:,.1f}")
-l3.metric("Max trace length", f"{stats.length_max:,}")
+t1.metric("Min TPT (d)", f"{stats['tpt_days_min']:,.2f}")
+t2.metric("Avg TPT (d)", f"{stats['tpt_days_mean']:,.2f}")
+t3.metric("Max TPT (d)", f"{stats['tpt_days_max']:,.2f}")
+l1.metric("Min trace length", f"{stats['length_min']:,}")
+l2.metric("Avg trace length", f"{stats['length_mean']:,.1f}")
+l3.metric("Max trace length", f"{stats['length_max']:,}")
 
-tab_preview, tab_activities = st.tabs(["Preview", "Activity frequency"])
+tab_preview, tab_activities = st.tabs(["Preview", "Activity counts"])
 with tab_preview:
     preview = log.head(20).copy()
     cases = preview["case:concept:name"].unique().tolist()
@@ -169,4 +184,4 @@ with tab_preview:
     )
     st.dataframe(styled, width="stretch")
 with tab_activities:
-    st.plotly_chart(kairo.plot_activity_frequency(stats), width="stretch")
+    st.plotly_chart(kairo.plot_activity_counts(stats), width="stretch")

@@ -23,15 +23,15 @@ with cards[0], st.container(border=True):
 with cards[1], st.container(border=True):
     st.markdown("**2 · Intra-case**")
     st.caption("Features per event → PCA → clustered states → per-case trajectories.")
-    st.page_link("views/intra.py", label="Intra-case states", icon=":material/route:")
+    st.page_link("views/intra/features.py", label="Intra-case states", icon=":material/route:")
 with cards[2], st.container(border=True):
     st.markdown("**3 · Resource**")
-    st.caption("Windowed features → PCA → clustered states → log-level trajectories.")
-    st.page_link("views/resource.py", label="Resource states", icon=":material/group:")
+    st.caption("Features per calendar window → PCA → clustered states → the log's trajectory.")
+    st.page_link("views/resource/features.py", label="Resource states", icon=":material/group:")
 with cards[3], st.container(border=True):
     st.markdown("**4 · Inter-case**")
-    st.caption("Windowed features → PCA → clustered states → log-level trajectories.")
-    st.page_link("views/inter.py", label="Inter-case states", icon=":material/hub:")
+    st.caption("Features per calendar window → PCA → clustered states → the log's trajectory.")
+    st.page_link("views/inter/features.py", label="Inter-case states", icon=":material/hub:")
 
 st.title("Overview of the pipelines")
 st.graphviz_chart(
@@ -61,11 +61,14 @@ digraph {
         res_feat [label="Windowed resource features" width=2.1]
         res_red [label="PCA"]
         res_som [label="SOM / clustering states"]
-        res_dist [label="State vector distances"]
+        res_div [label="Freq. distri divergences"]
+        res_dist [label="Window distances"]
         res_sig [label="Drift signals"]
         res_feat -> res_red -> res_som
         res_red -> res_dist
+        res_som -> res_div
         res_som -> res_sig
+        res_div -> res_sig
         res_dist -> res_sig
     }
     subgraph cluster_inter {
@@ -73,11 +76,14 @@ digraph {
         inter_feat [label="Windowed inter-case features" width=2.1]
         inter_red [label="PCA"]
         inter_som [label="SOM / clustering states"]
-        inter_dist [label="State vector distances"]
+        inter_div [label="Freq. distri divergences"]
+        inter_dist [label="Window distances"]
         inter_sig [label="Drift signals"]
         inter_feat -> inter_red -> inter_som
         inter_red -> inter_dist
+        inter_som -> inter_div
         inter_som -> inter_sig
+        inter_div -> inter_sig
         inter_dist -> inter_sig
     }
 

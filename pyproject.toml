@@ -20,6 +20,11 @@ dependencies = [
     "streamlit>=1.35",
     "tabulate>=0.9",
     "torch>=2.12.0",
+    "openai>=3.16.2",
+    "anthropic>=1.7.0",
+    "r4pm>=0.6.2",
+    "polars>=1.44.2",
+    "jupyterlab>=4.5.6",
 ]
 
 [tool.uv.sources]
