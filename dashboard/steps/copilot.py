@@ -21,35 +21,21 @@ KEY_VARIABLES = {"anthropic": "ANTHROPIC_API_KEY", "openai": "OPENAI_API_KEY", "
 
 SUGGESTIONS = {
     "intra": [
-        "Which range should be analyzed in detail for an intra-case drift?",
-        "Which cases should be analyzed in detail for an intra-case drift?",
-        "Which pipeline configuration and hyperparameters can I use to further inspect the drift signals?",
-        "Is there an intra-case drift, and is it sudden, gradual or recurring?",
-        "Which states change most around the strongest drift signal, and what behaviour do they stand for?",
-        "What do the states stand for, in terms of activities and case progress?",
-        "Are the states well separated, or would more or fewer states fit the log better?",
+        "Is there an intra-case drift, when does it happen, and is it sudden, gradual or recurring?",
+        "Which states change most around the strongest drift signal, and what case behaviour do they stand for?",
+        "Which date range, cases and parameters should I inspect next to confirm the drift?",
     ],
     "resource": [
-        "Which range should be analyzed in detail for a resource drift?",
-        "Which resources should be analyzed in detail for a resource drift?",
-        "Which pipeline configuration and hyperparameters can I use to further inspect the drift signals?",
-        "Is there a resource drift, and is it sudden, gradual or recurring?",
-        "What do the states stand for, in terms of workload, waits and handovers of the resources?",
-        "Are the states well separated, or would more or fewer states fit the log better?",
+        "Is there a resource drift, when does it happen, and is it sudden, gradual or recurring?",
+        "Which states change most around the strongest drift signal, and what resource behaviour do they stand for?",
+        "Which date range, resources and parameters should I inspect next to confirm the drift?",
     ],
     "inter": [
-        "Which range should be analyzed in detail for an inter-case drift?",
-        "Which pipeline configuration and hyperparameters can I use to further inspect the drift signals?",
-        "Is there an inter-case drift, and is it sudden, gradual or recurring?",
-        "What do the states stand for: normal flow, congestion, bursts or slow phases?",
-        "Which features change most around the strongest drift signal?",
-        "Are the states well separated, or would more or fewer states fit the log better?",
+        "Is there an inter-case drift, when does it happen, and is it sudden, gradual or recurring?",
+        "Which states and features change most around the strongest drift signal, and what do they stand for?",
+        "Which date range and parameters should I inspect next to confirm the drift?",
     ],
 }
-
-
-def reset_system_prompt() -> None:
-    st.session_state["copilot_sel_system_prompt"] = kairo.DEFAULT_SYSTEM_PROMPT
 
 
 def use_suggestion(p: str) -> None:
@@ -72,7 +58,8 @@ def available_abstractions(p: str, log: pd.DataFrame) -> dict:
 
     if f"{p}_states" in state:
         texts["States"] = lambda: kairo.abstract_states(
-            state[f"{p}_frequencies"], state[f"{p}_distances"], state[f"{p}_colors"])
+            state[f"{p}_frequencies"], state[f"{p}_distances"], state[f"{p}_colors"],
+            [{"type": name, "value": value} for name, value, _ in state.get(f"{p}_scores", [])])
 
     for case_id, trajectory in state.get(f"{p}_trajectories", {}).items():
         texts[f"Trajectory of case {case_id}"] = (
@@ -99,10 +86,38 @@ def available_abstractions(p: str, log: pd.DataFrame) -> dict:
     return texts
 
 
+def new_chat(p: str) -> None:
+    # the history goes, and the next question starts a new chat with nothing picked
+    for key in ("chat_history", "chat_turns", "chat_provider", "sel_texts", "sel_plots"):
+        st.session_state.pop(f"{p}_{key}", None)
+
+
+def show_chat(p: str) -> None:
+    # every turn as a question with what was shared along, and the answer with its tokens
+    for turn in st.session_state.get(f"{p}_chat_turns", []):
+        with st.chat_message("user"):
+            st.markdown(turn["question"])
+            shared = turn["texts"] + turn["plots"]
+            st.caption("Shared: " + ", ".join(shared) if shared else "Nothing new shared")
+
+        with st.chat_message("assistant"):
+            st.markdown(turn["answer"])
+            input_tokens, output_tokens = turn["tokens"]
+            st.caption(f"About {input_tokens:,} input tokens, estimated before sending · {output_tokens:,} output tokens, "
+                       f"reasoning included")
+
+
 def show(p: str) -> None:
     ui.keep_widgets()
     log = ui.perspective_log(p)
     load_dotenv(find_dotenv())
+
+    # after a question is sent, the box is emptied and nothing is shared again by default,
+    # the llm still has it in the history
+    if st.session_state.pop(f"{p}_chat_sent", False):
+        st.session_state[f"{p}_sel_question"] = ""
+        st.session_state[f"{p}_sel_texts"] = []
+        st.session_state[f"{p}_sel_plots"] = []
 
     # the llm settings are the same for every perspective
     seed_widget("copilot_sel_provider", "anthropic")
@@ -110,7 +125,6 @@ def show(p: str) -> None:
     seed_widget("copilot_sel_api_key", "")
     seed_widget("copilot_sel_model", "claude-sonnet-5")
     seed_widget("copilot_sel_max_tokens", 64000)
-    seed_widget("copilot_sel_system_prompt", kairo.DEFAULT_SYSTEM_PROMPT)
     seed_widget(f"{p}_sel_question", "")
 
     with st.sidebar:
@@ -122,17 +136,26 @@ def show(p: str) -> None:
                       help=f"Left empty, {KEY_VARIABLES.get(provider, 'no key')} from the environment is used.")
         st.text_input("Model", key="copilot_sel_model")
         st.number_input("Max tokens", min_value=100, step=1000, key="copilot_sel_max_tokens")
-        st.text_area("System prompt", key="copilot_sel_system_prompt", height=320,
-                     help="What the llm is told about kairo and the approach before every question.")
-        st.button("Reset system prompt", on_click=reset_system_prompt, icon=":material/restart_alt:")
 
     st.title("Copilot")
-    st.caption("Ask about the results so far. The llm sees only what is picked here.")
+    st.caption("Ask about the results so far. The llm sees only what is picked here, and it keeps the chat, "
+               "so what was shared once need not be shared again.")
+
+    history = st.session_state.get(f"{p}_chat_history", [])
+    show_chat(p)
+
+    if history:
+        st.button("New chat", on_click=new_chat, args=(p,), icon=":material/add_comment:")
+
+    # the images are in the format of the provider the chat began with
+    if history and st.session_state.get(f"{p}_chat_provider") != provider:
+        st.warning(f"This chat is held with {PROVIDERS[st.session_state[f'{p}_chat_provider']]}. "
+                   "Asking with another provider starts a new chat.")
 
     abstractions = available_abstractions(p, log)
     plots = ui.stored_plots(p)
 
-    seed_multi(f"{p}_sel_texts", list(abstractions), list(abstractions))
+    seed_multi(f"{p}_sel_texts", [], list(abstractions))
     seed_multi(f"{p}_sel_plots", [], list(plots))
 
     st.multiselect("Information to share", list(abstractions), key=f"{p}_sel_texts")
@@ -141,8 +164,6 @@ def show(p: str) -> None:
     # the summaries do not all say which perspective they come from
     picked = [abstractions[name]() for name in st.session_state[f"{p}_sel_texts"]]
     context = "\n\n".join([f"These results come from the {ui.PERSPECTIVES[p].lower()} perspective."] + picked) if picked else ""
-    with st.expander("The text that is shared"):
-        st.text(context or "Nothing picked.")
 
     st.pills("Suggestions", SUGGESTIONS[p], key=f"{p}_suggestion", on_change=use_suggestion, args=(p,))
     st.text_area("Question", key=f"{p}_sel_question", height=120)
@@ -153,6 +174,10 @@ def show(p: str) -> None:
             st.warning("Enter a question first.")
             st.stop()
 
+        if history and st.session_state.get(f"{p}_chat_provider") != provider:
+            st.session_state.pop(f"{p}_chat_turns", None)
+            history = []
+
         connector = kairo.LLMConnector(
             provider=provider,
             model=st.session_state["copilot_sel_model"],
@@ -162,26 +187,30 @@ def show(p: str) -> None:
 
         with st.spinner("Asking…"):
             try:
-                messages = kairo.create_messages(
+                # kairo's default system prompt starts the chat, every later question only adds a user message
+                chat_history = history + kairo.create_messages(
                     provider,
-                    st.session_state["copilot_sel_system_prompt"],
+                    None if history else kairo.DEFAULT_SYSTEM_PROMPT,
                     [context, f"Question: {question}"] if context else [question],
                     [plots[name] for name in st.session_state[f"{p}_sel_plots"]],
                 )
-                input_tokens = kairo.count_input_tokens(provider, messages)
-                response = connector.call(messages=messages, max_tokens=int(st.session_state["copilot_sel_max_tokens"]))
+                input_tokens = kairo.count_input_tokens(provider, chat_history)
+                response = connector.call(messages=chat_history, max_tokens=int(st.session_state["copilot_sel_max_tokens"]))
             except Exception as exc:
                 st.error(f"The request failed: {exc}")
                 st.stop()
 
-        st.session_state[f"{p}_answer"] = kairo.get_response_text(response)
-        st.session_state[f"{p}_answer_tokens"] = (input_tokens, kairo.count_output_tokens(provider, response))
+        answer = kairo.get_response_text(response)
+        chat_history.append({"role": "assistant", "content": answer})
 
-    if st.session_state.get(f"{p}_answer"):
-        st.subheader("Answer")
-        st.markdown(st.session_state[f"{p}_answer"])
-
-    if f"{p}_answer_tokens" in st.session_state:
-        input_tokens, output_tokens = st.session_state[f"{p}_answer_tokens"]
-        st.caption(f"About {input_tokens:,} input tokens, estimated before sending · {output_tokens:,} output tokens, "
-                   f"reasoning included, of at most {st.session_state['copilot_sel_max_tokens']:,}")
+        st.session_state[f"{p}_chat_history"] = chat_history
+        st.session_state[f"{p}_chat_provider"] = provider
+        st.session_state.setdefault(f"{p}_chat_turns", []).append({
+            "question": question,
+            "texts": list(st.session_state[f"{p}_sel_texts"]),
+            "plots": list(st.session_state[f"{p}_sel_plots"]),
+            "answer": answer,
+            "tokens": (input_tokens, kairo.count_output_tokens(provider, response)),
+        })
+        st.session_state[f"{p}_chat_sent"] = True
+        st.rerun()

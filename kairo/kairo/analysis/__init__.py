@@ -3,7 +3,9 @@ import pandas as pd
 from minisom import MiniSom
 from sklearn.decomposition import PCA
 from sklearn.cluster import DBSCAN, KMeans
-from sklearn.metrics import pairwise_distances
+from sklearn.metrics import calinski_harabasz_score, pairwise_distances, silhouette_score
+from scipy.sparse.csgraph import minimum_spanning_tree
+from scipy.special import logsumexp
 
 # carried along with every feature matrix, never part of the maths
 META = ["case:concept:name", "time:timestamp"]
@@ -240,6 +242,103 @@ def get_dbscan_log_trajectory(df: pd.DataFrame, start_date: str | pd.Timestamp =
     return _cluster_log_trajectory(df, start_date, end_date)
 
 
+# clustering scores: how good the states are, to compare methods and parameters
+
+def compute_som_quantization_error(df: pd.DataFrame, states: pd.DataFrame, som: MiniSom, distance: str = "euclidean") -> float:
+    # the mean distance of every row to the weights of its winning neuron, lower means the
+    # neurons sit closer to the rows. states is the frame of get_som_winners for df
+    data = df.drop(columns=META, errors="ignore").to_numpy()
+    winners = som.get_weights()[states["i"].to_numpy(), states["j"].to_numpy()]
+
+    return float(_paired_distances(data, winners, distance).mean())
+
+def compute_som_occupancy_entropy(states: pd.DataFrame, size: tuple[int, int]) -> float:
+    # how evenly the rows spread over the neurons of the grid, from 0 when every row sits in
+    # one neuron to 1 when every neuron holds as many. empty neurons pull it down
+    counts = states.groupby(["i", "j"]).size().to_numpy()
+    shares = counts / counts.sum()
+    neurons = size[0] * size[1]
+
+    if neurons < 2:
+        return 0.0
+
+    return float(-(shares * np.log(shares)).sum() / np.log(neurons))
+
+def compute_silhouette(df: pd.DataFrame, states: pd.DataFrame, distance: str = "euclidean", sample_size: int = 5000) -> float:
+    # from -1 to 1, higher means every row lies closer to its own state than to the nearest
+    # other one. it needs a distance to every other row, so a sample of the rows is scored.
+    # dbscan noise is no state and left out, fewer than two states give nan
+    data, labels = _scored_rows(df, states)
+
+    if len(np.unique(labels)) < 2 or len(np.unique(labels)) >= len(labels):
+        return float("nan")
+
+    return float(silhouette_score(data, labels, metric=distance, sample_size=min(sample_size, len(labels)), random_state=0))
+
+def compute_calinski_harabasz(df: pd.DataFrame, states: pd.DataFrame) -> float:
+    # the spread between the states against the spread within them, higher is better. it has
+    # no upper bound, so it only compares clusterings of the same rows. noise is left out
+    data, labels = _scored_rows(df, states)
+
+    if len(np.unique(labels)) < 2 or len(np.unique(labels)) >= len(labels):
+        return float("nan")
+
+    return float(calinski_harabasz_score(data, labels))
+
+def compute_dbcv(df: pd.DataFrame, states: pd.DataFrame, distance: str = "euclidean", sample_size: int = 2000) -> float:
+    # density based clustering validation (Moulavi et al., 2014), from -1 to 1, higher means
+    # dense states apart from each other by sparser regions. made for dbscan, whose states have
+    # any shape, and noise counts against it. a sample of the rows is scored
+    data = df.drop(columns=META, errors="ignore").to_numpy()
+    labels = _state_labels(states)
+
+    if len(labels) > sample_size:
+        picked = np.random.default_rng(0).choice(len(labels), sample_size, replace=False)
+        data, labels = data[picked], labels[picked]
+
+    clusters = [c for c in np.unique(labels) if c != -1]
+
+    if len(clusters) < 2:
+        return float("nan")
+
+    distances = pairwise_distances(data, metric=distance)
+    dims = data.shape[1]
+    internals, internal_cores, sparseness = {}, {}, {}
+
+    for c in clusters:
+        members = np.flatnonzero(labels == c)
+        within = distances[np.ix_(members, members)]
+        cores = _core_distances(within, dims)
+
+        # the minimum spanning tree over the mutual reachability distances, its heaviest
+        # edge between inner nodes is how sparse the state is inside
+        reach = np.maximum(within, np.maximum.outer(cores, cores))
+        tree = minimum_spanning_tree(np.where(reach > 0, reach, 1e-12)).toarray()
+        tree = np.maximum(tree, tree.T)
+        degrees = (tree > 0).sum(axis=1)
+        inner = degrees > 1 if (degrees > 1).any() else np.ones(len(members), bool)
+        edges = tree[np.ix_(inner, inner)]
+
+        internals[c] = members[inner]
+        internal_cores[c] = cores[inner]
+        sparseness[c] = edges.max() if edges.any() else tree.max()
+
+    score = 0.0
+
+    for c in clusters:
+        # how far the state lies from the nearest other one, between their inner nodes
+        separation = min(
+            np.maximum(distances[np.ix_(internals[c], internals[o])],
+                       np.maximum.outer(internal_cores[c], internal_cores[o])).min()
+            for o in clusters if o != c
+        )
+        spread = max(separation, sparseness[c])
+        validity = (separation - sparseness[c]) / spread if spread > 0 else 0.0
+        score += (labels == c).sum() / len(labels) * validity
+
+    return float(score)
+
+
 # drift
 
 def compute_state_distributions(df: pd.DataFrame, window: str = "7D") -> pd.DataFrame:
@@ -322,6 +421,53 @@ def compute_window_distances(df: pd.DataFrame, distance: str = "euclidean", refe
 
 
 # shared by the functions above
+
+def _state_labels(states: pd.DataFrame) -> np.ndarray:
+    # one number per state, a som neuron (i, j) or a cluster, dbscan noise stays -1
+    if "cluster" in states.columns:
+        return states["cluster"].to_numpy()
+
+    return (states["i"] * (states["j"].max() + 1) + states["j"]).to_numpy()
+
+def _scored_rows(df: pd.DataFrame, states: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
+    # the rows and their states, without dbscan noise
+    data = df.drop(columns=META, errors="ignore").to_numpy()
+    labels = _state_labels(states)
+    kept = labels != -1
+
+    return data[kept], labels[kept]
+
+def _paired_distances(a: np.ndarray, b: np.ndarray, distance: str) -> np.ndarray:
+    # the distance of every row of a to the same row of b
+    if distance == "euclidean":
+        return np.linalg.norm(a - b, axis=1)
+
+    if distance == "manhattan":
+        return np.abs(a - b).sum(axis=1)
+
+    if distance == "chebyshev":
+        return np.abs(a - b).max(axis=1)
+
+    if distance == "cosine":
+        norms = np.linalg.norm(a, axis=1) * np.linalg.norm(b, axis=1)
+        return 1 - (a * b).sum(axis=1) / np.where(norms > 0, norms, 1)
+
+    raise ValueError(f"Unknown distance: {distance}, pick from: {list(DISTANCES)}")
+
+def _core_distances(within: np.ndarray, dims: int) -> np.ndarray:
+    # the all points core distance of dbcv, how dense the state is around every row. taken in
+    # log space, since the distances are raised to the number of dimensions. copies of a row
+    # lie at distance 0 and make it 0
+    n = len(within)
+
+    if n < 2:
+        return np.zeros(n)
+
+    others = ~np.eye(n, dtype=bool)
+    with np.errstate(divide="ignore"):
+        logs = np.where(others, -dims * np.log(within), -np.inf)
+
+    return np.exp(-(logsumexp(logs, axis=1) - np.log(n - 1)) / dims)
 
 def _cluster_name(cluster: int) -> str:
     # dbscan marks its noise rows as cluster -1

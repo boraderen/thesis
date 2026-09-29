@@ -28,7 +28,7 @@ STEPS = {
     "states": ["method", "model", "states", "frequencies", "colors", "distances",
                "plot_colors", "plot_distances", "plot_frequencies_1", "plot_frequencies_2",
                "trajectories", "last_case", "range_trajectories", "plot_trajectories",
-               "log_trajectory", "plot_log_trajectory"],
+               "log_trajectory", "plot_log_trajectory", "scores"],
     # the window distances only need the compressed rows, they come before the distributions,
     # so computing the distributions again keeps them
     "distances": ["window_distances", "window_distance_config", "plot_window_distance"],
@@ -137,7 +137,8 @@ def feature_glossary(entries: dict) -> None:
             st.markdown(f"**{term}:** {meaning}")
 
 
-def metrics_row(items: list[tuple[str, str]]) -> None:
+def metrics_row(items: list[tuple]) -> None:
+    # every item is a label and a value, and optionally a hover explanation
     columns = st.columns(len(items))
-    for column, (label, value) in zip(columns, items):
-        column.metric(label, value)
+    for column, (label, value, *help) in zip(columns, items):
+        column.metric(label, value, help=help[0] if help else None)

@@ -76,3 +76,5 @@ thesis/*.ilg
 /data/autoencoder/*
 !/data/autoencoder/generate_logs.py
 /data/drifted_logs
+
+/presentation/

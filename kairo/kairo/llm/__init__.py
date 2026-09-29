@@ -185,6 +185,7 @@ Parameters with their defaults, dates are text like "2020-07-01" or timestamps, 
 - compute_kmeans(df, k=5), get_kmeans_clusters(df, kmeans)
 - compute_dbscan(df, eps=0.5, min_samples=5, distance="euclidean"), get_dbscan_clusters(df, dbscan)
 - get_som_state_distances(som, distance="euclidean"), get_kmeans_state_distances(kmeans), get_dbscan_state_distances(dbscan)
+- clustering scores to compare methods and parameters: compute_som_quantization_error(df, states, som, distance) (lower is better, bigger grids always lower it), compute_som_occupancy_entropy(states, size) (0 to 1, how evenly the rows fill the grid), compute_dbcv(df, states, distance) (-1 to 1, for DBSCAN, noise counts against it), compute_silhouette(df, states, distance) (-1 to 1), compute_calinski_harabasz(df, states) (higher is better, only comparable on the same rows). The dashboard shows them on the States page
 - get_*_state_frequencies(df, start_date=None, end_date=None), get_*_case_trajectory(df, case_id), get_*_trajectories(df, start_date=None, end_date=None, max_cases=1000), get_*_log_trajectory(df, start_date=None, end_date=None)
 - compute_state_distributions(df, window="7D"), compute_divergences(distributions, divergence="kl" | "js" | "tv" | "hellinger", reference="previous" | "recent" | "baseline", lookback=5), compute_window_distances(df, distance="euclidean", reference="previous", lookback=5)
 - plots: plot_pca_variances, plot_som_u_matrix, plot_som_heatmap, plot_som_colors, plot_kmeans_frequencies, plot_dbscan_frequencies, plot_kmeans_distances, plot_dbscan_distances, plot_dbscan_k_distance, plot_*_case_trajectory, plot_*_trajectories, plot_*_log_trajectory, plot_state_distributions, plot_divergences, plot_window_distances
@@ -203,6 +204,27 @@ def get_response_text(response) -> str:
 
     return "".join(block.text for block in response.content if block.type == "text")
 
+
+def get_chat_history(chat_history: list) -> str:
+    # the messages sent so far and the answers as readable text, one block per message.
+    # the system prompt is cut to its size and every plot stands in as a placeholder
+    blocks = []
+
+    for message in chat_history:
+        content = message["content"]
+
+        if message["role"] == "system":
+            text = f"({len(content):,} characters)"
+        elif isinstance(content, str):
+            text = content
+        else:
+            texts = [block["text"] for block in content if block["type"] == "text"]
+            plots = len(content) - len(texts)
+            text = "\n\n".join(texts) + (f"\n\n[{plots} plot{'s' if plots != 1 else ''}]" if plots else "")
+
+        blocks.append(f"── {message['role']} ──\n{text.strip()}")
+
+    return "\n\n".join(blocks)
 
 def create_messages(provider: str, system_prompt: str | None, prompts: list[str], plots: list[go.Figure]) -> list:
     # the messages the provider's api takes, ready for LLMConnector.call and count_input_tokens
@@ -380,9 +402,10 @@ def abstract_pca(pca: PCA, cut_component: int) -> str:
 
     return "\n".join(lines)
 
-def abstract_states(frequencies: pd.Series, distances: pd.DataFrame, color_mapping: dict) -> str:
+def abstract_states(frequencies: pd.Series, distances: pd.DataFrame, color_mapping: dict, clustering_scores: list[dict] | None = None) -> str:
     # frequencies is what get_som_state_frequencies, get_kmeans_state_frequencies or
-    # get_dbscan_state_frequencies return, named after what they count, events or windows
+    # get_dbscan_state_frequencies return, named after what they count, events or windows.
+    # clustering_scores is a list of {"type": name, "value": score}, any scores in any order
     unit = frequencies.name
     total = frequencies.sum()
     never = [state for state in distances.index if state not in frequencies.index]
@@ -411,7 +434,18 @@ def abstract_states(frequencies: pd.Series, distances: pd.DataFrame, color_mappi
         state = f"({key[0]}, {key[1]})" if isinstance(key, tuple) else ("noise" if key == -1 else str(key))
         lines.append(f"- {state}: {color} ({_color_name(color)})")
 
+    if clustering_scores:
+        lines.append("Clustering scores of the states:")
+        lines += [f"- {score['type']}: {_format_score(score['value'])}" for score in clustering_scores]
+
     return "\n".join(lines)
+
+def _format_score(value) -> str:
+    # numbers get three decimals, anything else is written as it is
+    if isinstance(value, (int, float, np.integer, np.floating)):
+        return "undefined" if pd.isna(value) else f"{value:,.3f}"
+
+    return str(value)
 
 def abstract_case_trajectory(visits: pd.DataFrame, case_id: str) -> str:
     lines = [f"Trajectory of case {case_id}, one line per visit of a state, in order:"]

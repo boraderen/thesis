@@ -58,6 +58,7 @@ pages = st.navigation(
         "Intra-case states": pipeline("intra"),
         "Resource states": pipeline("resource"),
         "Inter-case states": pipeline("inter"),
-    }
+    },
+    expanded=True,
 )
 pages.run()

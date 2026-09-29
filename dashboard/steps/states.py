@@ -59,7 +59,40 @@ def compute_states(p: str, method: str, compressed: pd.DataFrame) -> dict:
         distances = kairo.get_dbscan_state_distances(model)
 
     return {"method": method, "model": model, "states": states, "frequencies": frequencies,
-            "colors": colors, "distances": distances}
+            "colors": colors, "distances": distances, "scores": compute_scores(p, method, compressed, states, model)}
+
+
+def compute_scores(p: str, method: str, compressed: pd.DataFrame, states: pd.DataFrame, model) -> list[tuple]:
+    """The clustering scores of the method, each with its value and a short explanation."""
+    distance = {"SOM": st.session_state[f"{p}_sel_som_distance"], "k-means": "euclidean",
+                "DBSCAN": st.session_state[f"{p}_sel_dbscan_distance"]}[method]
+    scores = []
+
+    if method == "SOM":
+        scores.append(("Quantization error", f"{kairo.compute_som_quantization_error(compressed, states, model, distance):.3f}",
+                       "Mean distance of every row to its neuron. Lower means the neurons fit the rows more closely. "
+                       "Bigger grids always lower it."))
+        scores.append(("Occupancy entropy", f"{kairo.compute_som_occupancy_entropy(states, model.get_weights().shape[:2]):.2f}",
+                       "How evenly the rows spread over the neurons, from 0 (all in one) to 1 (all equal). "
+                       "Low values mean many empty or tiny states."))
+    if method == "DBSCAN":
+        scores.append(("DBCV", _score(kairo.compute_dbcv(compressed, states, distance)),
+                       "Density-based validation, from -1 to 1, higher is better. Rewards dense states separated "
+                       "by sparse regions, noise counts against it. Scored on a sample of 2,000 rows."))
+
+    scores.append(("Silhouette", _score(kairo.compute_silhouette(compressed, states, distance)),
+                   "From -1 to 1, higher is better. How much closer every row is to its own state than to the "
+                   "nearest other one. Scored on a sample of 5,000 rows, DBSCAN noise left out."))
+    scores.append(("Calinski-Harabasz", _score(kairo.compute_calinski_harabasz(compressed, states), ",.0f"),
+                   "Spread between the states against the spread within them, higher is better. No upper bound, "
+                   "so only compare runs on the same features."))
+
+    return scores
+
+
+def _score(value: float, spec: str = ".3f") -> str:
+    # fewer than two states leave a score undefined
+    return "–" if pd.isna(value) else format(value, spec)
 
 
 def show(p: str) -> None:
@@ -121,7 +154,7 @@ def show(p: str) -> None:
 
     st.subheader("States")
     if st.button("Compute states", type="primary", icon=":material/play_arrow:"):
-        with st.spinner(f"Computing the {method} states…"):
+        with st.spinner(f"Computing the {method} states and their scores…"):
             try:
                 result = compute_states(p, method, compressed)
             except ValueError as exc:
@@ -147,6 +180,12 @@ def show(p: str) -> None:
     ])
     if computed != method:
         st.caption(f"These are the {computed} states — compute again to switch to {method}.")
+
+    # states computed before the scores existed have none until they are computed again
+    if f"{p}_scores" in st.session_state:
+        st.markdown("**Clustering scores**")
+        st.caption("Compare methods and parameters. Hover a score for what it means.")
+        ui.metrics_row(st.session_state[f"{p}_scores"])
 
     # the colors of k-means and dbscan clusters show in their frequency bars, the som grid
     # gets its own plot

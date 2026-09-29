@@ -371,6 +371,26 @@
   <h2>The pipeline</h2>
   <p>Features → scaling → PCA → states (SOM, k-means or DBSCAN) → trajectories → drift signal.
     Scaling and PCA can be skipped.</p>
+
+  <h2>Flexible by design</h2>
+  <p>Every step passes a pandas DataFrame on. <code>read_log</code> gives the log as a DataFrame, so
+    you can compute your own features from it instead of, or next to, kairo's. Any DataFrame with one
+    numeric column per feature and the meta columns, <code>case:concept:name</code> and
+    <code>time:timestamp</code> for events or only <code>time:timestamp</code> for calendar windows,
+    can go into scaling, PCA or clustering. Small functions with DataFrames in and out also make kairo
+    easy for coding agents to use and extend.</p>
+  <p>Scaling (<code>standardize</code>) and PCA (<code>apply_pca</code>) both take a DataFrame and return
+    one, so either can be left out:</p>
+  <ul>
+    <li>features → scaling → PCA → clustering, the full pipeline</li>
+    <li>features → scaling → clustering, without PCA</li>
+    <li>features → PCA → clustering, without scaling</li>
+    <li>features → clustering, without both</li>
+  </ul>
+  <pre><code>log = kairo.read_log("log.xes")
+features = my_features(log)        # your own DataFrame
+scaled = kairo.standardize(features, method="zscore")
+kmeans = kairo.compute_kmeans(scaled, k=5)   # PCA skipped</code></pre>
 </section>
 <section class="page" id="installation">
   <h1>Installation</h1>
@@ -379,10 +399,6 @@
   <p>From the repository root, this installs kairo as an editable package, so <code>import kairo</code>
     works in the notebooks and the dashboard:</p>
   <pre><code>uv sync</code></pre>
-  <p>The dashboard starts from its folder:</p>
-  <pre><code>cd dashboard
-uv run streamlit run app.py</code></pre>
-
   <h3>API keys</h3>
   <p>For hosted models, put the key into a <code>.env</code> at the repository root and load it with
     <code>load_dotenv()</code>. Local servers such as LM Studio or vLLM need none.</p>
@@ -435,7 +451,17 @@ tokens = kairo.count_input_tokens("anthropic", messages)
 
 llm = kairo.LLMConnector("anthropic", "claude-sonnet-5", api_key=os.environ["ANTHROPIC_API_KEY"])
 response = llm.call(messages=messages, max_tokens=16000)
-print(kairo.get_response_text(response))</code></pre>
+print(kairo.get_response_text(response))
+
+# a chat: keep the messages, add every answer and follow up, send it all again
+chat_history = messages + [{"role": "assistant", "content": kairo.get_response_text(response)}]
+chat_history += kairo.create_messages("anthropic", None, ["Which cases drive it?"], [])
+response = llm.call(messages=chat_history, max_tokens=16000)
+chat_history.append({"role": "assistant", "content": kairo.get_response_text(response)})
+print(kairo.get_chat_history(chat_history))</code></pre>
+
+  <p>For more, the notebooks in <code>notebooks/</code> run the whole pipeline for every perspective and
+    clustering method, e.g. <code>intra_som.ipynb</code> or <code>resource_kmeans.ipynb</code>.</p>
 </section>
 <section class="page" id="api">
 <h1>API</h1>
@@ -451,6 +477,7 @@ print(kairo.get_response_text(response))</code></pre>
   <a class="card" href="#api-som"><h3>SOM</h3><p>States on a grid.</p></a>
   <a class="card" href="#api-kmeans"><h3>k-means</h3><p>k states.</p></a>
   <a class="card" href="#api-dbscan"><h3>DBSCAN</h3><p>Dense regions as states.</p></a>
+  <a class="card" href="#api-scores"><h3>Clustering scores</h3><p>How good the states are.</p></a>
   <a class="card" href="#api-trajectories"><h3>Frequencies and trajectories</h3><p>States over time.</p></a>
   <a class="card" href="#api-drift"><h3>Drift</h3><p>Signals per window.</p></a>
   <a class="card" href="#api-llm"><h3>Language models</h3><p>Text and connectors.</p></a>
@@ -793,6 +820,29 @@ print(kairo.get_response_text(response))</code></pre>
 </tbody></table>
 <p><strong>Returns</strong> a plotly figure, with the values written for up to 10 clusters.</p>
 
+<h2 id="api-scores">Clustering scores</h2>
+<p>Score the states to compare methods and parameters, e.g. several <code>k</code>, grid sizes or
+  <code>eps</code>, or the pipeline with and without PCA. <code>df</code> is the frame the states were computed
+  on, <code>states</code> what <code>get_som_winners</code>, <code>get_kmeans_clusters</code> or
+  <code>get_dbscan_clusters</code> returned for it. A score that needs two states is <code>nan</code> with fewer.</p>
+<table><thead><tr><th>Function</th><th>For</th><th>Returns</th></tr></thead><tbody>
+<tr><td><code>compute_som_quantization_error(df, states, som, distance="euclidean")</code></td><td>SOM</td>
+  <td>The mean distance of every row to its neuron. Lower fits closer, bigger grids always lower it.</td></tr>
+<tr><td><code>compute_som_occupancy_entropy(states, size)</code></td><td>SOM</td>
+  <td>How evenly the rows spread over the <code>size</code> grid, from 0 (one neuron) to 1 (all equal).</td></tr>
+<tr><td><code>compute_dbcv(df, states, distance="euclidean", sample_size=2000)</code></td><td>DBSCAN</td>
+  <td>Density-based clustering validation, from -1 to 1, higher is better. Rewards dense states apart by sparse
+    regions, noise counts against it. Scored on a sample of the rows.</td></tr>
+<tr><td><code>compute_silhouette(df, states, distance="euclidean", sample_size=5000)</code></td><td>all</td>
+  <td>From -1 to 1, higher is better: how much closer the rows are to their own state than to the nearest other.
+    Scored on a sample, noise left out.</td></tr>
+<tr><td><code>compute_calinski_harabasz(df, states)</code></td><td>all</td>
+  <td>The spread between the states against the spread within, higher is better. Without an upper bound, it
+    only compares runs on the same rows. Noise left out.</td></tr>
+</tbody></table>
+<p>Silhouette and Calinski-Harabasz favour round, equally sized states, so for DBSCAN, whose states can have
+  any shape, DBCV is the fairer measure.</p>
+
 <h2 id="api-trajectories">Frequencies and trajectories</h2>
 <p>These take the states frame of any method, <code>*</code> being <code>som</code>, <code>kmeans</code> or
   <code>dbscan</code>. States are named <code>"(i, j)"</code> for SOM cells, <code>"0"</code>, <code>"1"</code>, … for
@@ -1004,6 +1054,17 @@ plot_dbscan_frequencies(frequencies, color_mapping) -&gt; go.Figure</code></pre>
 </tbody></table>
 <p><strong>Returns</strong> the answer as text.</p>
 
+<h3 id="api-get_chat_history"><code>get_chat_history</code></h3>
+<p>Renders a chat for printing. A chat is a list that grows with every request: the messages of
+  <code>create_messages</code> are added to it, it is sent whole to <code>LLMConnector.call</code>, and every
+  answer is added as <code>{"role": "assistant", "content": text}</code>.</p>
+<pre><code>get_chat_history(chat_history) -&gt; str</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>chat_history</code></td><td>list of messages</td><td>The chat so far.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> one block per message under its role, the system prompt cut to its size and
+  the plots as a placeholder.</p>
+
 <h3 id="api-abstractions">Abstractions</h3>
 <p>Turn a result into text a model can read. Each returns a string.</p>
 <table><thead><tr><th>Function</th><th>Arguments</th><th>The text covers</th></tr></thead><tbody>
@@ -1016,8 +1077,10 @@ plot_dbscan_frequencies(frequencies, color_mapping) -&gt; go.Figure</code></pre>
   <td>The variances, the cut and the strongest features of every kept component.</td></tr>
 <tr><td><code>abstract_states</code></td><td><code>frequencies</code>: from <code>get_*_state_frequencies</code><br>
   <code>distances</code>: from <code>get_*_state_distances</code><br>
-  <code>color_mapping</code>: from <code>compute_*_color_mapping</code></td>
-  <td>The rows per state, the nearest and farthest state of each, and the colors by name.</td></tr>
+  <code>color_mapping</code>: from <code>compute_*_color_mapping</code><br>
+  <code>clustering_scores</code>: optional list of <code>{"type": name, "value": score}</code>, e.g. from the
+  clustering scores</td>
+  <td>The rows per state, the nearest and farthest state of each, the colors by name and the given scores.</td></tr>
 <tr><td><code>abstract_case_trajectory</code></td><td><code>visits</code>: from <code>get_*_case_trajectory</code><br>
   <code>case_id</code>: the id of that case</td>
   <td>Every visit of the case in order.</td></tr>

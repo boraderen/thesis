@@ -1,3 +1,17 @@
+# Quickstart
+
+The dashboard runs on [kairo](kairo), the library of this thesis. With [uv](https://docs.astral.sh/uv/) installed, run from the repository root:
+
+```bash
+uv sync
+uv run streamlit run dashboard/app.py
+```
+
+
+
+
+The kairo docs, with the approach, a walkthrough and the full API, are at [boraderen.github.io/thesis](https://boraderen.github.io/thesis/) and in [kairo/index.html](kairo/index.html).
+
 # Thesis Proposal
 
 It is highly ML focused (see the reference paper https://www.alessandroberti.it/new_papers/2025_Berti_States_SOM.pdf in which feature extraction+PCA+SOM have been applied) and at the same time concrete enough for a BSc thesis (as you have also to implement a dashboard exploring the states).
