@@ -426,11 +426,12 @@ kairo.plot_kmeans_log_trajectory(trajectory, kairo.compute_kmeans_color_mapping(
 distances = kairo.compute_window_distances(compressed, distance="euclidean", reference="previous")</code></pre>
 
   <h3>Ask a model</h3>
-  <pre><code>tokens, messages = kairo.count_input_tokens(
+  <pre><code>messages = kairo.create_messages(
     "anthropic", kairo.DEFAULT_SYSTEM_PROMPT,
     [kairo.abstract_divergences(divergences, "kl", "previous"), "Where does the process drift?"],
     [kairo.plot_divergences(divergences, "kl", "previous")],
 )
+tokens = kairo.count_input_tokens("anthropic", messages)
 
 llm = kairo.LLMConnector("anthropic", "claude-sonnet-5", api_key=os.environ["ANTHROPIC_API_KEY"])
 response = llm.call(messages=messages, max_tokens=16000)
@@ -957,7 +958,7 @@ plot_dbscan_frequencies(frequencies, color_mapping) -&gt; go.Figure</code></pre>
 <p>Sends one request and waits for the answer.</p>
 <pre><code>call(prompt=None, system_prompt=None, plots=None, max_tokens=1000, messages=None)</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
-<tr><td><code>messages</code></td><td>from <code>count_input_tokens</code>, or <code>None</code></td><td>Sent as they are. Without them, the next three arguments build them.</td></tr>
+<tr><td><code>messages</code></td><td>from <code>create_messages</code>, or <code>None</code></td><td>Sent as they are. Without them, the next three arguments build them.</td></tr>
 <tr><td><code>prompt</code></td><td>text</td><td>The question.</td></tr>
 <tr><td><code>system_prompt</code></td><td>text or <code>None</code></td><td>What the model is told first, e.g. <code>DEFAULT_SYSTEM_PROMPT</code>.</td></tr>
 <tr><td><code>plots</code></td><td>list of plotly figures, or <code>None</code></td><td>Sent as images.</td></tr>
@@ -965,17 +966,26 @@ plot_dbscan_frequencies(frequencies, color_mapping) -&gt; go.Figure</code></pre>
 </tbody></table>
 <p><strong>Returns</strong> the provider's response, read with <code>get_response_text</code>.</p>
 
-<h3 id="api-count_input_tokens"><code>count_input_tokens</code></h3>
-<p>Builds the messages of a request and estimates their size before sending.</p>
-<pre><code>count_input_tokens(provider, system_prompt, prompts, plots) -&gt; tuple[int, list]</code></pre>
+<h3 id="api-create_messages"><code>create_messages</code></h3>
+<p>Builds the messages of a request in the format the provider's API takes.</p>
+<pre><code>create_messages(provider, system_prompt, prompts, plots) -&gt; list</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
-<tr><td><code>provider</code></td><td>the four providers of <code>LLMConnector</code></td><td>Decides the image format and the counting rule.</td></tr>
+<tr><td><code>provider</code></td><td>the four providers of <code>LLMConnector</code></td><td>Decides the image format.</td></tr>
 <tr><td><code>system_prompt</code></td><td>text or <code>None</code></td><td>What the model is told first.</td></tr>
 <tr><td><code>prompts</code></td><td>list of texts</td><td>Joined with blank lines, e.g. abstractions and a question.</td></tr>
 <tr><td><code>plots</code></td><td>list of plotly figures, may be empty</td><td>Sent as PNG images.</td></tr>
 </tbody></table>
+<p><strong>Returns</strong> the messages for <code>count_input_tokens</code> and <code>LLMConnector.call</code>.</p>
+
+<h3 id="api-count_input_tokens"><code>count_input_tokens</code></h3>
+<p>Estimates the size of a request before sending.</p>
+<pre><code>count_input_tokens(provider, messages) -&gt; int</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>provider</code></td><td>the four providers of <code>LLMConnector</code></td><td>Decides the counting rule for images.</td></tr>
+<tr><td><code>messages</code></td><td>from <code>create_messages</code></td><td>The request to count.</td></tr>
+</tbody></table>
 <p><strong>Returns</strong> the estimated tokens, text counted as 4 characters a token and images by the
-  provider's rule, and the messages for <code>LLMConnector.call</code>.</p>
+  provider's rule.</p>
 
 <h3 id="api-count_output_tokens"><code>count_output_tokens</code></h3>
 <p>Reads how many tokens an answer took.</p>
@@ -1040,7 +1050,7 @@ plot_dbscan_frequencies(frequencies, color_mapping) -&gt; go.Figure</code></pre>
 <tr><td><code>kairo.DIVERGENCES</code></td><td>dict of <code>kl</code>, <code>js</code>, <code>tv</code> and <code>hellinger</code></td><td><code>compute_divergences</code></td></tr>
 <tr><td><code>kairo.REFERENCES</code></td><td>dict of <code>previous</code>, <code>recent</code> and <code>baseline</code></td><td><code>compute_divergences</code>, <code>compute_window_distances</code></td></tr>
 <tr><td><code>kairo.DISTANCES</code></td><td>dict of <code>euclidean</code>, <code>cosine</code>, <code>manhattan</code> and <code>chebyshev</code></td><td><code>compute_som</code>, <code>compute_dbscan</code>, <code>compute_window_distances</code> and the state distances</td></tr>
-<tr><td><code>kairo.DEFAULT_SYSTEM_PROMPT</code></td><td>text</td><td>The <code>system_prompt</code> of <code>count_input_tokens</code> or <code>LLMConnector.call</code>. It tells the
+<tr><td><code>kairo.DEFAULT_SYSTEM_PROMPT</code></td><td>text</td><td>The <code>system_prompt</code> of <code>create_messages</code> or <code>LLMConnector.call</code>. It tells the
   model what kairo is, the approach, the three perspectives with their features, the five steps with their
   parameters, kairo's functions, and how to answer: only from the shared results, naming states, windows and
   cases as they do, and concretely.</td></tr>

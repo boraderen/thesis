@@ -4,8 +4,17 @@
 /instructions.md
 /notes.md
 /how-to-write-papers.md
-/literature-review.md
-/benchmark-results.md
+
+/literature_agent.md
+/literature_review.md
+
+/benchmark_results.md
+/benchmark_agent.md
+
+/analysis_results.md
+/analyst_agent.md
+
+/software_agent.md
 
 # Local editable/vendor checkouts
 /cdlg-package/
@@ -57,6 +66,7 @@ thesis/*.lot
 thesis/*.idx
 thesis/*.ind
 thesis/*.ilg
+/thesis-de/
 
 /paper
 

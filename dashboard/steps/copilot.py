@@ -162,12 +162,13 @@ def show(p: str) -> None:
 
         with st.spinner("Asking…"):
             try:
-                input_tokens, messages = kairo.count_input_tokens(
+                messages = kairo.create_messages(
                     provider,
                     st.session_state["copilot_sel_system_prompt"],
                     [context, f"Question: {question}"] if context else [question],
                     [plots[name] for name in st.session_state[f"{p}_sel_plots"]],
                 )
+                input_tokens = kairo.count_input_tokens(provider, messages)
                 response = connector.call(messages=messages, max_tokens=int(st.session_state["copilot_sel_max_tokens"]))
             except Exception as exc:
                 st.error(f"The request failed: {exc}")

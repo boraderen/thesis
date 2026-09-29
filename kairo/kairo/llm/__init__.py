@@ -59,10 +59,10 @@ class LLMConnector:
         max_tokens: int = 1000,
         messages: list | None = None,
     ):
-        # messages from count_input_tokens are sent as they are, without them they are
+        # messages from create_messages are sent as they are, without them they are
         # built here the same way from the prompt, the system prompt and the plots
         if messages is None:
-            _, messages = count_input_tokens(self.provider, system_prompt, [prompt], plots or [])
+            messages = create_messages(self.provider, system_prompt, [prompt], plots or [])
 
         return self.connector.call(messages, max_tokens)
 
@@ -204,17 +204,13 @@ def get_response_text(response) -> str:
     return "".join(block.text for block in response.content if block.type == "text")
 
 
-def count_input_tokens(provider: str, system_prompt: str | None, prompts: list[str], plots: list[go.Figure]) -> tuple[int, list]:
-    # the messages the provider's api takes, ready for LLMConnector.call, and about how many
-    # tokens they are. text counts as 4 characters a token, images by the rule the
-    # provider documents for their size in pixels
+def create_messages(provider: str, system_prompt: str | None, prompts: list[str], plots: list[go.Figure]) -> list:
+    # the messages the provider's api takes, ready for LLMConnector.call and count_input_tokens
     text = "\n\n".join(prompts)
-    images = [fig.to_image(format="png") for fig in plots]
-
     content = [{"type": "text", "text": text}]
 
-    for image in images:
-        data = base64.b64encode(image).decode("utf-8")
+    for fig in plots:
+        data = base64.b64encode(fig.to_image(format="png")).decode("utf-8")
 
         if provider == "anthropic":
             content.append({"type": "image", "source": {"type": "base64", "media_type": "image/png", "data": data}})
@@ -226,9 +222,28 @@ def count_input_tokens(provider: str, system_prompt: str | None, prompts: list[s
     if system_prompt:
         messages.insert(0, {"role": "system", "content": system_prompt})
 
-    tokens = len((system_prompt or "") + text) // 4 + sum(_image_tokens(provider, image) for image in images)
+    return messages
 
-    return tokens, messages
+def count_input_tokens(provider: str, messages: list) -> int:
+    # about how many tokens the messages are. text counts as 4 characters a token, images
+    # by the rule the provider documents for their size in pixels
+    characters = 0
+    tokens = 0
+
+    for message in messages:
+        if isinstance(message["content"], str):
+            characters += len(message["content"])
+            continue
+
+        for block in message["content"]:
+            if block["type"] == "text":
+                characters += len(block["text"])
+            elif block["type"] == "image":
+                tokens += _image_tokens(provider, base64.b64decode(block["source"]["data"]))
+            elif block["type"] == "image_url":
+                tokens += _image_tokens(provider, base64.b64decode(block["image_url"]["url"].split(",", 1)[1]))
+
+    return characters // 4 + tokens
 
 def count_output_tokens(provider: str, response) -> int:
     # the api reports it exactly, reasoning included

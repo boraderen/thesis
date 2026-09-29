@@ -79,6 +79,7 @@ from .analysis.plots import (
 from .llm import (
     LLMConnector,
     get_response_text,
+    create_messages,
     count_input_tokens,
     count_output_tokens,
     DEFAULT_SYSTEM_PROMPT,

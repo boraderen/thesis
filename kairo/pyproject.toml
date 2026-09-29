@@ -2,7 +2,6 @@
 name = "kairo"
 version = "0.1.0"
 description = "State-based process monitoring and concept-drift detection for event logs, with LLM-ready abstractions"
-readme = "README.md"
 requires-python = ">=3.10"
 keywords = ["process-mining", "concept-drift", "event-log", "states", "som", "llm"]
 classifiers = [
