@@ -1113,10 +1113,11 @@ plot_dbscan_frequencies(frequencies, color_mapping) -&gt; go.Figure</code></pre>
 <tr><td><code>kairo.DIVERGENCES</code></td><td>dict of <code>kl</code>, <code>js</code>, <code>tv</code> and <code>hellinger</code></td><td><code>compute_divergences</code></td></tr>
 <tr><td><code>kairo.REFERENCES</code></td><td>dict of <code>previous</code>, <code>recent</code> and <code>baseline</code></td><td><code>compute_divergences</code>, <code>compute_window_distances</code></td></tr>
 <tr><td><code>kairo.DISTANCES</code></td><td>dict of <code>euclidean</code>, <code>cosine</code>, <code>manhattan</code> and <code>chebyshev</code></td><td><code>compute_som</code>, <code>compute_dbscan</code>, <code>compute_window_distances</code> and the state distances</td></tr>
-<tr><td><code>kairo.DEFAULT_SYSTEM_PROMPT</code></td><td>text</td><td>The <code>system_prompt</code> of <code>create_messages</code> or <code>LLMConnector.call</code>. It tells the
-  model what kairo is, the approach, the three perspectives with their features, the five steps with their
-  parameters, kairo's functions, and how to answer: only from the shared results, naming states, windows and
-  cases as they do, and concretely.</td></tr>
+<tr><td><code>kairo.DEFAULT_SYSTEM_PROMPT</code></td><td>text</td><td>The <code>system_prompt</code> of <code>create_messages</code> or <code>LLMConnector.call</code>. It makes the
+  model an analysis assistant for drift detection: it explains the method, every feature, what kairo can compute
+  and plot, and the strengths and limits of each perspective, and tells the model to judge the configuration
+  before the signal, stay skeptical of contradicting drift signals, and ask for further checks only when they
+  would change the conclusion.</td></tr>
 </tbody></table>
 </section>
   </main>
