@@ -1,0 +1,5 @@
+# latexmk settings for this thesis, used by VS Code (LaTeX Workshop) and the terminal.
+# main.pdf and main.synctex.gz stay next to main.tex, all auxiliary files go to build/
+$pdf_mode = 1;
+$aux_dir = 'build';
+$emulate_aux = 1;
