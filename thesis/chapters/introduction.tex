@@ -54,33 +54,30 @@ Before we dive into the motivation section, a few general guidelines for writing
 
 \section{Motivation}
 \label{sec:intro_ssec:motiv}
+A played-out event log do not change, but real processes do. The situation in which a process is chaning while being analyzed is called a concept drift For example, two activities are concurrent at the start of an event log but then become sequential. Examples to main triggers of concept drifts are variation like more demand in December, seasonal effects or changed market conditions~\autocite{vanderaalst2016process}. Classical process mining techniques mostly assume that processes at the start and end of the log are the same. In case of a drift, a process model or a KPI over the entire log though mixes two different processes. Process owner therefore must detect, if and when the process changed and what changed~\autocite{bose2011handling}.
 
-In this section, you explain to the reader why:
-\begin{enumerate}
-	\item The problem you are solving is relevant to be solved.
-	\item The existing solutions do not solve the problem and/or have significant problems/shortcomings when doing so.
-\end{enumerate}
-Note that parts of this section are already highlighted in both the abstract and the introduction.
-However, in this section, you dive a bit deeper.
-In a good motivation, you show a (simple) example on which current methods fail, yet, the method that you are going to describe in this thesis actually yields a better result.
+A drift does not restrict itself to the order of activities. Processes run together with a context, which is in analysis sometimes ignored. Process context covers how cases influence each other like competing for the same resources~\autocite{vanderaalst2016process}. A single case is therefore not sufficient to explain the observed behavior alone. Thus, for sucessful explanation of the observed behavior and changes, dependencies inside the cases as well as between the cases need to be analyzed. This leads to the terms of intra-case dependencies and inter-case dependencies~\autocite{senderovich2017intra}. This thesis takes on the terminology and considers a process from three perspectives:
+\begin{itemize}
+	\item \emph{Intra-Case perspective:} The history of a single case up to a specific time, covering which activities happened in which order and how often. Drift example: A new trace variant dominates.
+	      Beispiel: Eine neue Prozessvariante verdrängt eine bestehende.
+	\item \emph{Resource perspective:} The working style of resources like their workload, service times, handover, responsible activities. Drift example: A resource no longer exists and other resource take over the work.
+	\item \emph{Inter-Case perspective:} The current situation of all running cases of the process, covering arrivals, waiting times, case attributes. Drift example: The waiting time between consecutive events within a case increases.
+\end{itemize}
 
-For example, assume that your thesis describes a new \emph{process discovery} algorithm that is able to handle noise, incomplete behavior, and, on top of that, is able to apply label-splitting.
-You can take an (example) event log and show that existing algorithms result in models that are of suboptimal quality.
-Finally, you show a model discovered by your fancy algorithm, and, you explain why this model is so much better.
+From all three perspectives concept drifts can take place, but they can also influence each other. E.g., a new trace variant having a frequent activity becomes dominant (intra-case perspective), the responsible resource of that activity has more work to do (resource perspective), waiting times in the entire process are affected (inter-case perspective). \\
 
-\section{Problem Statement (Concept drift)}
+Existing concept drift detection approaches cover this picture only partially:
+\begin{itemize}
+	\item \emph{Intra-Case perspective:} The history of a single case up to a specific time, covering which activities happened in which order and how often. Drift example: A new trace variant dominates.
+	      Beispiel: Eine neue Prozessvariante verdrängt eine bestehende.
+	\item \emph{Resource perspective:} The working style of resources like their workload, service times, handover, responsible activities. Drift example: A resource no longer exists and other resource take over the work.
+	\item \emph{Inter-Case perspective:} The current situation of all running cases of the process, covering arrivals, waiting times, case attributes. Drift example: The waiting time between consecutive events within a case increases.
+\end{itemize}
+
+\section{Problem Statement}
 \label{sec:intro_ssec:probs}
 
-In this section, you introduce the problem that you are solving.
-A good problem statement is a concise, more general statement of the example motivation that you have used in the motivation section.
 
-For example, in the case of our previous example:
-
-\begin{displayquote}
-	Real event data contains infrequent and incomplete behavior.
-	Furthermore, different recordings of the same activity may refer to conceptually different contextual executions.
-	Existing, state-of-the-art process discovery algorithms cannot discover process models of adequate quality, given event data of the previously described form.
-\end{displayquote}
 
 \section{Research Questions}
 
