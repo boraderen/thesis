@@ -42,7 +42,6 @@ __pycache__/
 .hypothesis/
 .ruff_cache/
 .mypy_cache/
-.streamlit/
 .coverage
 coverage.xml
 htmlcov/
