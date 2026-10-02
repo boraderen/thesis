@@ -23,8 +23,8 @@ WINDOWS = {
 # later step were computed from its old output
 STEPS = {
     "features": ["features", "log_signature"],
-    "pca": ["scaled", "pca", "plot_variance"],
-    "cut": ["cut", "pca_skipped", "compressed", "plot_cut", "plot_kdistance"],
+    "pca": ["scaled", "pca", "plot_variance", "reconstruction_errors", "plot_reconstruction"],
+    "cut": ["cut", "pca_skipped", "compressed", "plot_cut", "plot_reconstruction_cut", "plot_kdistance"],
     "states": ["method", "model", "states", "frequencies", "colors", "distances",
                "plot_colors", "plot_distances", "plot_frequencies_1", "plot_frequencies_2",
                "trajectories", "last_case", "range_trajectories", "plot_trajectories",
@@ -39,6 +39,8 @@ STEPS = {
 PLOTS = {
     "plot_variance": "PCA explained variance",
     "plot_cut": "PCA explained variance with the cut",
+    "plot_reconstruction": "PCA reconstruction error",
+    "plot_reconstruction_cut": "PCA reconstruction error with the cut",
     "plot_kdistance": "DBSCAN k-distance curve",
     "plot_colors": "State colors",
     "plot_distances": "Distances between states",

@@ -72,6 +72,24 @@ def apply_pca(feature_matrix: pd.DataFrame, pca: PCA, cut_component: int) -> pd.
 
     return pd.concat([feature_matrix[meta], compressed], axis=1)
 
+def compute_pca_reconstruction_errors(feature_matrix: pd.DataFrame, pca: PCA) -> pd.Series:
+    # how far the rows lie from their reconstruction out of the first components, for every
+    # number of components the pca fitted: the mean over the rows of the squared euclidean
+    # distance between a row and its reconstruction. it falls with every component kept,
+    # the cut goes where it levels off
+    features = feature_matrix.drop(columns=META, errors="ignore")
+    scores = pca.transform(features)
+    centered = features.to_numpy() - pca.mean_
+
+    # the components are orthonormal, so every kept one takes its squared score off the
+    # squared distance of the row to the mean, no row has to be reconstructed
+    errors = (centered ** 2).sum(axis=1).mean() - np.cumsum((scores ** 2).mean(axis=0))
+
+    # rounding can leave a tiny negative error once all the variance is kept
+    errors = np.maximum(errors, 0.0)
+
+    return pd.Series(errors, index=range(1, pca.n_components_ + 1), name="error").rename_axis("components")
+
 
 # SOM
 

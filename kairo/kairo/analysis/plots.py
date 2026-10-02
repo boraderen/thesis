@@ -60,6 +60,28 @@ def plot_pca_variances(pca: PCA, cut_component: int = None) -> go.Figure:
 
     return fig
 
+def plot_pca_reconstruction_errors(errors: pd.Series, cut_component: int = None) -> go.Figure:
+    # errors is what compute_pca_reconstruction_errors returns. the elbow of the curve, where
+    # one more component barely lowers the error, is a good cut
+    if cut_component:
+        title = f"PCA reconstruction error with {cut_component} components kept: {errors.loc[cut_component]:,.3f}"
+    else:
+        title = "PCA reconstruction error per number of components kept"
+
+    fig = px.line(
+        x=errors.index,
+        y=errors.to_numpy(),
+        markers=True,
+        labels={"x": "Components kept", "y": "Reconstruction error"},
+        title=title,
+    )
+
+    # the line runs through the error of the kept components
+    if cut_component:
+        fig.add_vline(x=cut_component, line_dash="dash", line_color="darkred")
+
+    return fig
+
 
 # SOM
 

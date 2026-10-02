@@ -45,21 +45,30 @@ def show(p: str) -> None:
         st.number_input("Cut after component", min_value=1, max_value=max_cut, step=1, key=f"{p}_sel_cut")
 
     st.title("PCA")
-    st.caption("Scale the features and fit the components to see their variances, then cut. "
-               "Or skip PCA and compute the states on the scaled features.")
+    st.caption("Scale the features and fit the components to see their variances and reconstruction errors, "
+               "then cut. Or skip PCA and compute the states on the scaled features.")
 
-    st.subheader("1 · Explained variance")
+    st.subheader("1 · Explained variance and reconstruction error")
     if st.button("Compute PCA", type="primary", icon=":material/play_arrow:"):
-        with st.spinner("Scaling the features and fitting the components…"):
+        with st.spinner("Scaling the features, fitting the components and measuring the reconstruction error…"):
             scaled = scale(features, st.session_state[f"{p}_sel_scaling"])
             pca = kairo.compute_pca(scaled, int(st.session_state[f"{p}_sel_components"]))
+            errors = kairo.compute_pca_reconstruction_errors(scaled, pca)
         ui.clear_from(p, "pca")
         st.session_state[f"{p}_scaled"] = scaled
         st.session_state[f"{p}_pca"] = pca
+        st.session_state[f"{p}_reconstruction_errors"] = errors
         st.session_state[f"{p}_plot_variance"] = kairo.plot_pca_variances(pca)
+        st.session_state[f"{p}_plot_reconstruction"] = kairo.plot_pca_reconstruction_errors(errors)
         # the cut in the sidebar was drawn before the fit, its maximum changed
         st.rerun()
-    ui.show_plot(f"{p}_plot_variance", "Fit the components to see how much variance each one carries.")
+    variance_column, reconstruction_column = st.columns(2)
+    with variance_column:
+        ui.show_plot(f"{p}_plot_variance", "Fit the components to see how much variance each one carries.")
+    with reconstruction_column:
+        ui.show_plot(f"{p}_plot_reconstruction",
+                     "Fit the components to see how closely the first ones reconstruct the rows. "
+                     "The elbow of the curve is a good cut.")
 
     st.subheader("2 · Cut")
     apply_column, skip_column, _ = st.columns([1, 1, 3])
@@ -70,6 +79,10 @@ def show(p: str) -> None:
         st.session_state[f"{p}_cut"] = cut
         st.session_state[f"{p}_compressed"] = kairo.apply_pca(st.session_state[f"{p}_scaled"], pca, cut)
         st.session_state[f"{p}_plot_cut"] = kairo.plot_pca_variances(pca, cut)
+        # a pca fitted before the reconstruction errors existed has none until it is fitted again
+        errors = st.session_state.get(f"{p}_reconstruction_errors")
+        if errors is not None:
+            st.session_state[f"{p}_plot_reconstruction_cut"] = kairo.plot_pca_reconstruction_errors(errors, cut)
     if skip_column.button("Skip PCA", icon=":material/skip_next:", width="stretch"):
         # the scaled features go on to the states as they are
         scaled = scale(features, st.session_state[f"{p}_sel_scaling"])
@@ -83,7 +96,11 @@ def show(p: str) -> None:
     if st.session_state.get(f"{p}_pca_skipped"):
         st.info(f"PCA skipped, the states are computed on the {columns:,} feature columns.", icon=":material/skip_next:")
     else:
-        ui.show_plot(f"{p}_plot_cut", "Pick the cut in the sidebar and apply PCA, or skip it.")
+        cut_column, reconstruction_cut_column = st.columns(2)
+        with cut_column:
+            ui.show_plot(f"{p}_plot_cut", "Pick the cut in the sidebar and apply PCA, or skip it.")
+        with reconstruction_cut_column:
+            ui.show_plot(f"{p}_plot_reconstruction_cut", "The reconstruction error the cut leaves.")
 
     if compressed is not None:
         width = compressed.drop(columns=META, errors="ignore").shape[1]

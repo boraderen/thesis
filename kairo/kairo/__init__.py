@@ -7,6 +7,7 @@ from .analysis import (
     standardize,
     compute_pca,
     apply_pca,
+    compute_pca_reconstruction_errors,
     compute_som,
     get_som_winners,
     get_som_state_frequencies,
@@ -56,6 +57,7 @@ from .analysis.inter import (
 from .analysis.plots import (
     plot_activity_counts,
     plot_pca_variances,
+    plot_pca_reconstruction_errors,
     plot_som_u_matrix,
     plot_som_heatmap,
     compute_som_color_mapping,

@@ -635,12 +635,33 @@ print(kairo.get_chat_history(chat_history))</code></pre>
   <code>pc_&lt;cut_component&gt;</code>, keeping the index. This is the input of the clustering. To skip PCA, cluster
   the scaled features directly.</p>
 
+<h3 id="api-compute_pca_reconstruction_errors"><code>compute_pca_reconstruction_errors</code></h3>
+<p>Measures how closely the first components reconstruct the rows, for every number of components kept. The
+  elbow of the curve is a good cut.</p>
+<pre><code>compute_pca_reconstruction_errors(feature_matrix, pca) -&gt; pd.Series</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>feature_matrix</code></td><td>the frame <code>pca</code> was fitted on</td><td>The rows to reconstruct.</td></tr>
+<tr><td><code>pca</code></td><td>from <code>compute_pca</code></td><td>The fitted components.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a Series named <code>"error"</code>, indexed by the components kept, 1 to the fitted
+  ones: the mean over the rows of the squared euclidean distance between a row and its reconstruction. It falls
+  with every component kept, to 0 once they explain all the variance.</p>
+
 <h3 id="api-plot_pca_variances"><code>plot_pca_variances</code></h3>
 <p>Draws the explained variance of every component as bars.</p>
 <pre><code>plot_pca_variances(pca, cut_component=None) -&gt; go.Figure</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>pca</code></td><td>from <code>compute_pca</code></td><td>The fitted components.</td></tr>
 <tr><td><code>cut_component</code></td><td>integer or <code>None</code></td><td>Draws a dashed line after this component and titles the variance kept. <code>None</code> draws no line.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure.</p>
+
+<h3 id="api-plot_pca_reconstruction_errors"><code>plot_pca_reconstruction_errors</code></h3>
+<p>Draws the reconstruction error against the number of components kept as a line.</p>
+<pre><code>plot_pca_reconstruction_errors(errors, cut_component=None) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>errors</code></td><td>from <code>compute_pca_reconstruction_errors</code></td><td>The errors to draw.</td></tr>
+<tr><td><code>cut_component</code></td><td>integer or <code>None</code></td><td>Draws a dashed line at this component and titles the error it leaves. <code>None</code> draws no line.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> a plotly figure.</p>
 
