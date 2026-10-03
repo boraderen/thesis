@@ -54,22 +54,31 @@ Before we dive into the motivation section, a few general guidelines for writing
 
 \section{Motivation}
 \label{sec:intro_ssec:motiv}
-Played-out event logs do not change, but real processes do. Following \textcite{vanderaalst2016process}, the situation in which a process is changing while being analyzed is called a concept drift. For example, two activities are concurrent at the start of an event log but then become sequential. According to \textcite{vanderaalst2016process}, examples to main triggers of concept drifts are variation like more demand in December, seasonal effects, or changed market conditions. Classical process mining techniques mostly assume that processes at the start and end of the log are the same (\textcite{bose2011handling}). In case of a drift, process models or key performance indicators (KPI) over the entire log though mixes two different processes. The process owner therefore must detect, if and when the process changed and what changed.
+Played-out event logs do not change, but real processes do. Following \textcite{vanderaalst2016process}, the situation in which a process is changing while being analyzed is called a concept drift. For example, two activities are concurrent at the start of an event log but then become sequential. According to \textcite{vanderaalst2016process}, typical triggers of concept drift are seasonal effects, such as higher demand in December, and changed market conditions. Classical process mining techniques mostly assume that the process at the start and at the end of the log is the same~\autocite{bose2011handling}. If a drift occurs, process models or key performance indicators (KPIs) computed over the entire log mix two different processes. The process owner must therefore detect whether and when the process changed, and what changed.
 
-A drift does not restrict itself to the order of activities. Processes run together with a context, which is in analysis sometimes ignored. As described by \textcite{vanderaalst2016process}, process context covers how cases influence each other like competing for the same resources. A single case is therefore not sufficient to explain the observed behavior alone. Thus, for successful explanation of the observed behavior and changes, dependencies inside the cases as well as between the cases and dependencies with the resources need to be analyzed. This leads to the terms of intra-case dependencies and inter-case dependencies introduced by \textcite{senderovich2017intra}. This thesis takes on the terminology and considers a process from three perspectives:
+A drift does not restrict itself to the order of activities. Processes run in a context, but process analysis sometimes ignores it. As described by \textcite{vanderaalst2016process}, process context covers how cases influence each other like competing for the same resources. A single case is therefore not sufficient to explain the observed behavior alone. Thus, for successful explanation of the observed behavior and changes, dependencies inside the cases as well as between the cases and dependencies with the resources need to be analyzed. This leads to the terms of intra-case dependencies and inter-case dependencies introduced by \textcite{senderovich2017intra}. This thesis takes on the terminology and considers a process from three perspectives:
 \begin{itemize}
 	\item \emph{Intra-case perspective:} The history of a single case up to a specific time, covering which activities happened in which order and how often. Drift example: A new trace variant dominates.
-	\item \emph{Resource perspective:} The working style of resources like their workload, service times, handover, responsible activities. Drift example: A resource no longer exists and other resources take over the work.
-	\item \emph{Inter-case perspective:} The current situation of all running cases of the process, covering arrivals, waiting times, case attributes. Drift example: The mean waiting time between consecutive events of a case increases.
+	\item \emph{Resource perspective:} The working style of resources, such as their workload, service times, handovers, and the activities they perform. Drift example: A resource no longer exists and other resources take over the work.
+	\item \emph{Inter-case perspective:} The current situation of all running cases of the process, covering arrivals, waiting times, and case attributes. Drift example: The mean waiting time between consecutive events of a case increases.
 \end{itemize}
 
-From all three perspectives concept drifts can take place, but they can also influence each other. E.g., a new trace variant having a frequent activity becomes dominant (intra-case perspective), the responsible resource of that activity has more work to do (resource perspective), waiting times in the entire process are affected (inter-case perspective).
+From all three perspectives concept drifts can take place, but they can also influence each other. For example, a new trace variant with a frequent activity becomes dominant (intra-case perspective). The resource responsible for that activity then has more work to do (resource perspective), which affects the waiting times in the entire process (inter-case perspective).
+
+We describe each drift by three properties:
+\begin{itemize}
+	\item \emph{Drift type:} What changes, e.g., the control-flow, the reassignment of an activity to another resource, or the waiting time between consecutive events.
+	\item \emph{Drift perspective:} The perspective to which the drift type belongs. For example, control-flow drifts belong to the intra-case perspective, reassignment drifts to the resource perspective, and waiting time drifts to the inter-case perspective.
+	\item \emph{Drift mode:} How fast the change takes effect, i.e., suddenly or gradually.
+\end{itemize}
+In the literature the terms drift type, drift mode and drift perspective are used interchangably. We reserve the term drift type for what changes, the term drift mode for how it changes and the tern drift perspective in classificational manner for drift types.
 
 Existing concept drift detection approaches cover this picture only partially:
 \begin{itemize}
-	\item \emph{Control-flow focus:} Most of the work on drift detection focuses on control-flow. Out of 38 papers in the survey of \textcite{sato2022survey}, only six focus on the time perspective, three on data perspective, and none on the resource perspective. In our framework, the time and data perspectives fall under the inter-case perspective, and the resource perspective corresponds to our resource perspective. A concept drift causing changes in time or resources perspectives stays undetected with those approaches.
+	\item \emph{Control-flow focus:} Most of the work on drift detection focuses on control-flow. Out of the 38 drift detection papers in the survey of \textcite{sato2022survey}, only six focus on the time perspective, three on the data perspective, and none on the resource perspective. In our framework, waiting times and case attributes fall under the inter-case perspective, and service times under the resource perspective. A concept drift that only changes the time or resource perspective stays undetected with control-flow approaches.
 	\item \emph{Single KPIs:} Approaches beyond control-flow often track single KPIs. \textcite{adams2023explainable} turn each KPI chosen by the user into a time series over time windows and detect drifts in each series separately. A drift therefore shows up as separate change points in several KPIs. This approach does not deliver a compact description of the overall process situation. For steady-state detection, \textcite{kraus2026steady} show that combining complementary process characteristics is more accurate than relying on a single one.
-	\item \emph{Missing test data:} \textcite{sato2022survey} argue that real-world logs are unsuitable for measuring detection accuracy, since their drift points are unknown. They find only three public synthetic datasets with injected drifts. These datasets cover only the control-flow and time perspectives and do not mix different drift types. None of them contains a resource drift or a change in case arrivals.
+	\item \emph{Drift modes:} How fast a change takes effect is also important information for the process owner. Most of the existing approaches focus on sudden drifts only~\autocite{sato2022survey}.
+	\item \emph{Missing test data:} \textcite{sato2022survey} argue that real-world logs are unsuitable for measuring detection accuracy, since their drift points are unknown. They find only three public synthetic datasets with injected drifts. These datasets cover only the control-flow and time perspectives and do not mix different drift modes. None of them contains a resource drift or a change in case arrivals. A recent benchmark by \textcite{padella2026everything} injects drifts into five real logs, but again only into the control-flow and activity durations.
 \end{itemize}
 
 \begin{figure}[tb]
@@ -113,51 +122,56 @@ Existing concept drift detection approaches cover this picture only partially:
 		\end{scope}
 	\end{tikzpicture}
 	\caption[Motivating example: a waiting-time drift that control-flow does not show]{%
-		Visualization of the synthetic Rheon log generated with mean waiting time drift.
+		Visualization of the synthetic Rheon log generated with a mean waiting time drift.
 		At the drift point (dashed), the mean waiting time between consecutive events of a case rises from 14.2 to 45~min, while all cases still follow process tree~$T$.
-		The inter-case state of each 12-hour window switches exactly there from A to an alternation of B and C, D marks the run-out of the log after the last case arrivals.
+		The inter-case state of each 12-hour window switches exactly there from A to an alternation of B and C.
+		State D marks the run-out of the log after the last case arrivals.
 		The alternation of B and C is drawn schematically.}
 	\label{fig:intro:motivation}
 \end{figure}
 
-\Cref{fig:intro:motivation} shows this gap using a synthetic event log generated using Rheon. Rheon is our generator for synthetic event logs with injected concept drifts in all three perspectives (\cref{chap:rheon}). This log has 300,299 cases with 1,946,540 events, seven activities, and seven resources. Its cases arrive between January 1 and December 31, 2020. On April 19, 2020, the mean waiting time between consecutive events of a case jumps from 14.2 minutes to 45 minutes. The activities, the control-flow, the resources, the resource-activity dominances remain unchanged. A detector only comparing relationships between activities will see before and after the drift point the same control-flows and will be unable to detect a change.
+\Cref{fig:intro:motivation} shows this gap using a synthetic event log generated by Rheon. Rheon is our generator for synthetic event logs with injected concept drifts in all three perspectives (\cref{chap:rheon}). This log has 300,299 cases with 1,946,540 events, seven activities, and seven resources. Its cases arrive between January 1 and December 31, 2020. On April 19, 2020, the mean waiting time between consecutive events of a case jumps from 14.2 minutes to 45 minutes. The activities, the control-flow, the resources, and the dominant resource of each activity remain unchanged. A detector that only compares relations between activities sees the same control-flow before and after the drift point and misses the change.
 
-The state-based approach of this thesis aims to detect drifts in all three perspectives and to show what changed. Instead of separate change points per KPI, our states combine many features into one compact description, and Rheon provides test logs with known drift points in all three perspectives. In \textcite{berti2025ocel}, execution states from object-centric event logs are computed for objects. We adapt the approach from objects to cases in our case-centric framework and define our intra-case states. As an extension to their work, our approach also takes into account resource and inter-case perspectives and adapts the idea to them.
+The state-based approach of this thesis aims to detect drifts in all three perspectives and to show what changed. Instead of separate change points per KPI, our states combine many features into one compact description. Rheon provides test logs with known drift points in all three perspectives. In \textcite{berti2025ocel}, execution states from object-centric event logs are computed for objects. We adapt the approach from objects to cases in our case-centric framework and define our intra-case states. As an extension to their work, our approach also takes into account resource and inter-case perspectives and adapts the idea to them.
 
-Overall, we compute states from an event log by extracting features, compressing, and clustering. The input of our approach is an event log, and the output consists of intra-case, resource, and inter-case states whose changes over time indicate drifts. In \cref{fig:intro:motivation} one can visually see the general idea of our approach for the inter-case perspective. We describe each 12-hour window by features such as the number of active cases, arrivals, completions, and the mean waiting time between consecutive events of a case. Following the execution states of \citeauthor{berti2025ocel}, a principal component analysis (PCA) compresses these features. A self-organizing map (SOM) with $2 \times 2$ is trained on these compressed feature vectors and its cells assign each window one of four states.
+Overall, we compute states from an event log by extracting features, compressing, and clustering. The input of our approach is an event log, and the output consists of intra-case, resource, and inter-case states whose changes over time indicate drifts. In \cref{fig:intro:motivation} one can visually see the general idea of our approach for the inter-case perspective. We describe each 12-hour window by features such as the number of active cases, arrivals, completions, and the mean waiting time between consecutive events of a case. Following the execution states of \citeauthor{berti2025ocel}, a principal component analysis (PCA) compresses these features. A $2 \times 2$ self-organizing map (SOM) is trained on these compressed feature vectors. Each of its four cells is one state, and each window gets the state of its best-matching cell.
 
-The pipeline is unsupervised and does not see the drift point or the drift type. As seen in \cref{fig:intro:motivation} all 219 windows before the drift point fall into state~A. From the drift point until December~31, the windows alternate between states~B and~C. The last seven windows, in which the log runs out, form state~D. The first principal component explains 51\% of the variance and is dominated by the mean waiting time between consecutive events of a case. It therefore also shows what changed: after the drift point, more time passes between the events of a case.
+The pipeline is unsupervised and does not see the drift point or the drift type. As seen in \cref{fig:intro:motivation}, all 219 windows before the drift point fall into state~A. From the drift point until December~31, the windows alternate between states~B and~C. The last seven windows, in which the log runs out, form state~D. The first principal component explains 51\% of the variance and is dominated by the mean waiting time between consecutive events of a case. It therefore also shows what changed: after the drift point, more time passes between the events of a case.
 
 \section{Problem Statement}
 \label{sec:intro_ssec:probs}
+An event log records a process over a long period, and the process often changes within this period. Such a concept drift affects the intra-case, resource, or inter-case perspective, or several of them at once. A detector that only captures control-flow drifts therefore misses drifts that only affect the resource or inter-case perspective.
 
+\Textcite{vanderaalst2016process} names three main challenges in dealing with concept drifts:
+\begin{enumerate}
+	\item\label{item:intro:change_point} \emph{Change point detection}: Did the process change? If yes, when did it change?
+	\item\label{item:intro:change_localization} \emph{Change localization and characterization}: What has changed?
+	\item\label{item:intro:change_process} \emph{Change process discovery}: How to capture and predict second-order dynamics?
+\end{enumerate}
 
+According to \citeauthor{vanderaalst2016process}, a process is not static even when there is no drift (first-order dynamics). This makes it even harder to detect changes of the process itself (second-order dynamics). Most approaches compare sliding windows of events with statistical methods. To localize drift points exactly and detect them at different time scales, the window length must vary. Moreover, drifts at different time scales can overlap, as in~\cref{fig:intro:drift_windows}.
+
+This thesis focuses on challenges~\ref{item:intro:change_point} and~\ref{item:intro:change_localization}. To characterize a drift, our framework determines its drift perspective, its drift mode, and what exactly changed.
+
+In conclusion, this thesis focuses on the following problem:
+\begin{itemize}
+	\item \emph{Given:} An event log in which each event belongs to exactly one case. Each event carries a case ID, an activity, and a timestamp, and optionally a resource and case attributes. Drift points, drift types, drift perspectives, and drift modes are unknown.
+	\item \emph{Objective:} Compute intra-case, resource, and inter-case states whose changes over time indicate drifts. From these changes, detect the drift points and determine for each drift its perspective, its mode, and what changed.
+	\item \emph{Evaluation:} We compare the detected drift points with known drift points in two sets of logs. First, synthetic Rheon logs contain drifts in all three perspectives. Second, the benchmark of \textcite{padella2026everything} injects sudden, gradual, and recurring control-flow and duration drifts into five real logs.
+\end{itemize}
+
+\begin{figure}[tb]
+	\centering
+	\includegraphics[width=\textwidth]{figures/vanderaalst_drift_sliding_windows}
+	\caption[Drifts on two different time scales]{
+		A periodically changing process with drifts at two different time scales, taken from \textcite{vanderaalst2016process}. Shorter sliding windows are used to detect short-term drifts. The left half of each sliding window is compared with the right half to spot statistically relevant changes. The larger sliding windows at the bottom are used for long-term drifts.}
+	\label{fig:intro:drift_windows}
+\end{figure}
 
 \section{Research Questions}
 
-The research questions you pose, are questions you need to (largely) answer in order to solve the problem.
-Basically, the combined set of answers to the questions you pose, allow you to solve the research problem.
 
-From the book of Justin Zobel, \enquote{Writing for Computer Science}~\autocite{DBLP:books/sp/Zobel14} (which we highly recommend you to read before writing):
 
-\begin{displayquote}
-	A hypothesis or research question should be specific and precise, and should be
-	unambiguous; the more loosely a concept is defined, the more easily it will satisfy
-	many needs simultaneously, even when these needs are contradictory. And it is
-	important to state what is not being proposed—what the limits on the conclusions
-	will be.
-\end{displayquote}
-
-In the context of our example, we can define many relevant research questions:
-\begin{enumerate}
-	\item What are typical prominent noise patterns in real event data?
-	\item How to detect noise patterns in event data?
-	\item How to detect infrequent behavior in event data?
-	\item How to detect contextually different executions of the same activity?
-	\item How to balance between detected noise patterns, infrequent behavior and imprecise labels?
-	\item \dots
-\end{enumerate}
-Typically, your thesis consists of 3-5 research questions (often multiple more questions can be defined).
 
 \section{Research Goals}
 
