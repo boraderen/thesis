@@ -56,7 +56,7 @@ Before we dive into the motivation section, a few general guidelines for writing
 \label{sec:intro_ssec:motiv}
 Played-out event logs do not change, but real processes do. Following \textcite{vanderaalst2016process}, the situation in which a process is changing while being analyzed is called a concept drift. For example, two activities are concurrent at the start of an event log but then become sequential. According to \textcite{vanderaalst2016process}, typical triggers of concept drift are seasonal effects, such as higher demand in December, and changed market conditions. Classical process mining techniques mostly assume that the process at the start and at the end of the log is the same~\autocite{bose2011handling}. If a drift occurs, process models or key performance indicators (KPIs) computed over the entire log mix two different processes. The process owner must therefore detect whether and when the process changed, and what changed.
 
-A drift does not restrict itself to the order of activities. Processes run in a context, but process analysis sometimes ignores it. As described by \textcite{vanderaalst2016process}, process context covers how cases influence each other like competing for the same resources. A single case is therefore not sufficient to explain the observed behavior alone. Thus, for successful explanation of the observed behavior and changes, dependencies inside the cases as well as between the cases and dependencies with the resources need to be analyzed. This leads to the terms of intra-case dependencies and inter-case dependencies introduced by \textcite{senderovich2017intra}. This thesis takes on the terminology and considers a process from three perspectives:
+A drift does not restrict itself to the order of activities. Processes run in a context, but process analysis sometimes ignores it. As described by \textcite{vanderaalst2016process}, process context covers how cases influence each other like competing for the same resources. A single case is therefore not sufficient to explain the observed behavior alone. To explain the observed behavior and its changes, we analyze dependencies within cases, between cases, and with resources. For these dependencies, \textcite{senderovich2017intra} introduce the terms intra-case and inter-case dependencies. This thesis adopts this terminology and considers a process from three perspectives:
 \begin{itemize}
 	\item \emph{Intra-case perspective:} The history of a single case up to a specific time, covering which activities happened in which order and how often. Drift example: A new trace variant dominates.
 	\item \emph{Resource perspective:} The working style of resources, such as their workload, service times, handovers, and the activities they perform. Drift example: A resource no longer exists and other resources take over the work.
@@ -69,15 +69,15 @@ We describe each drift by three properties:
 \begin{itemize}
 	\item \emph{Drift type:} What changes, e.g., the control-flow, the reassignment of an activity to another resource, or the waiting time between consecutive events.
 	\item \emph{Drift perspective:} The perspective to which the drift type belongs. For example, control-flow drifts belong to the intra-case perspective, reassignment drifts to the resource perspective, and waiting time drifts to the inter-case perspective.
-	\item \emph{Drift mode:} How fast the change takes effect, i.e., suddenly or gradually.
+	\item \emph{Drift mode:} How the change takes effect over time, e.g., as a sudden, gradual, or recurring change.
 \end{itemize}
-In the literature the terms drift type, drift mode and drift perspective are used interchangably. We reserve the term drift type for what changes, the term drift mode for how it changes and the tern drift perspective in classificational manner for drift types.
+In the literature, the terms drift type, drift mode, and drift perspective are used interchangeably. We reserve the term drift type for what changes, the term drift mode for how it changes, and the term drift perspective for the group a drift type belongs to.
 
 Existing concept drift detection approaches cover this picture only partially:
 \begin{itemize}
 	\item \emph{Control-flow focus:} Most of the work on drift detection focuses on control-flow. Out of the 38 drift detection papers in the survey of \textcite{sato2022survey}, only six focus on the time perspective, three on the data perspective, and none on the resource perspective. In our framework, waiting times and case attributes fall under the inter-case perspective, and service times under the resource perspective. A concept drift that only changes the time or resource perspective stays undetected with control-flow approaches.
 	\item \emph{Single KPIs:} Approaches beyond control-flow often track single KPIs. \textcite{adams2023explainable} turn each KPI chosen by the user into a time series over time windows and detect drifts in each series separately. A drift therefore shows up as separate change points in several KPIs. This approach does not deliver a compact description of the overall process situation. For steady-state detection, \textcite{kraus2026steady} show that combining complementary process characteristics is more accurate than relying on a single one.
-	\item \emph{Drift modes:} How fast a change takes effect is also important information for the process owner. Most of the existing approaches focus on sudden drifts only~\autocite{sato2022survey}.
+	\item \emph{Drift modes:} How a change takes effect over time is also important information for the process owner. Most of the existing approaches focus on sudden drifts only~\autocite{sato2022survey}.
 	\item \emph{Missing test data:} \textcite{sato2022survey} argue that real-world logs are unsuitable for measuring detection accuracy, since their drift points are unknown. They find only three public synthetic datasets with injected drifts. These datasets cover only the control-flow and time perspectives and do not mix different drift modes. None of them contains a resource drift or a change in case arrivals. A recent benchmark by \textcite{padella2026everything} injects drifts into five real logs, but again only into the control-flow and activity durations.
 \end{itemize}
 
@@ -121,7 +121,7 @@ Existing concept drift detection approaches cover this picture only partially:
 			\draw[dashed, thick] (109.5, -0.1) -- (109.5, 3.2);
 		\end{scope}
 	\end{tikzpicture}
-	\caption[Motivating example: a waiting-time drift that control-flow does not show]{%
+	\caption[A waiting-time drift that control-flow does not show]{%
 		Visualization of the synthetic Rheon log generated with a mean waiting time drift.
 		At the drift point (dashed), the mean waiting time between consecutive events of a case rises from 14.2 to 45~min, while all cases still follow process tree~$T$.
 		The inter-case state of each 12-hour window switches exactly there from A to an alternation of B and C.
@@ -169,44 +169,50 @@ In conclusion, this thesis focuses on the following problem:
 \end{figure}
 
 \section{Research Questions}
+The main research question of this thesis is:
+\begin{quote}
+	\emph{Can a process be monitored as a combination of intra-case, resource and inter-case states, and is this combination a useful indicator for a concept drift in traditional case-centric event logs?}
+\end{quote}
 
-
-
+We divide our main research question into five further questions:
+\begin{enumerate}[label=\textbf{RQ\arabic*}, ref=RQ\arabic*, leftmargin=*]
+	\item\label{item:intro:rq_states} \emph{States:} How can we compute execution states from a traditional event log in the intra-case, resource and inter-case perspectives, and how interpretable are these states in explaining concept drifts?
+	\item\label{item:intro:rq_detection} \emph{Detection:} Do the changes over time in those states signal drift points even if an event log has drifts in multiple perspectives?
+	\item\label{item:intro:rq_characterization} \emph{Characterization:} Do the states indicate the perspective and the mode of a drift, and which features suit which drift types?
+	\item\label{item:intro:rq_clustering} \emph{Clustering:} Which of the clustering algorithms SOM, k-means and density-based spatial clustering of applications with noise (DBSCAN) delivers the most robust and reliable states?
+	\item\label{item:intro:rq_applicability} \emph{Applicability:} In which processes and event logs is the state-based drift detection approach more reliable and when does it deliver deceptive results?
+\end{enumerate}
+\ref{item:intro:rq_states} addresses the first part of the main research question, monitoring a process through states. \ref{item:intro:rq_detection} to~\ref{item:intro:rq_applicability} cover the second part of the main research question, the usage of the states as an indicator for concept drift detection.
 
 \section{Research Goals}
+In order to answer the research questions, we follow seven research goals. Each goal lists the research questions it addresses in parentheses.
+\begin{enumerate}[label=\textbf{RG\arabic*}, ref=RG\arabic*, leftmargin=*]
+	\item\label{item:intro:rg_terminology} \emph{Terminology:} To clearly define drift type, drift mode and drift perspective (\ref{item:intro:rq_characterization}).
+	\item\label{item:intro:rg_rheon} \emph{Test data:} Develop a generator for synthetic event logs that injects concept drifts of various drift types in two drift modes (sudden and gradual). Along with each log, the generator writes a metadata file that lists the injected drifts (\ref{item:intro:rq_detection}, \ref{item:intro:rq_characterization}, \ref{item:intro:rq_applicability}).
+	\item\label{item:intro:rg_framework} \emph{Framework:} Develop a state-based framework for concept drift detection (\ref{item:intro:rq_states}, \ref{item:intro:rq_detection}). It adapts execution states from \textcite{berti2025ocel} for objects to cases and extends them to resource and inter-case states.
+	\item\label{item:intro:rg_library} \emph{Library:} Develop an AI-extended Python library that implements our framework (\ref{item:intro:rq_states}, \ref{item:intro:rq_clustering}). The library offers each result as a plot or text for large language models (LLM) and also provides LLM connections.
+	\item\label{item:intro:rg_dashboard} \emph{Dashboard:} Develop a user-friendly dashboard around the library (\ref{item:intro:rq_states}, \ref{item:intro:rq_characterization}). In the dashboard, users compute and analyze results like the states and try different pipelines and configurations with the help of an LLM-based assistant, the Copilot.
+	\item \label{item:intro:rg_evaluation} \emph{Evaluation:} Evaluate the robustness and flexibility of the framework against different processes, event logs and timespans (\ref{item:intro:rq_detection}, \ref{item:intro:rq_applicability})
+	\item \label{item:intro:rg_limitations} \emph{Limitations:} Reveal the limitations of the approach and potential misleading results especially when using the Copilot (\ref{item:intro:rq_applicability})
+\end{enumerate}
 
-In this section, you present your research goals.
-A research goal is a concise statement that s.t., achieving the goal helps you in (partially) solve a research question.
-Hence, the research questions and goals are often very related.
-Furthermore, it should be obvious for the reader what goal answers what problem.
-
-In the context of our previously mentioned questions, some example goals are:
-\begin{itemize}
-	\item Conduct a systematic literature review on noise patterns in real event data.
-	\item Design a noise detection algorithm.
-	\item Formalize the notion of incompleteness in an event log.
-	\item \dots
-\end{itemize}
 
 \section{Contributions}
 
-In this section, you list the contributions that your thesis makes to our wonderful world (of science).
-Again, there is a strong link to the previous section.
-Usually, you have achieved your research goals.
-Hence, the contributions are concrete statements of the goals you have achieved.
-Additionally, your evaluation (most likely also stressed as a goal) is a contribution.
-Any implementation or prototype can also be quantified as a contribution.
-
-Some examples:
+This thesis has six main contributions. Each contribution lists its research goals and chapters in parentheses.
 \begin{itemize}
-	\item A systematic literature review covering 35 articles on noise patterns in real event data
-	\item A noise detection algorithm based on dynamic programming and symbolic linking
-	\item ...
+	\item \emph{Terminology:} A terminology defining and clearly separating drift types (what changes), drift modes (how it changes over time), and drift perspectives (which perspective the drift type belongs to) (\ref{item:intro:rg_terminology}).
+	\item \emph{Rheon:} (\ref{item:intro:rg_rheon}, Chapter~\ref{chap:rheon}). A library that generates synthetic event logs and injects nine drift types from all three perspectives, each suddenly or gradually. For each generated log, Rheon creates a metadata file comprehensively describing how the log was generated and a list of drifts together with their drift points, types and metadata.
+	\item \emph{State-based framework:} A framework that computes the intra-case, resource and inter-case states (\ref{item:intro:rg_framework}, Chapters~\ref{chap:intra_case} to~\ref{chap:inter_case}). The framework consists of four steps: feature extraction, dimensionality reduction with PCA, clustering into states, and drift signals. The drift signals compare state distributions of calendar windows with divergences, or state vectors with similarity measures.
+	\item \emph{kairo:} A Python library that implements the framework (\ref{item:intro:rg_library}, Section~\ref{sec:impl:kairo}). With the help of its user-friendly documentation, users create a pipeline configuration in kairo and run it. The library supports various features addressing different drift types, various scaling techniques, PCA, and SOM, k-means and DBSCAN for state clustering. It also computes state frequency distributions for different window sizes, offers multiple divergences and similarity measures, and provides various plotting options for the different pipeline steps.
+	\item \emph{Dashboard:} A dashboard built around kairo (\ref{item:intro:rg_dashboard}, Section~\ref{sec:impl:dashboard}). In a user-friendly user interface (UI), users can upload an event log, run the pipeline steps for each perspective and investigate the states in detail. With the LLM-based Copilot, users ask questions, gain insights about the results and request further steps.
+	\item \emph{Evaluation:} An evaluation on synthetic Rheon logs with different drift combinations from all perspectives and on the five real event logs of \textcite{padella2026everything} (\ref{item:intro:rg_evaluation}, \ref{item:intro:rg_limitations}, Chapters~\ref{chap:eval} and~\ref{chap:discussion}). The evaluation encompasses comprehensive comparisons between SOM, k-means and DBSCAN, and between different configuration parameters like scaling techniques, window sizes and feature selections.
 \end{itemize}
 
-\section{Thesis Structure}
-In this section, you outline the remainder of the thesis.
 
-The remainder of this thesis is structured as follows.
-In \cref{chap:related_work}, we discuss related work.
-In \cref{chap:prelim}, we present basic mathematical preliminaries, used throughout the thesis.
+\section{Thesis Structure}
+The remainder of the thesis is structured as follows. Chapter~\ref{chap:related_work} reviews the literature on concept drift detection and state-based process mining approaches and places this thesis within the literature. Chapter~\ref{chap:prelim} introduces the notation for event logs, foundations of concept drifts, PCA and clustering. Chapter~\ref{chap:rheon} presents Rheon, which generates the synthetic event logs for the evaluation.
+
+Chapters~\ref{chap:intra_case} to~\ref{chap:inter_case} define intra-case, resource and inter-case states and answer \ref{item:intro:rq_states}. Each of these chapters follows the same steps: feature extraction, dimensionality reduction, clustering, and drift signals. Chapter~\ref{chap:impl} describes the implementation of kairo and the dashboard tool.
+
+Chapter~\ref{chap:eval} answers~\ref{item:intro:rq_detection} to~\ref{item:intro:rq_applicability} using the Rheon logs and the benchmark logs of \textcite{padella2026everything}. Chapter~\ref{chap:discussion} discusses the design decisions and limitations of the framework. Chapter~\ref{chap:conclusion} summarizes the results and discusses future directions and potential extensions of the topic.

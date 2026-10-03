@@ -38,14 +38,13 @@ st.logo(str(Path(__file__).parent.parent / "kairo" / "kairo.png"), size="large")
 
 
 def pipeline(p: str) -> list:
-    # the same five pages for every perspective, each in the perspective's folder. the url
+    # the same four pages for every perspective, each in the perspective's folder. the url
     # paths carry the perspective, the file names alone would clash
     return [
         st.Page(f"views/{p}/features.py", title="Features", icon=":material/table_chart:", url_path=f"{p}_features"),
         st.Page(f"views/{p}/pca.py", title="PCA", icon=":material/compress:", url_path=f"{p}_pca"),
         st.Page(f"views/{p}/states.py", title="States & Trajectories", icon=":material/route:", url_path=f"{p}_states"),
         st.Page(f"views/{p}/drift.py", title="Drift Signal", icon=":material/monitoring:", url_path=f"{p}_drift"),
-        st.Page(f"views/{p}/copilot.py", title="Copilot", icon=":material/smart_toy:", url_path=f"{p}_copilot"),
     ]
 
 
@@ -58,6 +57,8 @@ pages = st.navigation(
         "Intra-case states": pipeline("intra"),
         "Resource states": pipeline("resource"),
         "Inter-case states": pipeline("inter"),
+        # one chat over the results of every perspective
+        "Across perspectives": [st.Page("views/copilot.py", title="Copilot", icon=":material/smart_toy:")],
     },
     expanded=True,
 )
