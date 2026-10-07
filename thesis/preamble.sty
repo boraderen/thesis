@@ -23,6 +23,7 @@
 \newcommand*{\coloniff}{\;\vcentcolon\mathrel{\mkern-5mu}\iff}
 \newcommand*{\iffcolon}{\iff\mathrel{\mkern-5mu}\vcentcolon\;}
 \DeclarePairedDelimiter\abs\lvert\rvert
+\DeclarePairedDelimiter\norm\lVert\rVert
 \DeclarePairedDelimiter\seq\langle\rangle
 \providecommand\given{}
 \newcommand\SetSymbol[1][]{%
@@ -41,6 +42,8 @@
 \DeclarePairedDelimiterXPP{\lang}[1]{\mathcal L}{(}{)}{}{#1}
 
 % Process Mining specific symbols
+% universes, e.g., \U{act} for the universe of activities
+\newcommand*{\U}[1]{\mathcal{U}_{\mathit{#1}}}
 \newcommand*{\pset}{{\bullet}}
 \newcommand*{\nomove}{{\gg}}
 \DeclarePairedDelimiter{\fire}{\lbrack}{\rangle}
@@ -53,6 +56,8 @@
 \newtheorem{corollary}{Corollary}[theorem]
 \theoremstyle{definition}
 \newtheorem{definition}{Definition}[section]
+% examples share the counter of the definitions
+\newtheorem{example}[definition]{Example}
 \theoremstyle{remark}
 \newtheorem*{remark}{Remark}
 
