@@ -1,11 +1,11 @@
 \chapter{Preliminaries}
 \label{chap:prelim}
-In this chapter we introduce the notation and definitions that will be used in the next chapters. Section~\ref{sec:prelim:foundations} formally defines event logs, traces and calendar windows. Section~\ref{sec:prelim:drift} formalizes concept drifts with drift points and drift modes. Section~\ref{sec:prelim:pca} describes scaling of features and PCA. Section~\ref{sec:prelim:clustering} presents the three clustering algorithms k-means, DBSCAN and SOMs used in our thesis.
+In this chapter we introduce the notation and definitions that will be used in the next chapters. Section~\ref{sec:prelim:foundations} formally defines event logs and traces, introduces process trees and defines calendar windows. Section~\ref{sec:prelim:drift} formalizes concept drifts with drift points and drift modes. Section~\ref{sec:prelim:pca} describes scaling of features and Principal Component Analysis (PCA). Section~\ref{sec:prelim:clustering} presents the three clustering algorithms k-means, Density-Based Spatial Clustering of Applications with Noise (DBSCAN) and Self-Organizing Maps (SOMs) used in our thesis.
 
 \section{Foundations}
 \label{sec:prelim:foundations}
 
-An event log captures how a process was executed. In the traditional case-centric approach, each event in an event log belongs to exactly one case, relates to exactly one activity and has a timestamp. Case identifier, activity and timestamp are traditionally the required columns in event logs for process mining. Additional attributes like resources, durations, event attributes as well as case attributes allow additional analysis. In Section~\ref{sec:prelim:maths}, we introduce mathematical notation. Section~\ref{sec:prelim:logs} defines event logs, cases and traces, and Section~\ref{sec:prelim:windows} defines calendar windows.
+An event log captures how a process was executed. In the traditional case-centric approach, each event in an event log belongs to exactly one case, relates to exactly one activity and has a timestamp. Case identifier, activity and timestamp are traditionally the required columns in event logs for process mining. Additional attributes like resources, durations, event attributes as well as case attributes allow additional analysis. In Section~\ref{sec:prelim:maths}, we introduce mathematical notation. Section~\ref{sec:prelim:logs} defines event logs, cases and traces, Section~\ref{sec:prelim:process_trees} introduces process trees, and Section~\ref{sec:prelim:windows} defines calendar windows.
 
 
 \subsection{Mathematical Preliminaries}
@@ -158,6 +158,26 @@ We define event logs as a set of events using an attribute function. In this not
 
 	
 \end{example}
+
+\subsection{Process Trees}
+\label{sec:prelim:process_trees}
+A process tree is a hierarchical process model whose leaves are activities and inner nodes operators (\textcite{vanderaalst2016process}). The children $Q_1, \dots, Q_m$ are themselves also process trees.
+\begin{itemize}
+	\item \emph{Sequential composition:} ${\rightarrow}(Q_1, \dots, Q_m)$ executes the children nodes step by step from left to right. E.g., ${\rightarrow}(a, b, c)$ produces only the trace $\seq{a, b, c}$.
+	\item \emph{Exclusive choice:} ${\times}(Q_1, \dots, Q_m)$ executes exactly one child. E.g., ${\times}(a, b, c)$ produces the traces $\seq{a}$, $\seq{b}$ and $\seq{c}$.
+	\item \emph{Parallel composition:} ${\wedge}(Q_1, \dots, Q_m)$ executes all children in any order. E.g., ${\wedge}(a, b, c)$ produces all six orderings of $a$, $b$ and $c$.
+	\item \emph{Redo loop:} ${\circlearrowleft}(Q_1, \dots, Q_m)$ executes first the Do part $Q_1$. Then,  it stops or executes one of the Redo parts $Q_2, \dots, Q_m$ and again $Q_1$. This can be repeated multiple times. E.g.,  ${\circlearrowleft}(a, b, c)$ produces the traces $\seq{a}$, $\seq{a, b, a}$, $\seq{a, c, a}$, $\seq{a, b, a, c, a}$ etc.
+\end{itemize}
+
+Figure~\ref{fig:prelim:process_tree} shows a nested process tree. It produces e.g., the traces $\seq{a, b, d, e, g}$ and $\seq{a, d, c, e, f, b, d, e, h}$.
+
+\begin{figure}[tbp]
+	\centering
+	\includegraphics[width=0.6\textwidth]{figures/vanderaalst_process_tree}
+	\caption[Example process tree]{%
+		The process tree ${\rightarrow}(a, {\circlearrowleft}({\rightarrow}({\wedge}({\times}(b, c), d), e), f), {\times}(g, h))$ showing different process tree operators. Taken from \textcite{vanderaalst2016process}.}
+	\label{fig:prelim:process_tree}
+\end{figure}
 
 \subsection{Calendar Windows}
 \label{sec:prelim:windows}
@@ -383,7 +403,7 @@ Features may have different units and ranges, e.g., binary, one-hot, minutes, co
 	For a constant feature, i.e., $s_i = 0$ or $\underline{x}_i = \overline{x}_i$, we set $x'_{j,i} = 0$ for $1 \le j \le m$.
 \end{definition}
 
-Principal component analysis (PCA) projects vectors onto a few directions in which they spread the most. It thus compresses many, often correlated features into a few components.
+PCA projects vectors onto a few directions in which they spread the most. It thus compresses many, often correlated features into a few components.
 
 \begin{definition}[Principal Component Analysis]
 	\label{def:prelim:pca}
@@ -509,14 +529,14 @@ k-means finds such a clustering by starting with $k$ randomly chosen vectors as 
 
 \subsection{Self-Organizing Maps}
 \label{sec:prelim:som}
-A self-organizing map (SOM) is a neural network whose neurons lie on a usually two-dimensional grid. The model goes back to Kohonen~\autocite{haykin2009neural}. We call a neuron a cell of the grid. Each cell has a prototype in the feature space, and a vector belongs to the cell with the nearest prototype. During training, the cells compete for each vector, the winning cell pulls its neighbors along, and the prototypes adapt to the vector.
+A SOM is a neural network whose neurons lie on a usually two-dimensional grid. The model goes back to Kohonen~\autocite{haykin2009neural}. We call a neuron a cell of the grid. Each cell has a prototype in the feature space, and a vector belongs to the cell with the nearest prototype. During training, the cells compete for each vector, the winning cell pulls its neighbors along, and the prototypes adapt to the vector.
 
 \begin{definition}[Self-Organizing Map]
 	\label{def:prelim:som}
 	Let $X \in \R^{m \times n}$ be a feature matrix with the rows $\mathbf{x}_1^\top, \dots, \mathbf{x}_m^\top$ and $G = \Set{1, \dots, p} \times \Set{1, \dots, q}$ a grid with $p, q \in \N$.
 	\begin{itemize}
 		\item A SOM assigns each cell $\mathbf{r} \in G$ a prototype $\mathbf{w}_{\mathbf{r}}(t) \in \R^n$ at time $t \in \N_0$.
-		\item The best-matching unit (BMU) of a vector $\mathbf{x} \in \R^n$ at time $t$ is the cell $b_t(\mathbf{x}) = \argmin_{\mathbf{r} \in G} \norm{\mathbf{x} - \mathbf{w}_{\mathbf{r}}(t)}$.
+		\item The Best-Matching Unit (BMU) of a vector $\mathbf{x} \in \R^n$ at time $t$ is the cell $b_t(\mathbf{x}) = \argmin_{\mathbf{r} \in G} \norm{\mathbf{x} - \mathbf{w}_{\mathbf{r}}(t)}$.
 		\item The initial prototypes $\mathbf{w}_{\mathbf{r}}(0)$ are, e.g., randomly chosen vectors of $X$.
 		\item In each step $t = 0, 1, \dots, T - 1$, a vector $\mathbf{x}(t) \in \Set{\mathbf{x}_1, \dots, \mathbf{x}_m}$ is chosen, and all prototypes move towards it:
 		      \[
@@ -671,7 +691,7 @@ DBSCAN forms clusters from regions in which vectors lie densely (\textcite{ester
 
 \subsection{Clustering Evaluation}
 \label{sec:prelim:cluster_eval}
-The true groups of the vectors are unknown. Thus, a clustering can only be evaluated with the vectors themselves, e.g., by how compact and how well separated its clusters are. We use five such metrics. The silhouette and the Cali\'nski--Harabasz index evaluate the clusterings of all three algorithms. The quantization error and the occupancy entropy evaluate SOMs, and DBCV evaluates DBSCAN. For SOMs and DBSCAN, the silhouette, the quantization error and DBCV use the same distance as the clustering. The Cali\'nski--Harabasz index always uses the Euclidean distance.
+The true groups of the vectors are unknown. Thus, a clustering can only be evaluated with the vectors themselves, e.g., by how compact and how well separated its clusters are. We use five such metrics. The silhouette and the Cali\'nski--Harabasz index evaluate the clusterings of all three algorithms. The quantization error and the occupancy entropy evaluate SOMs, and Density-Based Clustering Validation (DBCV) evaluates DBSCAN. For SOMs and DBSCAN, the silhouette, the quantization error and DBCV use the same distance as the clustering. The Cali\'nski--Harabasz index always uses the Euclidean distance.
 
 \medskip
 \noindent\emph{Clusters:}
@@ -692,7 +712,14 @@ The silhouette compares the distance of a vector to its own cluster with its dis
 	\]
 	be the mean distances of $\mathbf{x}_j$ to the other vectors of its cluster and to the vectors of the nearest other cluster.
 	\begin{itemize}
-		\item $s(j) = (b(j) - a(j)) / \max\Set{a(j), b(j)}$ is the silhouette of $j$, and $s(j) = 0$ if $\abs{C_l} = 1$.
+		\item The silhouette of $j$ is
+		      \[
+			      s(j) =
+			      \begin{cases}
+				      \dfrac{b(j) - a(j)}{\max\Set{a(j), b(j)}} & \text{if } \abs{C_l} > 1, \\[1.5ex]
+				      0                                          & \text{if } \abs{C_l} = 1.
+			      \end{cases}
+		      \]
 		\item $\mathit{sil}(\mathit{cl}) = \frac{1}{m'} \sum_{j \in I'} s(j)$ is the silhouette of $\mathit{cl}$.
 	\end{itemize}
 \end{definition}
@@ -717,7 +744,7 @@ The silhouette compares the distance of a vector to its own cluster with its dis
 	\item $\mathit{ch}(\mathit{cl})$ is large if the clusters are compact and lie far apart. It has no upper bound and depends on the scale of the features. Thus, it only compares clusterings of the same vectors.
 \end{itemize}
 
-For SOMs, we also measure how closely the prototypes fit the vectors and how evenly the vectors spread over the grid. \textcite{berti2025ocel} use both measures for the grid of their execution states.
+For SOMs, we also measure how closely the prototypes fit the vectors and how evenly the vectors spread over the grid (\textcite{berti2025ocel}).
 
 \begin{definition}[Quantization Error, Occupancy Entropy]
 	\label{def:prelim:som_eval}
@@ -738,7 +765,7 @@ For SOMs, we also measure how closely the prototypes fit the vectors and how eve
 	\item The occupancy entropy is 0 if all vectors lie in one cell and 1 if all cells hold equally many vectors.
 \end{itemize}
 
-DBCV, the density-based clustering validation, compares the density within the clusters with the density between them (\textcite{moulavi2014density}). In a good clustering, even the sparsest region inside a cluster is denser than the region that separates it from the other clusters.
+\textcite{moulavi2014density} designed DBCV to compare the density within the clusters with the density between them. In a good clustering, even the sparsest region inside a cluster is denser than the region that separates it from the other clusters.
 
 \begin{definition}[Density-Based Clustering Validation]
 	\label{def:prelim:dbcv}

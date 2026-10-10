@@ -20,6 +20,9 @@ rheon_docs.html
 # Local editable/vendor checkouts
 /cdlg-package/
 /pm4py-docs/
+/rheon/
+/rheon_paper/
+/data/thesis
 
 # Virtualenv and local config
 /.venv/
