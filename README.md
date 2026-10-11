@@ -1,8 +1,8 @@
-<p align="center">
-  <img src="kairo/kairo.png" alt="kairo logo" width="160">
-</p>
+<img src="kairo/kairo.png" alt="kairo icon" width="96">
+
 
 # Quickstart
+
 
 The dashboard runs on [kairo](kairo), the library of this thesis. With [uv](https://docs.astral.sh/uv/) installed, run from the repository root:
 
