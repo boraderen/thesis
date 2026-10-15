@@ -398,7 +398,7 @@
 
   <h2>What it does</h2>
   <p>Kairo describes a process through states computed from a traditional event log, follows how
-    often every state occurs over calendar windows, and turns changes in that mix into drift signals.
+    often every state occurs over signal windows, and turns changes in that mix into a drift signal.
     Every result has a <code>plot_*</code> function for a figure and an <code>abstract_*</code>
     function for text a language model can read.</p>
 
@@ -408,22 +408,34 @@
     <tbody>
       <tr><td><strong>Intra-case</strong></td><td>an event</td>
         <td>its case so far: the activities, their order and the progress</td></tr>
-      <tr><td><strong>Resource</strong></td><td>a calendar window</td>
+      <tr><td><strong>Resource</strong></td><td>a feature window</td>
         <td>the resources: workload, durations, waits, activity shares and handovers</td></tr>
-      <tr><td><strong>Inter-case</strong></td><td>a calendar window</td>
+      <tr><td><strong>Inter-case</strong></td><td>a feature window</td>
         <td>all running cases: arrivals, completions, pace, stalls and case attributes</td></tr>
     </tbody>
   </table>
 
   <h2>The pipeline</h2>
-  <p>Features → scaling → PCA → states (SOM, k-means or DBSCAN) → trajectories → drift signal.
-    Scaling and PCA can be skipped.</p>
+  <p>Features → scaling → PCA → states (SOM, k-means or DBSCAN) → trajectories → state distributions →
+    drift signal. Scaling and PCA can be skipped.</p>
+
+  <h2>Two kinds of windows</h2>
+  <p>Kairo uses calendar windows, time intervals of fixed length, in two roles:</p>
+  <ul>
+    <li>A <strong>feature window</strong> is one row of the resource and inter-case features, e.g. one day
+      (<code>feature_window="1D"</code>). The intra-case features have none, their rows are events.</li>
+    <li>A <strong>signal window</strong> is one point of the drift signal, e.g. two weeks
+      (<code>signal_window="14D"</code>). It counts the states of the events, or of the feature windows, that
+      fall into it, and is at least as long as the feature windows.</li>
+  </ul>
+  <p>The drift signal is a time series: for every signal window, the divergence of its state distribution
+    from a reference, its drift score.</p>
 
   <h2>Flexible by design</h2>
   <p>Every step passes a pandas DataFrame on. <code>read_log</code> gives the log as a DataFrame, so
     you can compute your own features from it instead of, or next to, kairo's. Any DataFrame with one
     numeric column per feature and the meta columns, <code>case:concept:name</code> and
-    <code>time:timestamp</code> for events or only <code>time:timestamp</code> for calendar windows,
+    <code>time:timestamp</code> for events or only <code>time:timestamp</code> for feature windows,
     can go into scaling, PCA or clustering. Small functions with DataFrames in and out also make kairo
     easy for coding agents to use and extend.</p>
   <p>Scaling (<code>standardize</code>) and PCA (<code>apply_pca</code>) both take a DataFrame and return
@@ -470,29 +482,27 @@ pca = kairo.compute_pca(scaled, num_components=30)
 compressed = kairo.apply_pca(scaled, pca, cut_component=10)
 
 kmeans = kairo.compute_kmeans(compressed, k=5)
-states = pd.concat([compressed, kairo.get_kmeans_clusters(compressed, kmeans)], axis=1)
+states = pd.concat([compressed, kairo.get_kmeans_states(compressed, kmeans)], axis=1)
 
-distributions = kairo.compute_state_distributions(states, window="7D")
-divergences = kairo.compute_divergences(distributions, divergence="kl", reference="previous")
-kairo.plot_divergences(divergences, "kl", "previous").show()</code></pre>
+distributions = kairo.compute_state_distributions(states, signal_window="14D")
+drift_signal = kairo.compute_drift_signal(distributions, divergence="js", reference="previous")
+kairo.plot_drift_signal(drift_signal, "js", "previous").show()</code></pre>
 
   <h3>Resource and inter-case states</h3>
-  <p>One row per calendar window, the rest of the pipeline stays the same. The log follows one
-    trajectory through the states, and the windows' vectors can be compared directly.</p>
-  <pre><code>features = kairo.compute_features_resource(log, window="1D")
-# or: kairo.compute_features_inter(log, window="1D", case_attributes={"case:amount": "numerical"})
+  <p>One row per feature window, the rest of the pipeline stays the same. The log follows one
+    trajectory through the states, and the signal windows have to be at least as long as the feature windows.</p>
+  <pre><code>features = kairo.compute_features_resource(log, feature_window="1D")
+# or: kairo.compute_features_inter(log, feature_window="1D", case_attributes={"case:amount": "numerical"})
 
-# scale, PCA and k-means as above, then
+# scale, PCA, k-means and the drift signal as above, then
 trajectory = kairo.get_kmeans_log_trajectory(states)
-kairo.plot_kmeans_log_trajectory(trajectory, kairo.compute_kmeans_color_mapping(5)).show()
-
-distances = kairo.compute_window_distances(compressed, distance="euclidean", reference="previous")</code></pre>
+kairo.plot_kmeans_log_trajectory(trajectory, kairo.get_kmeans_state_colors(kmeans)).show()</code></pre>
 
   <h3>Ask a model</h3>
   <pre><code>messages = kairo.create_messages(
     "anthropic", kairo.DEFAULT_SYSTEM_PROMPT,
-    [kairo.abstract_divergences(divergences, "kl", "previous"), "Where does the process drift?"],
-    [kairo.plot_divergences(divergences, "kl", "previous")],
+    [kairo.abstract_drift_signal(drift_signal, "js", "previous"), "Where does the process drift?"],
+    [kairo.plot_drift_signal(drift_signal, "js", "previous")],
 )
 tokens = kairo.count_input_tokens("anthropic", messages)
 
@@ -516,7 +526,7 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 <p>A <code>*</code> in a name stands for <code>som</code>, <code>kmeans</code> or <code>dbscan</code>, the three
   functions then take the same arguments. Dates are text such as <code>"2020-07-01"</code> or
   <code>"2020-07-01 12:00"</code>, or pandas Timestamps. The rows of every frame are events for the
-  intra-case perspective and calendar windows for the resource and inter-case perspectives.</p>
+  intra-case perspective and feature windows for the resource and inter-case perspectives.</p>
 <div class="card-grid toc-grid">
   <a class="card" href="#api-logs"><h3>Logs</h3><p>Read a log and describe it.</p></a>
   <a class="card" href="#api-features"><h3>Features</h3><p>One function per perspective.</p></a>
@@ -526,7 +536,7 @@ print(kairo.get_chat_history(chat_history))</code></pre>
   <a class="card" href="#api-dbscan"><h3>DBSCAN</h3><p>Dense regions as states.</p></a>
   <a class="card" href="#api-scores"><h3>Clustering scores</h3><p>How good the states are.</p></a>
   <a class="card" href="#api-trajectories"><h3>Frequencies and trajectories</h3><p>States over time.</p></a>
-  <a class="card" href="#api-drift"><h3>Drift</h3><p>Signals per window.</p></a>
+  <a class="card" href="#api-drift"><h3>Drift</h3><p>The drift signal per signal window.</p></a>
   <a class="card" href="#api-llm"><h3>Language models</h3><p>Text and connectors.</p></a>
   <a class="card" href="#api-constants"><h3>Constants</h3><p>Accepted values.</p></a>
 </div>
@@ -575,13 +585,13 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 <h2 id="api-features">Features</h2>
 <p>Every function returns one row per event (intra-case) or per calendar window (resource, inter-case). The
   feature columns are named <code>group:name</code> and come next to <code>time:timestamp</code>, the time of
-  the event or the start of the window, and for intra-case also <code>case:concept:name</code>. These two
+  the event or the start of the feature window, and for intra-case also <code>case:concept:name</code>. These two
   columns travel along every later step but never enter the maths. A picked feature that needs a column the
   log does not have raises a <code>ValueError</code>.</p>
-<p>A calendar window is a pandas frequency of fixed length, such as <code>"1h"</code>, <code>"6h"</code>,
-  <code>"12h"</code>, <code>"1D"</code>, <code>"3D"</code>, <code>"7D"</code> or <code>"30D"</code>. Windows count
-  from 1 January 1970, so <code>"7D"</code> windows start on Thursdays. Every window from the first to the last
-  event gets a row, windows without events get zeros.</p>
+<p>A feature window is a calendar window, a pandas frequency of fixed length, such as <code>"1h"</code>,
+  <code>"6h"</code>, <code>"12h"</code>, <code>"1D"</code>, <code>"3D"</code>, <code>"7D"</code> or <code>"30D"</code>.
+  Calendar windows count from 1 January 1970, so <code>"7D"</code> windows start on Thursdays. Every feature window
+  from the first to the last event gets a row, feature windows without events get zeros.</p>
 
 <h3 id="api-compute_features_intra"><code>compute_features_intra</code></h3>
 <p>Describes every event by its case up to and including that event, its prefix.</p>
@@ -591,58 +601,58 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 <tr><td><code>features</code></td><td>list of the keys below, default all of them</td><td>The feature groups to compute.</td></tr>
 <tr><td><code>sliding_window_size</code></td><td>integer from 0</td><td>How many previous events <code>past_acts</code> looks back. 0 gives it no columns.</td></tr>
 </tbody></table>
-<table><thead><tr><th>Key</th><th>Columns</th><th>Meaning</th></tr></thead><tbody>
-<tr><td><code>act_freqs</code></td><td><code>act_freqs:&lt;activity&gt;</code></td><td>The share of the activity among the case's events so far.</td></tr>
-<tr><td><code>df_counts</code></td><td><code>df_counts:&lt;a&gt; -&gt; &lt;b&gt;</code></td><td>How often the directly-follows pair a → b occurred in the case so far.</td></tr>
-<tr><td><code>act_set</code></td><td><code>act_set:&lt;activity&gt;</code></td><td>1 once the activity has occurred in the case, else 0.</td></tr>
-<tr><td><code>case_progress</code></td><td><code>case_progress</code></td><td>The position of the event in its case, divided by the case length, so the last event has 1.</td></tr>
-<tr><td><code>current_act</code></td><td><code>current_act:&lt;activity&gt;</code></td><td>1 for the activity of the event itself.</td></tr>
-<tr><td><code>past_acts</code></td><td><code>past_acts_&lt;k&gt;:&lt;activity&gt;</code></td><td>1 for the activity of the event k steps back, 0 while the case has fewer events before.</td></tr>
+<table><thead><tr><th>Key</th><th>Label</th><th>Columns</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>act_freqs</code></td><td>Activity frequencies</td><td><code>act_freqs:&lt;activity&gt;</code></td><td>One column per activity: how often the activity occurs in the prefix, divided by the number of events in the prefix.</td></tr>
+<tr><td><code>df_counts</code></td><td>Directly-follows counts</td><td><code>df_counts:&lt;a&gt; -&gt; &lt;b&gt;</code></td><td>One column per directly-follows pair a -&gt; b that occurs in the log: how often b directly follows a in the prefix.</td></tr>
+<tr><td><code>act_set</code></td><td>Activity set</td><td><code>act_set:&lt;activity&gt;</code></td><td>One column per activity: 1 if the activity occurs in the prefix, else 0.</td></tr>
+<tr><td><code>case_progress</code></td><td>Case progress</td><td><code>case_progress</code></td><td>One column: the position of the event in its case, divided by the number of events of the whole case, so the last event has 1.</td></tr>
+<tr><td><code>current_act</code></td><td>Current activity</td><td><code>current_act:&lt;activity&gt;</code></td><td>One column per activity: 1 for the activity of the event, else 0.</td></tr>
+<tr><td><code>past_acts</code></td><td>Past activities</td><td><code>past_acts_&lt;k&gt;:&lt;activity&gt;</code></td><td>One block of activity columns per step back k = 1, ..., h, where h is the sliding window size: 1 for the activity of the event k steps earlier in the same case, else 0. All 0 if the case has fewer than k earlier events.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> one row per event, in the order and with the index of the log.</p>
 
 <h3 id="api-compute_features_resource"><code>compute_features_resource</code></h3>
 <p>Describes how the resources worked in every calendar window.</p>
-<pre><code>compute_features_resource(log, window="1D", features=FEATURES, resources=None) -&gt; pd.DataFrame</code></pre>
+<pre><code>compute_features_resource(log, feature_window="1D", features=FEATURES, resources=None) -&gt; pd.DataFrame</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>log</code></td><td>a log from <code>read_log</code> with a resource</td><td>The events to describe.</td></tr>
-<tr><td><code>window</code></td><td>pandas frequency</td><td>The size of the calendar windows, one row each.</td></tr>
+<tr><td><code>feature_window</code></td><td>pandas frequency</td><td>The length of the feature windows, one row each.</td></tr>
 <tr><td><code>features</code></td><td>list of the keys below, default all of them</td><td>The feature groups to compute. Without an event duration column, leave <code>res_durations</code> out.</td></tr>
 <tr><td><code>resources</code></td><td>list of resource names, or <code>None</code> for all</td><td>The resources that get columns. The shares and waits still count every resource.</td></tr>
 </tbody></table>
-<table><thead><tr><th>Key</th><th>Columns</th><th>Meaning</th></tr></thead><tbody>
-<tr><td><code>res_events</code></td><td><code>res_events:&lt;r&gt;</code></td><td>Events resource r executed in the window.</td></tr>
-<tr><td><code>res_cases</code></td><td><code>res_cases:&lt;r&gt;</code></td><td>Distinct cases r touched in the window.</td></tr>
-<tr><td><code>res_durations</code></td><td><code>res_durations:&lt;r&gt;</code></td><td>Mean duration of r's events in minutes.</td></tr>
-<tr><td><code>res_waits</code></td><td><code>res_waits:&lt;r&gt;</code></td><td>Mean minutes between an event of r and the previous event of its case, over the events r took over from another resource.</td></tr>
-<tr><td><code>act_res_shares</code></td><td><code>act_res_shares:&lt;a&gt; by &lt;r&gt;</code></td><td>The share of the window's events of activity a that r executed.</td></tr>
-<tr><td><code>handover_shares</code></td><td><code>handover_shares:&lt;r1&gt; -&gt; &lt;r2&gt;</code></td><td>The share of r1's handovers in the window that went to r2.</td></tr>
+<table><thead><tr><th>Key</th><th>Label</th><th>Columns</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>res_events</code></td><td>Events per resource</td><td><code>res_events:&lt;r&gt;</code></td><td>One column per resource: the number of events the resource executed in the feature window.</td></tr>
+<tr><td><code>res_cases</code></td><td>Active cases per resource</td><td><code>res_cases:&lt;r&gt;</code></td><td>One column per resource: the number of distinct cases with at least one event of the resource in the feature window.</td></tr>
+<tr><td><code>res_durations</code></td><td>Mean event duration per resource</td><td><code>res_durations:&lt;r&gt;</code></td><td>One column per resource: the mean event duration in minutes over the resource's events in the feature window, 0 without events. Needs an event duration column.</td></tr>
+<tr><td><code>res_waits</code></td><td>Mean wait into resource</td><td><code>res_waits:&lt;r&gt;</code></td><td>One column per resource: the mean minutes between an event and the previous event of its case, over the handovers to the resource in the feature window, 0 without handovers. A handover is an event whose previous event in the same case another resource executed.</td></tr>
+<tr><td><code>act_res_shares</code></td><td>Activity-resource event shares</td><td><code>act_res_shares:&lt;a&gt; by &lt;r&gt;</code></td><td>One column per pair a by r that occurs in the log: the events of activity a that resource r executed in the feature window, divided by all events of a in the feature window, 0 if a has none.</td></tr>
+<tr><td><code>handover_shares</code></td><td>Handover shares</td><td><code>handover_shares:&lt;r1&gt; -&gt; &lt;r2&gt;</code></td><td>One column per resource pair r1 -&gt; r2 that occurs in the log: the handovers from r1 to r2 in the feature window, divided by all handovers from r1 in the feature window, 0 if r1 has none. A handover counts in the feature window of the receiving event.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> one row per calendar window. Raises a <code>ValueError</code> without a resource
   column, for <code>res_durations</code> without an event duration column, and for a resource the log does not have.</p>
 
 <h3 id="api-compute_features_inter"><code>compute_features_inter</code></h3>
 <p>Describes all cases running in every calendar window.</p>
-<pre><code>compute_features_inter(log, window="1D", features=FEATURES, case_attributes={},
+<pre><code>compute_features_inter(log, feature_window="1D", features=FEATURES, case_attributes={},
                        stall_threshold="1D") -&gt; pd.DataFrame</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>log</code></td><td>a log from <code>read_log</code></td><td>The events to describe.</td></tr>
-<tr><td><code>window</code></td><td>pandas frequency</td><td>The size of the calendar windows, one row each.</td></tr>
+<tr><td><code>feature_window</code></td><td>pandas frequency</td><td>The length of the feature windows, one row each.</td></tr>
 <tr><td><code>features</code></td><td>list of the keys below, default all of them</td><td>The feature groups to compute.</td></tr>
 <tr><td><code>case_attributes</code></td><td>dict of column name to <code>"numerical"</code> or <code>"categorical"</code></td><td>The case attributes the attribute features cover, e.g. <code>{"case:amount": "numerical", "case:region": "categorical"}</code>. Numbers stored as text work too.</td></tr>
 <tr><td><code>stall_threshold</code></td><td>pandas duration, e.g. <code>"1h"</code>, <code>"12h"</code>, <code>"1D"</code>, <code>"3D"</code></td><td>How long a running case may go without an event before it counts as stalled.</td></tr>
 </tbody></table>
-<table><thead><tr><th>Key</th><th>Columns</th><th>Meaning</th></tr></thead><tbody>
-<tr><td><code>active_cases</code></td><td><code>active_cases</code></td><td>Cases with at least one event in the window.</td></tr>
-<tr><td><code>new_arrivals</code></td><td><code>new_arrivals</code></td><td>Cases whose first event falls into the window.</td></tr>
-<tr><td><code>completions</code></td><td><code>completions</code></td><td>Cases whose last event falls into the window.</td></tr>
-<tr><td><code>events_per_case</code></td><td><code>events_per_case</code></td><td>Events in the window divided by its active cases.</td></tr>
-<tr><td><code>mean_delta_t</code></td><td><code>mean_delta_t</code></td><td>Mean minutes between an event and the previous event of its case, in the window of the later one.</td></tr>
-<tr><td><code>std_delta_t</code></td><td><code>std_delta_t</code></td><td>Standard deviation of those minutes.</td></tr>
-<tr><td><code>stalled_cases</code></td><td><code>stalled_cases</code></td><td>Cases still running at the end of the window whose most recent event is older than the stall threshold.</td></tr>
-<tr><td><code>attr_means</code></td><td><code>attr_means:&lt;c&gt;</code></td><td>Mean of every numerical attribute c over the window's events.</td></tr>
-<tr><td><code>attr_stds</code></td><td><code>attr_stds:&lt;c&gt;</code></td><td>Standard deviation of every numerical attribute c over the window's events.</td></tr>
-<tr><td><code>attr_shares</code></td><td><code>attr_shares:&lt;c&gt;=&lt;value&gt;</code></td><td>The share of the window's events carrying every value of a categorical attribute c.</td></tr>
+<table><thead><tr><th>Key</th><th>Label</th><th>Columns</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>active_cases</code></td><td>Active cases</td><td><code>active_cases</code></td><td>One column: the number of distinct cases with at least one event in the feature window.</td></tr>
+<tr><td><code>new_arrivals</code></td><td>New arrivals</td><td><code>new_arrivals</code></td><td>One column: the number of cases whose first event falls into the feature window.</td></tr>
+<tr><td><code>completions</code></td><td>Completions</td><td><code>completions</code></td><td>One column: the number of cases whose last event falls into the feature window.</td></tr>
+<tr><td><code>events_per_case</code></td><td>Events per active case</td><td><code>events_per_case</code></td><td>One column: the number of events in the feature window, divided by the number of active cases, 0 without events.</td></tr>
+<tr><td><code>mean_delta_t</code></td><td>Mean within-case gap</td><td><code>mean_delta_t</code></td><td>One column: the mean minutes between an event and the previous event of its case, over the events in the feature window that have a previous event, 0 without such events.</td></tr>
+<tr><td><code>std_delta_t</code></td><td>Std of within-case gaps</td><td><code>std_delta_t</code></td><td>One column: the standard deviation of the same gaps in minutes, 0 with fewer than two gaps.</td></tr>
+<tr><td><code>stalled_cases</code></td><td>Stalled cases</td><td><code>stalled_cases</code></td><td>One column: the number of cases whose most recent event lies more than the stall threshold before the end of the feature window and that still have a later event. Completed cases never count.</td></tr>
+<tr><td><code>attr_means</code></td><td>Means of numerical attributes</td><td><code>attr_means:&lt;c&gt;</code></td><td>One column per numerical case attribute: the mean of the attribute over the events in the feature window, so a case counts once per event, 0 without events.</td></tr>
+<tr><td><code>attr_stds</code></td><td>Stds of numerical attributes</td><td><code>attr_stds:&lt;c&gt;</code></td><td>One column per numerical case attribute: the standard deviation of the attribute over the events in the feature window, 0 with fewer than two events.</td></tr>
+<tr><td><code>attr_shares</code></td><td>Value shares of categorical attributes</td><td><code>attr_shares:&lt;c&gt;=&lt;value&gt;</code></td><td>One column per value of every categorical case attribute: the events in the feature window that carry the value, divided by all events in the feature window, 0 without events.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> one row per calendar window. Raises a <code>ValueError</code> for an attribute
   column the log does not have, a kind other than numerical or categorical, and a numerical attribute without numbers.</p>
@@ -716,7 +726,7 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 <p>The clustering functions of all three methods take <code>df</code>, the input of the clustering: the output of
   <code>apply_pca</code>, or the scaled features when PCA is skipped. Joining the states onto it gives the
   states frame the later functions take:</p>
-<pre><code>states = pd.concat([compressed, kairo.get_som_winners(compressed, som)], axis=1)</code></pre>
+<pre><code>states = pd.concat([compressed, kairo.get_som_states(compressed, som)], axis=1)</code></pre>
 
 <h3 id="api-compute_som"><code>compute_som</code></h3>
 <p>Trains a self-organizing map. Every cell of its grid is a state, and neighbouring cells hold similar states.</p>
@@ -728,11 +738,11 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 <tr><td><code>distance</code></td><td><code>"euclidean"</code>, <code>"cosine"</code>, <code>"manhattan"</code> or <code>"chebyshev"</code></td><td>How a row finds its closest neuron.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> the trained <code>MiniSom</code>. The neurons start on random rows and see every row
-  once in random order, so the cell numbers change between runs.</p>
+  once in random order, and a fixed seed keeps the grid the same between runs on the same rows.</p>
 
-<h3 id="api-get_som_winners"><code>get_som_winners</code></h3>
-<p>Gives every row the cell of its closest neuron, its state.</p>
-<pre><code>get_som_winners(df, som) -&gt; pd.DataFrame</code></pre>
+<h3 id="api-get_som_states"><code>get_som_states</code></h3>
+<p>Gives every row its state, the cell of its closest neuron.</p>
+<pre><code>get_som_states(df, som) -&gt; pd.DataFrame</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>df</code></td><td>the input of the clustering</td><td>The rows to place on the grid.</td></tr>
 <tr><td><code>som</code></td><td>from <code>compute_som</code></td><td>The trained map.</td></tr>
@@ -748,17 +758,19 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 </tbody></table>
 <p><strong>Returns</strong> a square DataFrame, its rows and columns named <code>"(i, j)"</code>.</p>
 
-<h3 id="api-compute_som_color_mapping"><code>compute_som_color_mapping</code></h3>
-<p>Picks a clearly different color for every cell, shared by all plots.</p>
-<pre><code>compute_som_color_mapping(size) -&gt; dict</code></pre>
+<h3 id="api-get_som_state_colors"><code>get_som_state_colors</code></h3>
+<p>Gives every cell a color for all plots, from the distances of the neurons. The colors follow the distances between the states: close states get similar colors, far apart states very different ones, so a trajectory only changes its color much when it moves to a really different state, and a slow drift through states in between shows as a slow change of color. Multidimensional scaling places the states in three dimensions, which are laid out in the OKLab color space, where equal steps look equally different, with one common scale so the ratios of the distances stay. A state far from all others is pulled in logarithmically, so it does not squeeze the others into one color. The main axis runs from dark blue to light yellow, readable with color blindness. The same model always gives the same colors.</p>
+<pre><code>get_som_state_colors(som, distance="euclidean") -&gt; dict</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
-<tr><td><code>size</code></td><td>the <code>size</code> of <code>compute_som</code></td><td>The grid to color.</td></tr>
+<tr><td><code>som</code></td><td>from <code>compute_som</code></td><td>The trained map.</td></tr>
+<tr><td><code>distance</code></td><td>the four distances of <code>compute_som</code></td><td>How the neurons are compared, best the one the map was trained with.</td></tr>
 </tbody></table>
-<p><strong>Returns</strong> <code>{(i, j): "#rrggbb"}</code>. The same size always gives the same colors.</p>
+<p><strong>Returns</strong> <code>{(i, j): "#rrggbb"}</code>.</p>
 
 <h3 id="api-plot_som_u_matrix"><code>plot_som_u_matrix</code></h3>
-<p>Shows how far every neuron is from its neighbours. Pale cells lie inside a group of similar states, dark
-  ridges are the borders between groups.</p>
+<p>Shows how far every neuron is from its neighbours: the mean distance to its up to eight neighbours, divided
+  by the largest such mean. Pale cells lie inside a group of similar states, dark ridges are the borders between
+  groups.</p>
 <pre><code>plot_som_u_matrix(som) -&gt; go.Figure</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>som</code></td><td>from <code>compute_som</code></td><td>The trained map.</td></tr>
@@ -775,12 +787,12 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 </tbody></table>
 <p><strong>Returns</strong> a plotly figure, with the counts written on grids up to 10 × 10.</p>
 
-<h3 id="api-plot_som_colors"><code>plot_som_colors</code></h3>
+<h3 id="api-plot_som_state_colors"><code>plot_som_state_colors</code></h3>
 <p>Draws the grid in the colors of the states, with how many rows every cell holds.</p>
-<pre><code>plot_som_colors(df, color_mapping) -&gt; go.Figure</code></pre>
+<pre><code>plot_som_state_colors(df, state_colors) -&gt; go.Figure</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>df</code></td><td>the states frame</td><td>The rows to count.</td></tr>
-<tr><td><code>color_mapping</code></td><td>from <code>compute_som_color_mapping</code></td><td>The color of every cell.</td></tr>
+<tr><td><code>state_colors</code></td><td>from <code>get_som_state_colors</code></td><td>The color of every cell.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> a plotly figure, with the counts written on grids up to 10 × 10.</p>
 
@@ -796,9 +808,9 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 </tbody></table>
 <p><strong>Returns</strong> a fitted sklearn <code>KMeans</code>.</p>
 
-<h3 id="api-get_kmeans_clusters"><code>get_kmeans_clusters</code></h3>
-<p>Gives every row its cluster, its state.</p>
-<pre><code>get_kmeans_clusters(df, kmeans) -&gt; pd.DataFrame</code></pre>
+<h3 id="api-get_kmeans_states"><code>get_kmeans_states</code></h3>
+<p>Gives every row its state, its cluster.</p>
+<pre><code>get_kmeans_states(df, kmeans) -&gt; pd.DataFrame</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>df</code></td><td>the frame <code>kmeans</code> was fitted on</td><td>Gives the index.</td></tr>
 <tr><td><code>kmeans</code></td><td>from <code>compute_kmeans</code></td><td>The fitted clusters.</td></tr>
@@ -813,17 +825,17 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 </tbody></table>
 <p><strong>Returns</strong> a square DataFrame, its rows and columns named <code>"0"</code> to <code>"k-1"</code>.</p>
 
-<h3 id="api-compute_kmeans_color_mapping"><code>compute_kmeans_color_mapping</code></h3>
-<p>Picks a clearly different color for every cluster, shared by all plots.</p>
-<pre><code>compute_kmeans_color_mapping(k) -&gt; dict</code></pre>
+<h3 id="api-get_kmeans_state_colors"><code>get_kmeans_state_colors</code></h3>
+<p>Gives every cluster a color for all plots, from the distances of the centers, as <code>get_som_state_colors</code>.</p>
+<pre><code>get_kmeans_state_colors(kmeans) -&gt; dict</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
-<tr><td><code>k</code></td><td>the <code>k</code> of <code>compute_kmeans</code></td><td>The clusters to color.</td></tr>
+<tr><td><code>kmeans</code></td><td>from <code>compute_kmeans</code></td><td>The clusters to color.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> <code>{cluster: "#rrggbb"}</code>.</p>
 
-<h3 id="api-plot_kmeans_distances"><code>plot_kmeans_distances</code></h3>
+<h3 id="api-plot_kmeans_state_distances"><code>plot_kmeans_state_distances</code></h3>
 <p>Draws the distances between the clusters as a matrix.</p>
-<pre><code>plot_kmeans_distances(distances) -&gt; go.Figure</code></pre>
+<pre><code>plot_kmeans_state_distances(distances) -&gt; go.Figure</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>distances</code></td><td>from <code>get_kmeans_state_distances</code></td><td>The distances to draw.</td></tr>
 </tbody></table>
@@ -854,9 +866,9 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 <p><strong>Returns</strong> a fitted sklearn <code>DBSCAN</code>, fitted on the distinct rows weighted by how often
   they occur. Raises a <code>ValueError</code> when every row is noise.</p>
 
-<h3 id="api-get_dbscan_clusters"><code>get_dbscan_clusters</code></h3>
-<p>Gives every row its cluster, its state.</p>
-<pre><code>get_dbscan_clusters(df, dbscan) -&gt; pd.DataFrame</code></pre>
+<h3 id="api-get_dbscan_states"><code>get_dbscan_states</code></h3>
+<p>Gives every row its state, its cluster.</p>
+<pre><code>get_dbscan_states(df, dbscan) -&gt; pd.DataFrame</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>df</code></td><td>the frame <code>dbscan</code> was fitted on</td><td>The rows to look up.</td></tr>
 <tr><td><code>dbscan</code></td><td>from <code>compute_dbscan</code></td><td>The fitted clusters.</td></tr>
@@ -872,17 +884,18 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 </tbody></table>
 <p><strong>Returns</strong> a square DataFrame, its rows and columns named <code>"0"</code> on.</p>
 
-<h3 id="api-compute_dbscan_color_mapping"><code>compute_dbscan_color_mapping</code></h3>
-<p>Picks a clearly different color for every cluster and grey for the noise.</p>
-<pre><code>compute_dbscan_color_mapping(dbscan) -&gt; dict</code></pre>
+<h3 id="api-get_dbscan_state_colors"><code>get_dbscan_state_colors</code></h3>
+<p>Gives every cluster a color for all plots, from the distances of the clusters' core rows, as
+  <code>get_som_state_colors</code>, and the noise a light grey.</p>
+<pre><code>get_dbscan_state_colors(dbscan) -&gt; dict</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>dbscan</code></td><td>from <code>compute_dbscan</code></td><td>The clusters to color.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> <code>{cluster: "#rrggbb"}</code>, with −1 for the noise.</p>
 
-<h3 id="api-plot_dbscan_distances"><code>plot_dbscan_distances</code></h3>
+<h3 id="api-plot_dbscan_state_distances"><code>plot_dbscan_state_distances</code></h3>
 <p>Draws the distances between the clusters as a matrix.</p>
-<pre><code>plot_dbscan_distances(distances) -&gt; go.Figure</code></pre>
+<pre><code>plot_dbscan_state_distances(distances) -&gt; go.Figure</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>distances</code></td><td>from <code>get_dbscan_state_distances</code></td><td>The distances to draw.</td></tr>
 </tbody></table>
@@ -891,8 +904,8 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 <h2 id="api-scores">Clustering scores</h2>
 <p>Score the states to compare methods and parameters, e.g. several <code>k</code>, grid sizes or
   <code>eps</code>, or the pipeline with and without PCA. <code>df</code> is the frame the states were computed
-  on, <code>states</code> what <code>get_som_winners</code>, <code>get_kmeans_clusters</code> or
-  <code>get_dbscan_clusters</code> returned for it. A score that needs two states is <code>nan</code> with fewer.</p>
+  on, <code>states</code> what <code>get_som_states</code>, <code>get_kmeans_states</code> or
+  <code>get_dbscan_states</code> returned for it. A score that needs two states is <code>nan</code> with fewer.</p>
 <table><thead><tr><th>Function</th><th>For</th><th>Returns</th></tr></thead><tbody>
 <tr><td><code>compute_som_quantization_error(df, states, som, distance="euclidean")</code></td><td>SOM</td>
   <td>The mean distance of every row to its neuron. Lower fits closer, bigger grids always lower it.</td></tr>
@@ -925,16 +938,16 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 <tr><td><code>start_date</code>, <code>end_date</code></td><td>dates, or <code>None</code> for an open end</td><td>The range to count in.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> a Series indexed by state and named after what it counts, <code>"events"</code> or
-  <code>"windows"</code>. States without rows are left out.</p>
+  <code>"feature windows"</code>. States without rows are left out.</p>
 
-<h3 id="api-plot_frequencies"><code>plot_kmeans_frequencies</code>, <code>plot_dbscan_frequencies</code></h3>
+<h3 id="api-plot_state_frequencies"><code>plot_kmeans_state_frequencies</code>, <code>plot_dbscan_state_frequencies</code></h3>
 <p>Draws the frequencies as a bar per cluster in its color, clusters without rows included. For SOM,
   <code>plot_som_heatmap</code> does this.</p>
-<pre><code>plot_kmeans_frequencies(frequencies, color_mapping) -&gt; go.Figure
-plot_dbscan_frequencies(frequencies, color_mapping) -&gt; go.Figure</code></pre>
+<pre><code>plot_kmeans_state_frequencies(frequencies, state_colors) -&gt; go.Figure
+plot_dbscan_state_frequencies(frequencies, state_colors) -&gt; go.Figure</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>frequencies</code></td><td>from <code>get_*_state_frequencies</code></td><td>The counts to draw.</td></tr>
-<tr><td><code>color_mapping</code></td><td>from <code>compute_*_color_mapping</code></td><td>The color of every cluster.</td></tr>
+<tr><td><code>state_colors</code></td><td>from <code>get_*_state_colors</code></td><td>The color of every cluster.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> a plotly figure.</p>
 
@@ -950,17 +963,17 @@ plot_dbscan_frequencies(frequencies, color_mapping) -&gt; go.Figure</code></pre>
 
 <h3 id="api-plot_case_trajectory"><code>plot_*_case_trajectory</code></h3>
 <p>Draws the visits of one case over calendar time.</p>
-<pre><code>plot_*_case_trajectory(trajectory, color_mapping, case_id) -&gt; go.Figure</code></pre>
+<pre><code>plot_*_case_trajectory(trajectory, state_colors, case_id) -&gt; go.Figure</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>trajectory</code></td><td>from <code>get_*_case_trajectory</code></td><td>The visits to draw.</td></tr>
-<tr><td><code>color_mapping</code></td><td>from <code>compute_*_color_mapping</code></td><td>The color of every state.</td></tr>
+<tr><td><code>state_colors</code></td><td>from <code>get_*_state_colors</code></td><td>The color of every state.</td></tr>
 <tr><td><code>case_id</code></td><td>the case id</td><td>Names the plot.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> a plotly figure.</p>
 
-<h3 id="api-get_trajectories"><code>get_*_trajectories</code></h3>
+<h3 id="api-get_case_trajectories"><code>get_*_case_trajectories</code></h3>
 <p>Intra-case: follows every case whose first and last event lie between two dates.</p>
-<pre><code>get_*_trajectories(df, start_date=None, end_date=None, max_cases=1000) -&gt; pd.DataFrame</code></pre>
+<pre><code>get_*_case_trajectories(df, start_date=None, end_date=None, max_cases=1000) -&gt; pd.DataFrame</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>df</code></td><td>an intra-case states frame</td><td>The events to follow.</td></tr>
 <tr><td><code>start_date</code>, <code>end_date</code></td><td>dates, or <code>None</code> for an open end</td><td>The range the cases have to lie in.</td></tr>
@@ -969,93 +982,78 @@ plot_dbscan_frequencies(frequencies, color_mapping) -&gt; go.Figure</code></pre>
 <p><strong>Returns</strong> one row per visit with <code>case</code>, <code>state</code>, <code>start</code>,
   <code>end</code>, <code>duration</code> and <code>events</code>.</p>
 
-<h3 id="api-plot_trajectories"><code>plot_*_trajectories</code></h3>
+<h3 id="api-plot_case_trajectories"><code>plot_*_case_trajectories</code></h3>
 <p>Draws the visits of many cases over calendar time, one row per case, the one that started first on top.</p>
-<pre><code>plot_*_trajectories(trajectories, color_mapping) -&gt; go.Figure</code></pre>
+<pre><code>plot_*_case_trajectories(trajectories, state_colors) -&gt; go.Figure</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
-<tr><td><code>trajectories</code></td><td>from <code>get_*_trajectories</code></td><td>The visits to draw.</td></tr>
-<tr><td><code>color_mapping</code></td><td>from <code>compute_*_color_mapping</code></td><td>The color of every state.</td></tr>
+<tr><td><code>trajectories</code></td><td>from <code>get_*_case_trajectories</code></td><td>The visits to draw.</td></tr>
+<tr><td><code>state_colors</code></td><td>from <code>get_*_state_colors</code></td><td>The color of every state.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> a plotly figure.</p>
 
 <h3 id="api-get_log_trajectory"><code>get_*_log_trajectory</code></h3>
-<p>Resource and inter-case: follows the log through its states, window by window.</p>
+<p>Resource and inter-case: follows the log through its states, feature window by feature window.</p>
 <pre><code>get_*_log_trajectory(df, start_date=None, end_date=None) -&gt; pd.DataFrame</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
-<tr><td><code>df</code></td><td>a resource or inter-case states frame</td><td>The windows to follow.</td></tr>
-<tr><td><code>start_date</code>, <code>end_date</code></td><td>dates, or <code>None</code> for an open end</td><td>The range the windows start in.</td></tr>
+<tr><td><code>df</code></td><td>a resource or inter-case states frame</td><td>The feature windows to follow.</td></tr>
+<tr><td><code>start_date</code>, <code>end_date</code></td><td>dates, or <code>None</code> for an open end</td><td>The range the feature windows start in.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> one row per visit with <code>state</code>, <code>start</code>, <code>end</code>,
-  <code>duration</code> and <code>windows</code>.</p>
+  <code>duration</code> and <code>feature_windows</code>.</p>
 
 <h3 id="api-plot_log_trajectory"><code>plot_*_log_trajectory</code></h3>
 <p>Draws the log's visits as one bar over calendar time.</p>
-<pre><code>plot_*_log_trajectory(trajectory, color_mapping) -&gt; go.Figure</code></pre>
+<pre><code>plot_*_log_trajectory(trajectory, state_colors) -&gt; go.Figure</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>trajectory</code></td><td>from <code>get_*_log_trajectory</code></td><td>The visits to draw.</td></tr>
-<tr><td><code>color_mapping</code></td><td>from <code>compute_*_color_mapping</code></td><td>The color of every state.</td></tr>
+<tr><td><code>state_colors</code></td><td>from <code>get_*_state_colors</code></td><td>The color of every state.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> a plotly figure.</p>
 
 <h2 id="api-drift">Drift</h2>
+<p>The drift signal of a perspective is a time series: for every signal window, the divergence of its state
+  distribution from a reference, the drift score of the signal window. A high drift score means the mix of
+  states changed.</p>
 
 <h3 id="api-compute_state_distributions"><code>compute_state_distributions</code></h3>
-<p>Counts the share of every state in every calendar window.</p>
-<pre><code>compute_state_distributions(df, window="7D") -&gt; pd.DataFrame</code></pre>
+<p>Counts the share of every state in every signal window.</p>
+<pre><code>compute_state_distributions(df, signal_window="7D") -&gt; pd.DataFrame</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
-<tr><td><code>df</code></td><td>a states frame</td><td>The rows to count.</td></tr>
-<tr><td><code>window</code></td><td>pandas frequency, e.g. <code>"12h"</code>, <code>"1D"</code>, <code>"7D"</code> or <code>"30D"</code></td><td>The windows to count in. For resource and inter-case states, pick one larger than the feature window, e.g. <code>"30D"</code> over daily features.</td></tr>
+<tr><td><code>df</code></td><td>a states frame</td><td>The rows to count, events or feature windows. A feature window counts in the signal window its start falls into.</td></tr>
+<tr><td><code>signal_window</code></td><td>pandas frequency, e.g. <code>"1D"</code>, <code>"7D"</code>, <code>"14D"</code> or <code>"30D"</code></td><td>The length of the signal windows. For resource and inter-case states it has to be at least as long as the feature window, e.g. <code>"14D"</code> over daily feature windows.</td></tr>
 </tbody></table>
-<p><strong>Returns</strong> one row per window with rows, indexed by its start, and one column per state. Every
-  row adds up to 1.</p>
+<p><strong>Returns</strong> one row per signal window with rows, indexed by its start (<code>signal_window</code>),
+  and one column per state. Every row adds up to 1. Raises a <code>ValueError</code> when the signal window is
+  shorter than the feature windows.</p>
 
 <h3 id="api-plot_state_distributions"><code>plot_state_distributions</code></h3>
-<p>Draws the shares of the states over time as stacked areas.</p>
-<pre><code>plot_state_distributions(distributions, color_mapping) -&gt; go.Figure</code></pre>
+<p>Draws the shares of the states over the signal windows as stacked areas.</p>
+<pre><code>plot_state_distributions(distributions, state_colors) -&gt; go.Figure</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>distributions</code></td><td>from <code>compute_state_distributions</code></td><td>The shares to draw.</td></tr>
-<tr><td><code>color_mapping</code></td><td>from <code>compute_*_color_mapping</code></td><td>The color of every state.</td></tr>
+<tr><td><code>state_colors</code></td><td>from <code>get_*_state_colors</code></td><td>The color of every state.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> a plotly figure.</p>
 
-<h3 id="api-compute_divergences"><code>compute_divergences</code></h3>
-<p>Compares the distribution of every window with a reference. A spike means the mix of states changed.</p>
-<pre><code>compute_divergences(distributions, divergence="kl", reference="previous", lookback=5) -&gt; pd.DataFrame</code></pre>
+<h3 id="api-compute_drift_signal"><code>compute_drift_signal</code></h3>
+<p>Compares the state distribution of every signal window with a reference. The divergence is the drift
+  score of the signal window.</p>
+<pre><code>compute_drift_signal(distributions, divergence="kl", reference="previous", lookback=5) -&gt; pd.DataFrame</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
-<tr><td><code>distributions</code></td><td>from <code>compute_state_distributions</code></td><td>The windows to compare.</td></tr>
+<tr><td><code>distributions</code></td><td>from <code>compute_state_distributions</code></td><td>The signal windows to compare.</td></tr>
 <tr><td><code>divergence</code></td><td><code>"kl"</code>, <code>"js"</code>, <code>"tv"</code> or <code>"hellinger"</code></td><td>How two distributions are compared: KL divergence (unbounded, very sensitive to a state missing on one side), Jensen–Shannon (0 to ln 2), total variation (0 to 1) or Hellinger (0 to 1).</td></tr>
-<tr><td><code>reference</code></td><td><code>"previous"</code>, <code>"recent"</code> or <code>"baseline"</code></td><td>What every window is compared with: the window before it, the mean of the <code>lookback</code> windows before it, or the mean of all windows.</td></tr>
-<tr><td><code>lookback</code></td><td>integer from 1</td><td>How many windows <code>"recent"</code> averages, ignored otherwise.</td></tr>
+<tr><td><code>reference</code></td><td><code>"previous"</code>, <code>"recent"</code> or <code>"baseline"</code></td><td>What every signal window is compared with: the signal window before it, the mean of the <code>lookback</code> signal windows before it, or the mean of all signal windows.</td></tr>
+<tr><td><code>lookback</code></td><td>integer from 1</td><td>How many signal windows <code>"recent"</code> averages, ignored otherwise.</td></tr>
 </tbody></table>
-<p><strong>Returns</strong> the columns <code>window</code> (its start) and <code>score</code>, indexed by the number
-  of the window. Windows without a reference yet have no score.</p>
+<p><strong>Returns</strong> the columns <code>signal_window</code> (its start) and <code>drift_score</code>, one row
+  per signal window. Signal windows without a reference yet have no drift score.</p>
 
-<h3 id="api-plot_divergences"><code>plot_divergences</code></h3>
-<p>Draws the score of every window as a line.</p>
-<pre><code>plot_divergences(divergences, divergence="kl", reference="previous") -&gt; go.Figure</code></pre>
+<h3 id="api-plot_drift_signal"><code>plot_drift_signal</code></h3>
+<p>Draws the drift signal over time: the start of every signal window against its drift score.</p>
+<pre><code>plot_drift_signal(drift_signal, divergence="kl", reference="previous") -&gt; go.Figure</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
-<tr><td><code>divergences</code></td><td>from <code>compute_divergences</code></td><td>The scores to draw.</td></tr>
-<tr><td><code>divergence</code>, <code>reference</code></td><td>the values they were computed with</td><td>Name the axis and the title.</td></tr>
-</tbody></table>
-<p><strong>Returns</strong> a plotly figure.</p>
-
-<h3 id="api-compute_window_distances"><code>compute_window_distances</code></h3>
-<p>Resource and inter-case: compares the vector of every window with a reference directly, without states.</p>
-<pre><code>compute_window_distances(df, distance="euclidean", reference="previous", lookback=5) -&gt; pd.DataFrame</code></pre>
-<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
-<tr><td><code>df</code></td><td>the input of the clustering, one row per window</td><td>The vectors to compare.</td></tr>
-<tr><td><code>distance</code></td><td><code>"euclidean"</code>, <code>"cosine"</code>, <code>"manhattan"</code> or <code>"chebyshev"</code></td><td>How two vectors are compared.</td></tr>
-<tr><td><code>reference</code></td><td><code>"previous"</code>, <code>"recent"</code> or <code>"baseline"</code></td><td>What every window is compared with, as for <code>compute_divergences</code>.</td></tr>
-<tr><td><code>lookback</code></td><td>integer from 1</td><td>How many windows <code>"recent"</code> averages, ignored otherwise.</td></tr>
-</tbody></table>
-<p><strong>Returns</strong> the columns <code>window</code> and <code>score</code>, as <code>compute_divergences</code>.</p>
-
-<h3 id="api-plot_window_distances"><code>plot_window_distances</code></h3>
-<p>Draws the distance of every window as a line.</p>
-<pre><code>plot_window_distances(distances, distance="euclidean", reference="previous") -&gt; go.Figure</code></pre>
-<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
-<tr><td><code>distances</code></td><td>from <code>compute_window_distances</code></td><td>The scores to draw.</td></tr>
-<tr><td><code>distance</code>, <code>reference</code></td><td>the values they were computed with</td><td>Name the axis and the title.</td></tr>
+<tr><td><code>drift_signal</code></td><td>from <code>compute_drift_signal</code></td><td>The drift scores to draw.</td></tr>
+<tr><td><code>divergence</code>, <code>reference</code></td><td>the values it was computed with</td><td>Name the axis and the title.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> a plotly figure.</p>
 
@@ -1145,42 +1143,40 @@ plot_dbscan_frequencies(frequencies, color_mapping) -&gt; go.Figure</code></pre>
   <td>The variances, the cut and the strongest features of every kept component.</td></tr>
 <tr><td><code>abstract_states</code></td><td><code>frequencies</code>: from <code>get_*_state_frequencies</code><br>
   <code>distances</code>: from <code>get_*_state_distances</code><br>
-  <code>color_mapping</code>: from <code>compute_*_color_mapping</code><br>
+  <code>state_colors</code>: from <code>get_*_state_colors</code><br>
   <code>clustering_scores</code>: optional list of <code>{"type": name, "value": score}</code>, e.g. from the
   clustering scores</td>
-  <td>The rows per state, the nearest and farthest state of each, the colors by name and the given scores.</td></tr>
+  <td>The rows per state, the nearest and farthest state of each, the colors by name, close states having similar colors, and the given scores.</td></tr>
 <tr><td><code>abstract_case_trajectory</code></td><td><code>visits</code>: from <code>get_*_case_trajectory</code><br>
   <code>case_id</code>: the id of that case</td>
   <td>Every visit of the case in order.</td></tr>
-<tr><td><code>abstract_case_trajectories</code></td><td><code>trajectories</code>: from <code>get_*_trajectories</code></td>
+<tr><td><code>abstract_case_trajectories</code></td><td><code>trajectories</code>: from <code>get_*_case_trajectories</code></td>
   <td>One line with the number of cases, the first start and last end among them, the mean number of visits
     per case and the median time a case takes. Then the 10 most common paths, a path being the states of a case
     in order such as <code>0 -&gt; 2</code>, each with its cases and their share, and the 10 most common moves
     from one state to the next with how often they happened. Last, the 5 states most cases start in and the 5
     they end in, with their cases.</td></tr>
 <tr><td><code>abstract_log_trajectory</code></td><td><code>trajectory</code>: from <code>get_*_log_trajectory</code></td>
-  <td>One line with the first and last date, the number of calendar windows and the number of visits. Then one
-    line per state, the most frequent first, with its windows, their share and when the state first and last
+  <td>One line with the first and last date, the number of feature windows and the number of visits. Then one
+    line per state, the most frequent first, with its feature windows, their share and when the state first and last
     occurs, so a state that only occurs before or after some date points at a change. Then the 10 most common
     moves from one state to the next with how often they happened, and last the visits in order with their
-    state, start, end and windows, only the 200 longest when there are more.</td></tr>
-<tr><td><code>abstract_distributions</code></td><td><code>distributions</code>: from <code>compute_state_distributions</code></td>
-  <td>The shares of every state and the largest changes between windows.</td></tr>
-<tr><td><code>abstract_divergences</code></td><td><code>divergences</code>: from <code>compute_divergences</code><br>
+    state, start, end and feature windows, only the 200 longest when there are more.</td></tr>
+<tr><td><code>abstract_state_distributions</code></td><td><code>distributions</code>: from <code>compute_state_distributions</code></td>
+  <td>The shares of every state and the largest changes between signal windows.</td></tr>
+<tr><td><code>abstract_drift_signal</code></td><td><code>drift_signal</code>: from <code>compute_drift_signal</code><br>
   <code>divergence</code>, <code>reference</code>, <code>lookback=5</code>: the values it was computed with</td>
-  <td>The scores and the windows with the highest ones.</td></tr>
-<tr><td><code>abstract_window_distances</code></td><td><code>distances</code>: from <code>compute_window_distances</code><br>
-  <code>distance</code>, <code>reference</code>, <code>lookback=5</code>: the values it was computed with</td>
-  <td>The scores and the windows with the highest ones.</td></tr>
+  <td>The drift scores and the signal windows with the highest ones.</td></tr>
 </tbody></table>
 
 <h2 id="api-constants">Constants</h2>
 <p>The values the functions accept, as dicts from the value to its name, e.g. for labels and select boxes, and
   the default system prompt.</p>
 <table><thead><tr><th>Constant</th><th>Value</th><th>Used by</th></tr></thead><tbody>
-<tr><td><code>kairo.DIVERGENCES</code></td><td>dict of <code>kl</code>, <code>js</code>, <code>tv</code> and <code>hellinger</code></td><td><code>compute_divergences</code></td></tr>
-<tr><td><code>kairo.REFERENCES</code></td><td>dict of <code>previous</code>, <code>recent</code> and <code>baseline</code></td><td><code>compute_divergences</code>, <code>compute_window_distances</code></td></tr>
-<tr><td><code>kairo.DISTANCES</code></td><td>dict of <code>euclidean</code>, <code>cosine</code>, <code>manhattan</code> and <code>chebyshev</code></td><td><code>compute_som</code>, <code>compute_dbscan</code>, <code>compute_window_distances</code> and the state distances</td></tr>
+<tr><td><code>kairo.DIVERGENCES</code></td><td>dict of <code>kl</code>, <code>js</code>, <code>tv</code> and <code>hellinger</code></td><td><code>compute_drift_signal</code></td></tr>
+<tr><td><code>kairo.REFERENCES</code></td><td>dict of <code>previous</code>, <code>recent</code> and <code>baseline</code></td><td><code>compute_drift_signal</code></td></tr>
+<tr><td><code>kairo.DISTANCES</code></td><td>dict of <code>euclidean</code>, <code>cosine</code>, <code>manhattan</code> and <code>chebyshev</code></td><td><code>compute_som</code>, <code>compute_dbscan</code> and the state distances</td></tr>
+<tr><td><code>kairo.INTRA_GLOSSARY</code>, <code>kairo.RESOURCE_GLOSSARY</code>, <code>kairo.INTER_GLOSSARY</code></td><td>dict from every feature group to its label and what it computes</td><td>The feature tables above, the dashboard's feature glossaries and the feature descriptions for language models</td></tr>
 <tr><td><code>kairo.DEFAULT_SYSTEM_PROMPT</code></td><td>text</td><td>The <code>system_prompt</code> of <code>create_messages</code> or <code>LLMConnector.call</code>. It makes the
   model an analysis assistant for drift detection: it explains the method, every feature, what kairo can compute
   and plot, and the strengths and limits of each perspective, and tells the model to judge the configuration

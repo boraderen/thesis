@@ -11,7 +11,7 @@ from scipy.special import logsumexp
 META = ["case:concept:name", "time:timestamp"]
 
 DIVERGENCES = {"kl": "KL divergence", "js": "Jensen–Shannon", "tv": "Total variation", "hellinger": "Hellinger"}
-REFERENCES = {"previous": "previous window", "recent": "mean of the recent windows", "baseline": "mean of all windows"}
+REFERENCES = {"previous": "previous signal window", "recent": "mean of the recent signal windows", "baseline": "mean of all signal windows"}
 DISTANCES = {"euclidean": "Euclidean distance", "cosine": "Cosine distance", "manhattan": "Manhattan distance", "chebyshev": "Chebyshev distance"}
 
 
@@ -105,18 +105,19 @@ def compute_som(df: pd.DataFrame, size: tuple[int, int] = (5, 5), learning_rate:
         y=size[1],
         input_len=data.shape[1],
         activation_distance=distance,
-        learning_rate=learning_rate
+        learning_rate=learning_rate,
+        random_seed=0
     )
 
     # start the neurons off on random rows, then show every row once in random order.
-    # the fixed seed above keeps the same run giving the same grid positions
+    # the fixed seed keeps the same run giving the same grid positions
     som.random_weights_init(data)
     som.train(data, num_iteration=len(data), random_order=True)
 
     return som
 
-def get_som_winners(df: pd.DataFrame, som: MiniSom) -> pd.DataFrame:
-    # should return df of two columns giving for each row the winning grid coordinates
+def get_som_states(df: pd.DataFrame, som: MiniSom) -> pd.DataFrame:
+    # the state of every row: the grid cell of its winning neuron, as the columns i and j
     data = df.drop(columns=META, errors="ignore").to_numpy()
 
     winners = pd.DataFrame(
@@ -144,7 +145,7 @@ def get_som_state_distances(som: MiniSom, distance: str = "euclidean") -> pd.Dat
 
     return pd.DataFrame(distances, index=names, columns=names)
 
-def get_som_trajectories(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None, max_cases: int = 10000) -> pd.DataFrame:
+def get_som_case_trajectories(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None, max_cases: int = 10000) -> pd.DataFrame:
     # the states every case in the range went through, one row per visit of a state
     events = _events_in_range(df, start_date, end_date, max_cases, ["i", "j"])
     events["state"] = [f"({i}, {j})" for i, j in zip(events["i"], events["j"])]
@@ -152,11 +153,11 @@ def get_som_trajectories(df: pd.DataFrame, start_date: str | pd.Timestamp = None
     return _state_visits(events)
 
 def get_som_case_trajectory(df: pd.DataFrame, case_id: str) -> pd.DataFrame:
-    return get_som_trajectories(_get_case(df, case_id)).drop(columns="case")
+    return get_som_case_trajectories(_get_case(df, case_id)).drop(columns="case")
 
 def get_som_log_trajectory(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None) -> pd.DataFrame:
-    # the states the log went through window by window, one row per visit of a state. for the
-    # resource and inter-case perspectives, where every row is a calendar window
+    # the states the log went through feature window by feature window, one row per visit of a
+    # state. for the resource and inter-case perspectives, where every row is a feature window
     windows = df[["time:timestamp"]].assign(state=[f"({i}, {j})" for i, j in zip(df["i"], df["j"])])
 
     return _log_visits(windows, start_date, end_date)
@@ -175,8 +176,9 @@ def compute_kmeans(df: pd.DataFrame, k: int = 5) -> KMeans:
 
     return kmeans
 
-def get_kmeans_clusters(df: pd.DataFrame, kmeans: KMeans) -> pd.DataFrame:
-    # the cluster of every row the model was fitted on, so df has to be that same frame
+def get_kmeans_states(df: pd.DataFrame, kmeans: KMeans) -> pd.DataFrame:
+    # the state of every row: its cluster, for the rows the model was fitted on, so df has to be
+    # that same frame
     return pd.DataFrame({"cluster": kmeans.labels_}, index=df.index)
 
 def get_kmeans_state_frequencies(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None) -> pd.Series:
@@ -189,11 +191,11 @@ def get_kmeans_state_distances(kmeans: KMeans) -> pd.DataFrame:
 
     return pd.DataFrame(distances, index=names, columns=names)
 
-def get_kmeans_trajectories(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None, max_cases: int = 1000) -> pd.DataFrame:
+def get_kmeans_case_trajectories(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None, max_cases: int = 1000) -> pd.DataFrame:
     return _cluster_trajectories(df, start_date, end_date, max_cases)
 
 def get_kmeans_case_trajectory(df: pd.DataFrame, case_id: str) -> pd.DataFrame:
-    return get_kmeans_trajectories(_get_case(df, case_id)).drop(columns="case")
+    return get_kmeans_case_trajectories(_get_case(df, case_id)).drop(columns="case")
 
 def get_kmeans_log_trajectory(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None) -> pd.DataFrame:
     return _cluster_log_trajectory(df, start_date, end_date)
@@ -225,8 +227,8 @@ def compute_dbscan(df: pd.DataFrame, eps: float = 0.5, min_samples: int = 5, dis
 
     return dbscan
 
-def get_dbscan_clusters(df: pd.DataFrame, dbscan: DBSCAN) -> pd.DataFrame:
-    # dbscan cannot place new rows, it only knows the clusters of the rows it was
+def get_dbscan_states(df: pd.DataFrame, dbscan: DBSCAN) -> pd.DataFrame:
+    # the state of every row: its cluster. dbscan cannot place new rows, it only knows the clusters of the rows it was
     # fitted on, so df has to be that same frame. noise rows have cluster -1
     data = df.drop(columns=META, errors="ignore").to_numpy()
 
@@ -250,11 +252,11 @@ def get_dbscan_state_distances(dbscan: DBSCAN) -> pd.DataFrame:
 
     return pd.DataFrame(distances, index=names, columns=names)
 
-def get_dbscan_trajectories(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None, max_cases: int = 1000) -> pd.DataFrame:
+def get_dbscan_case_trajectories(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None, max_cases: int = 1000) -> pd.DataFrame:
     return _cluster_trajectories(df, start_date, end_date, max_cases)
 
 def get_dbscan_case_trajectory(df: pd.DataFrame, case_id: str) -> pd.DataFrame:
-    return get_dbscan_trajectories(_get_case(df, case_id)).drop(columns="case")
+    return get_dbscan_case_trajectories(_get_case(df, case_id)).drop(columns="case")
 
 def get_dbscan_log_trajectory(df: pd.DataFrame, start_date: str | pd.Timestamp = None, end_date: str | pd.Timestamp = None) -> pd.DataFrame:
     return _cluster_log_trajectory(df, start_date, end_date)
@@ -264,7 +266,7 @@ def get_dbscan_log_trajectory(df: pd.DataFrame, start_date: str | pd.Timestamp =
 
 def compute_som_quantization_error(df: pd.DataFrame, states: pd.DataFrame, som: MiniSom, distance: str = "euclidean") -> float:
     # the mean distance of every row to the weights of its winning neuron, lower means the
-    # neurons sit closer to the rows. states is the frame of get_som_winners for df
+    # neurons sit closer to the rows. states is the frame of get_som_states for df
     data = df.drop(columns=META, errors="ignore").to_numpy()
     winners = som.get_weights()[states["i"].to_numpy(), states["j"].to_numpy()]
 
@@ -359,27 +361,39 @@ def compute_dbcv(df: pd.DataFrame, states: pd.DataFrame, distance: str = "euclid
 
 # drift
 
-def compute_state_distributions(df: pd.DataFrame, window: str = "7D") -> pd.DataFrame:
-    # the share of every state among the rows of every calendar window, one row per
-    # window. window is a pandas frequency like "12h", "1D" or "7D", windows without
-    # rows are left out. the rows are events, or for the resource and inter-case
-    # perspectives the feature windows, so there window has to be the larger one
-    windows = df["time:timestamp"].dt.floor(window).rename("window")
+def compute_state_distributions(df: pd.DataFrame, signal_window: str = "7D") -> pd.DataFrame:
+    # the share of every state among the rows of every signal window, one row per signal window.
+    # signal_window is a pandas frequency like "1D", "7D" or "30D", signal windows without rows
+    # are left out. the rows are events, or for the resource and inter-case perspectives feature
+    # windows, which then count in the signal window their start falls into. a signal window is
+    # at least as long as the feature windows, with the same length every signal window holds
+    # one feature window
+    if "case:concept:name" not in df.columns:
+        feature_window = df["time:timestamp"].sort_values().diff().min()
+
+        if pd.Timedelta(signal_window) < feature_window:
+            raise ValueError(
+                f"The signal window {signal_window} has to be at least as long as the feature windows of "
+                f"{str(feature_window).removesuffix(' 00:00:00')}"
+            )
+
+    signal_windows = df["time:timestamp"].dt.floor(signal_window).rename("signal_window")
 
     if "cluster" in df.columns:
-        counts = pd.crosstab(windows, df["cluster"]).rename(columns=_cluster_name)
+        counts = pd.crosstab(signal_windows, df["cluster"]).rename(columns=_cluster_name)
     else:
-        counts = pd.crosstab(windows, [df["i"], df["j"]])
+        counts = pd.crosstab(signal_windows, [df["i"], df["j"]])
         counts.columns = [f"({i}, {j})" for i, j in counts.columns]
 
     counts.columns.name = "state"
 
     return counts.div(counts.sum(axis=1), axis=0)
 
-def compute_divergences(distributions: pd.DataFrame, divergence: str = "kl", reference: str = "previous", lookback: int = 5) -> pd.DataFrame:
-    # how far every window's distribution is from a reference: the previous window,
-    # the mean of the lookback windows before it, or the mean of all windows. windows
-    # without a reference yet get no score
+def compute_drift_signal(distributions: pd.DataFrame, divergence: str = "kl", reference: str = "previous", lookback: int = 5) -> pd.DataFrame:
+    # the drift signal: for every signal window, the divergence of its state distribution from
+    # a reference, the previous signal window, the mean of the lookback signal windows before it,
+    # or the mean of all of them. the divergence is the drift score of the signal window, signal
+    # windows without a reference yet get none
     if reference == "previous":
         references = distributions.shift(1)
     elif reference == "recent":
@@ -403,39 +417,7 @@ def compute_divergences(distributions: pd.DataFrame, divergence: str = "kl", ref
     else:
         raise ValueError(f"Unknown divergence: {divergence}, pick from {list(DIVERGENCES)}")
 
-    return pd.DataFrame({"window": distributions.index, "score": scores})
-
-def compute_window_distances(df: pd.DataFrame, distance: str = "euclidean", reference: str = "previous", lookback: int = 5) -> pd.DataFrame:
-    # how far every window's vector is from a reference: the previous window, the mean of the
-    # lookback windows before it, or the mean of all windows. for the resource and inter-case
-    # perspectives, df is what the clustering gets, one row per calendar window. windows
-    # without a reference yet get no score
-    vectors = df.drop(columns=META, errors="ignore")
-
-    if reference == "previous":
-        references = vectors.shift(1)
-    elif reference == "recent":
-        references = vectors.rolling(lookback).mean().shift(1)
-    elif reference == "baseline":
-        references = vectors * 0 + vectors.mean()
-    else:
-        raise ValueError(f"Unknown reference: {reference}, pick from {list(REFERENCES)}")
-
-    p = vectors.to_numpy()
-    q = references.to_numpy()
-
-    if distance == "euclidean":
-        scores = np.sqrt(((p - q) ** 2).sum(axis=1))
-    elif distance == "cosine":
-        scores = 1 - (p * q).sum(axis=1) / (np.linalg.norm(p, axis=1) * np.linalg.norm(q, axis=1))
-    elif distance == "manhattan":
-        scores = np.abs(p - q).sum(axis=1)
-    elif distance == "chebyshev":
-        scores = np.abs(p - q).max(axis=1)
-    else:
-        raise ValueError(f"Unknown distance: {distance}, pick from {list(DISTANCES)}")
-
-    return pd.DataFrame({"window": df["time:timestamp"].to_numpy(), "score": scores})
+    return pd.DataFrame({"signal_window": distributions.index, "drift_score": scores})
 
 
 # shared by the functions above
@@ -492,9 +474,9 @@ def _cluster_name(cluster: int) -> str:
     return "noise" if cluster == -1 else str(cluster)
 
 def _unit(df: pd.DataFrame) -> str:
-    # what a row stands for, an event for the intra-case perspective, a calendar window
+    # what a row stands for, an event for the intra-case perspective, a feature window
     # for the resource and inter-case ones
-    return "events" if "case:concept:name" in df.columns else "windows"
+    return "events" if "case:concept:name" in df.columns else "feature windows"
 
 def _get_case(df: pd.DataFrame, case_id: str) -> pd.DataFrame:
     # compared as text, so a case id typed in works for number ids too
@@ -569,9 +551,9 @@ def _state_visits(events: pd.DataFrame) -> pd.DataFrame:
     return visits[["case", "state", "start", "end", "duration", "events"]]
 
 def _log_visits(windows: pd.DataFrame, start_date, end_date) -> pd.DataFrame:
-    # consecutive windows in the same state are one visit of that state. the windows follow each
-    # other without gaps, so a visit lasts until the next one starts, the last one until its last
-    # window ends
+    # consecutive feature windows in the same state are one visit of that state. the feature
+    # windows follow each other without gaps, so a visit lasts until the next one starts, the
+    # last one until its last feature window ends
     windows = windows.sort_values("time:timestamp")
     step = windows["time:timestamp"].diff().min()
 
@@ -581,13 +563,13 @@ def _log_visits(windows: pd.DataFrame, start_date, end_date) -> pd.DataFrame:
     visits = windows.groupby(visit).agg(
         state=("state", "first"),
         start=("time:timestamp", "first"),
-        windows=("state", "size"),
+        feature_windows=("state", "size"),
     ).reset_index(drop=True)
 
     visits["end"] = visits["start"].shift(-1).fillna(windows["time:timestamp"].max() + step)
     visits["duration"] = visits["end"] - visits["start"]
 
-    return visits[["state", "start", "end", "duration", "windows"]]
+    return visits[["state", "start", "end", "duration", "feature_windows"]]
 
 def _kl(p: np.ndarray, q: np.ndarray) -> np.ndarray:
     # a tiny share for every state, so a state missing on one side does not divide by 0

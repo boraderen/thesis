@@ -1,6 +1,6 @@
 \chapter{Preliminaries}
 \label{chap:prelim}
-In this chapter we introduce the notation and definitions that will be used in the next chapters. Section~\ref{sec:prelim:foundations} formally defines event logs and traces, introduces process trees and defines calendar windows. Section~\ref{sec:prelim:drift} formalizes concept drifts with drift points and drift modes. Section~\ref{sec:prelim:pca} describes scaling of features and Principal Component Analysis (PCA). Section~\ref{sec:prelim:clustering} presents the three clustering algorithms k-means, Density-Based Spatial Clustering of Applications with Noise (DBSCAN) and Self-Organizing Maps (SOMs) used in our thesis.
+In this chapter we introduce the notation and definitions that will be used in the next chapters. Section~\ref{sec:prelim:foundations} formally defines event logs and traces, introduces process trees and defines calendar windows. Section~\ref{sec:prelim:drift} formalizes concept drifts with drift points and drift modes. Section~\ref{sec:prelim:pca} describes scaling of features and Principal Component Analysis (PCA). Section~\ref{sec:prelim:clustering} presents the three clustering algorithms k-means, Density-Based Spatial Clustering of Applications with Noise (DBSCAN) and Self-Organizing Maps (SOMs) used in our thesis. Section~\ref{sec:prelim:divergences} defines divergences that compare two distributions.
 
 \section{Foundations}
 \label{sec:prelim:foundations}
@@ -181,7 +181,7 @@ Figure~\ref{fig:prelim:process_tree} shows a nested process tree. It produces e.
 
 \subsection{Calendar Windows}
 \label{sec:prelim:windows}
-We use calendar windows, i.e., time intervals of fixed length that start at calendar boundaries such as midnight. Thus, the window boundaries only depend on the origin and the window length, and not on the first event of the event log. To compute with timestamps, we treat them as real numbers, e.g., the seconds since a fixed point in time.
+We use calendar windows, i.e., time intervals of fixed length that start at calendar boundaries such as midnight. Thus, the window boundaries only depend on the origin and the window length, and not on the first event of the event log. To compute with timestamps, we treat them as real numbers, e.g., the seconds since a fixed point in time. Chapter~\ref{chap:approach} uses calendar windows in two roles, as feature windows and as signal windows.
 
 \begin{definition}[Calendar Window]
 	\label{def:prelim:windows}
@@ -542,7 +542,11 @@ A SOM is a neural network whose neurons lie on a usually two-dimensional grid. T
 		      \[
 			      \mathbf{w}_{\mathbf{r}}(t + 1) = \mathbf{w}_{\mathbf{r}}(t) + \eta(t) \, h_{b_t(\mathbf{x}(t)), \mathbf{r}}(t) \, \bigl(\mathbf{x}(t) - \mathbf{w}_{\mathbf{r}}(t)\bigr) \quad \text{for all } \mathbf{r} \in G.
 		      \]
-		\item The neighborhood function $h_{\mathbf{b}, \mathbf{r}}(t) = \exp\bigl(-\norm{\mathbf{b} - \mathbf{r}}^2 / (2 \sigma(t)^2)\bigr)$ decreases with the grid distance of the cells $\mathbf{b}$ and $\mathbf{r}$.
+		\item The neighborhood function is the Gaussian kernel
+		      \[
+			      h_{\mathbf{b}, \mathbf{r}}(t) = \exp\bigl(-\norm{\mathbf{b} - \mathbf{r}}^2 / (2 \sigma(t)^2)\bigr).
+		      \]
+		      It decreases with the grid distance of the cells $\mathbf{b}$ and $\mathbf{r}$.
 		\item The learning rate $\eta(t) > 0$ and the neighborhood radius $\sigma(t) > 0$ decrease monotonically in $t$.
 		\item After $T$ steps, the SOM yields the clustering $\mathit{cl}(j) = b_T(\mathbf{x}_j)$ with $K = G$.
 	\end{itemize}
@@ -674,7 +678,7 @@ DBSCAN forms clusters from regions in which vectors lie densely (\textcite{ester
 \begin{itemize}[beginpenalty=10000]
 	\item Unlike in k-means and the SOM, the number of clusters follows from the data.
 	\item Any distance can replace the Euclidean distance in the $\varepsilon$-neighborhood~\autocite{ester1996density}, e.g., the Manhattan, Chebyshev or cosine distance.
-	\item A common approach to choose $\varepsilon$ is using the first valley area of the sorted $k$-dist graph with $k = \mathit{minPts}$. This graph shows the distance of each point to its $k$-th nearest neighbor in descending order.
+	\item A common approach to choose $\varepsilon$ is the knee of the sorted $k$-dist graph with $k = \mathit{minPts}$, where the graph starts to rise steeply. This graph shows the distance of each point to its $k$-th nearest neighbor in ascending order.
 \end{itemize}
 
 \begin{example}
@@ -817,5 +821,65 @@ For SOMs, we also measure how closely the prototypes fit the vectors and how eve
 		\item The SOM uses its four cells almost evenly with 8, 7, 7 and 7 vectors, so its occupancy entropy is close to 1. Its quantization error is the mean distance of the vectors to the black dots in Figure~\ref{fig:prelim:clustering_som}.
 
 		\item DBSCAN has the DBCV 0.684. Since the two noise vectors count in $m = 29$, the DBCV is at most $27/29 \approx 0.931$ here.
+	\end{itemize}
+\end{example}
+
+\section{Divergences}
+\label{sec:prelim:divergences}
+A clustering gives each cluster a share of the vectors, i.e., a distribution over the set of clusters $K$. A divergence measures how much two such distributions differ. We use four divergences. In Chapter~\ref{chap:approach}, they compare the distributions of states in different calendar windows.
+
+\begin{definition}[Divergences]
+	\label{def:prelim:divergences}
+	Let $K$ be a finite set, and let $p, q \in K \to [0, 1]$ be distributions over $K$, i.e., $\sum_{\kappa \in K} p(\kappa) = \sum_{\kappa \in K} q(\kappa) = 1$. Let $\log$ be the natural logarithm.
+	\begin{itemize}
+		\item \emph{Kullback-Leibler divergence:} If $q(\kappa) > 0$ for all $\kappa \in K$ with $p(\kappa) > 0$, then
+		      \[
+			      D_{\mathrm{KL}}(p, q) = \sum_{\kappa \in K,\, p(\kappa) > 0} p(\kappa) \log \frac{p(\kappa)}{q(\kappa)},
+		      \]
+		      and otherwise $D_{\mathrm{KL}}(p, q) = \infty$.
+		\item \emph{Jensen-Shannon divergence:} $D_{\mathrm{JS}}(p, q) = \frac{1}{2} D_{\mathrm{KL}}(p, m) + \frac{1}{2} D_{\mathrm{KL}}(q, m)$ with the distribution $m(\kappa) = \frac{1}{2} (p(\kappa) + q(\kappa))$ for $\kappa \in K$.
+		\item \emph{Total variation distance:} $D_{\mathrm{TV}}(p, q) = \frac{1}{2} \sum_{\kappa \in K} \abs{p(\kappa) - q(\kappa)}$.
+		\item \emph{Hellinger distance:} $D_{\mathrm{H}}(p, q) = \sqrt{\frac{1}{2} \sum_{\kappa \in K} \bigl(\sqrt{p(\kappa)} - \sqrt{q(\kappa)}\bigr)^2}$.
+	\end{itemize}
+\end{definition}
+
+\noindent\emph{Properties:}
+\begin{itemize}[beginpenalty=10000]
+	\item All four divergences are non-negative and 0 for $p = q$~\autocite{haykin2009neural, lin1991divergence}.
+	\item $D_{\mathrm{KL}}$ is not symmetric and has no upper bound~\autocite{lin1991divergence}. It weights each $\kappa \in K$ by its share $p(\kappa)$. If $q(\kappa) = 0$ for a $\kappa$ with $p(\kappa) > 0$, $D_{\mathrm{KL}}(p, q)$ is infinite.
+	\item $D_{\mathrm{JS}}$ is symmetric, defined for all distributions and at most $\log 2 \approx 0.69$~\autocite{lin1991divergence}.
+	\item $D_{\mathrm{TV}}$ and $D_{\mathrm{H}}$ are symmetric and lie in $[0, 1]$. $D_{\mathrm{TV}}$ is the share that has to move between the elements of $K$ to turn $q$ into $p$.
+\end{itemize}
+
+\begin{table}[tb]
+	\centering
+	\caption[Divergences of the example distributions]{%
+		The four divergences of the distributions $p = (0.5, 0.5, 0)$ and $q = (0.25, 0.25, 0.5)$ over the clusters $K = \Set{1, 2, 3}$ of Example~\ref{ex:prelim:divergences} in both directions. Since $p$ lacks cluster~3, only $D_{\mathrm{KL}}(q, p)$ is infinite.}
+	\label{tab:prelim:divergences}
+	\begin{tabular}{@{}lrr@{}}
+		\toprule
+		Divergence           & $D(p, q)$ & $D(q, p)$ \\
+		\midrule
+		$D_{\mathrm{KL}}$    & 0.693     & $\infty$  \\
+		$D_{\mathrm{JS}}$    & 0.216     & 0.216     \\
+		$D_{\mathrm{TV}}$    & 0.500     & 0.500     \\
+		$D_{\mathrm{H}}$     & 0.541     & 0.541     \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{example}
+	\label{ex:prelim:divergences}
+	A clustering with the clusters $K = \Set{1, 2, 3}$ spreads two sets of vectors differently over the clusters (Table~\ref{tab:prelim:divergences}). We write a distribution $p$ over $K$ as $(p(1), p(2), p(3))$.
+	\begin{itemize}
+		\item The distributions are $p = (0.5, 0.5, 0)$ and $q = (0.25, 0.25, 0.5)$. Thus, cluster~3 only occurs in $q$.
+
+		\item $D_{\mathrm{KL}}(p, q) = 2 \cdot 0.5 \log \frac{0.5}{0.25} = \log 2 \approx 0.693$. Conversely, $D_{\mathrm{KL}}(q, p) = \infty$, since $q(3) = 0.5$ and $p(3) = 0$.
+
+		\item With $m = (0.375, 0.375, 0.25)$, $D_{\mathrm{JS}}(p, q) = \frac{1}{2} D_{\mathrm{KL}}(p, m) + \frac{1}{2} D_{\mathrm{KL}}(q, m) \approx \frac{1}{2} \cdot 0.288 + \frac{1}{2} \cdot 0.144 \approx 0.216$.
+
+		\item $D_{\mathrm{TV}}(p, q) = \frac{1}{2} (0.25 + 0.25 + 0.5) = 0.5$, i.e., a share of 0.5 moves from cluster~3 to the clusters~1 and~2. $D_{\mathrm{H}}(p, q) \approx 0.541$.
+
+		\item $D_{\mathrm{JS}}$, $D_{\mathrm{TV}}$ and $D_{\mathrm{H}}$ are finite and the same in both directions, whereas $D_{\mathrm{KL}}$ depends on the direction.
 	\end{itemize}
 \end{example}

@@ -11,8 +11,10 @@ from tables import styled_feature_table
 PERSPECTIVES = {"intra": "Intra-case", "resource": "Resource", "inter": "Inter-case"}
 
 # what a row of the features stands for
-ROWS = {"intra": "events", "resource": "windows", "inter": "windows"}
+ROWS = {"intra": "events", "resource": "feature windows", "inter": "feature windows"}
 
+# the lengths of the calendar windows to pick from, for the feature windows of the resource and
+# inter-case features and for the signal windows of the drift signal
 WINDOWS = {
     "1h": "1 hour", "6h": "6 hours", "12h": "12 hours", "1D": "1 day",
     "3D": "3 days", "7D": "1 week", "14D": "2 weeks", "30D": "30 days",
@@ -22,17 +24,14 @@ WINDOWS = {
 # perspective's prefix, e.g. intra_features. when a step runs again, the results of every
 # later step were computed from its old output
 STEPS = {
-    "features": ["features", "log_signature"],
+    "features": ["features", "feature_window", "log_signature"],
     "pca": ["scaled", "pca", "plot_variance", "reconstruction_errors", "plot_reconstruction"],
     "cut": ["cut", "pca_skipped", "compressed", "plot_cut", "plot_reconstruction_cut", "plot_kdistance"],
     "states": ["method", "model", "states", "frequencies", "colors", "distances",
                "plot_colors", "plot_distances", "plot_frequencies_1", "plot_frequencies_2",
                "trajectories", "last_case", "range_trajectories", "plot_trajectories",
                "log_trajectory", "plot_log_trajectory", "scores"],
-    # the window distances only need the compressed rows, they come before the distributions,
-    # so computing the distributions again keeps them
-    "distances": ["window_distances", "window_distance_config", "plot_window_distance"],
-    "drift": ["distributions", "divergences", "divergence_config", "plot_distribution", "plot_divergence"],
+    "drift": ["distributions", "drift_signal", "drift_signal_config", "plot_distribution", "plot_drift_signal"],
 }
 
 # the plots a page stores, by the name the copilot offers them under
@@ -48,9 +47,8 @@ PLOTS = {
     "plot_frequencies_2": "State frequencies, second range",
     "plot_trajectories": "Trajectories of the cases in a range",
     "plot_log_trajectory": "Trajectory of the log",
-    "plot_distribution": "State distribution per window",
-    "plot_divergence": "Divergence per window",
-    "plot_window_distance": "Window distances",
+    "plot_distribution": "State distribution per signal window",
+    "plot_drift_signal": "Drift signal",
 }
 
 
@@ -132,11 +130,12 @@ def show_features(features: pd.DataFrame) -> None:
         st.dataframe(features.head(30), width="stretch", height=420)
 
 
-def feature_glossary(entries: dict) -> None:
-    # what every feature means, collapsed below the parameters of a features page
+def feature_glossary(glossary: dict) -> None:
+    # what every feature group computes, collapsed below the parameters of a features page.
+    # the glossary comes from kairo, {group: (label, meaning)}, the group is the prefix of its columns
     with st.expander("Feature glossary"):
-        for term, meaning in entries.items():
-            st.markdown(f"**{term}:** {meaning}")
+        for group, (label, meaning) in glossary.items():
+            st.markdown(f"**{label}** (`{group}`): {meaning}")
 
 
 def metrics_row(items: list[tuple]) -> None:

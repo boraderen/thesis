@@ -4,7 +4,6 @@ from sklearn.decomposition import PCA
 from minisom import MiniSom
 import pandas as pd
 import numpy as np
-import colorsys
 from sklearn.cluster import DBSCAN, KMeans
 from sklearn.neighbors import NearestNeighbors
 
@@ -12,10 +11,15 @@ from . import (
     META,
     DIVERGENCES,
     REFERENCES,
-    DISTANCES,
+    get_som_state_distances,
+    get_kmeans_state_distances,
+    get_dbscan_state_distances,
     _cluster_name,
     _unit,
 )
+
+# dbscan noise is no state, it gets a grey lighter than every state color
+NOISE_COLOR = "#e4e4e4"
 
 
 # log
@@ -85,28 +89,31 @@ def plot_pca_reconstruction_errors(errors: pd.Series, cut_component: int = None)
 
 # SOM
 
-def compute_som_color_mapping(size: tuple[int, int]) -> dict:
-    # compute vfor each grid cell a very different color randomly
-    cells = [(i, j) for i in range(size[0]) for j in range(size[1])]
+def get_som_state_colors(som: MiniSom, distance: str = "euclidean") -> dict:
+    # a color for every cell of the grid, close cells by the distance of their neurons get
+    # close colors, see _colors_from_distances
+    distances = get_som_state_distances(som, distance)
+    rows, cols, _ = som.get_weights().shape
+    cells = [(i, j) for i in range(rows) for j in range(cols)]
 
-    return dict(zip(cells, _distinct_colors(len(cells))))
+    return dict(zip(cells, _colors_from_distances(distances.to_numpy())))
 
-def plot_som_colors(df: pd.DataFrame, color_mapping: dict) -> go.Figure:
-    # plot the som grid with mapped colors, and how many rows landed on every cell
+def plot_som_state_colors(df: pd.DataFrame, state_colors: dict) -> go.Figure:
+    # plot the som grid with the colors of its states, and how many rows landed on every cell
     counts = df[["i", "j"]].value_counts()
     unit = _unit(df)
 
-    rows = max(i for i, _ in color_mapping) + 1
-    cols = max(j for _, j in color_mapping) + 1
+    rows = max(i for i, _ in state_colors) + 1
+    cols = max(j for _, j in state_colors) + 1
 
     index = np.zeros((rows, cols))
     text = np.empty((rows, cols), dtype=object)
     scale = []
 
-    for k, ((i, j), color) in enumerate(color_mapping.items()):
+    for k, ((i, j), color) in enumerate(state_colors.items()):
         index[i, j] = k
         text[i, j] = f"{counts.get((i, j), 0):,}"
-        scale.append([k / (len(color_mapping) - 1), color])
+        scale.append([k / max(len(state_colors) - 1, 1), color])
 
     fig = px.imshow(
         index,
@@ -157,9 +164,10 @@ def plot_som_heatmap(df: pd.DataFrame, size: tuple[int, int], start_date: str | 
     return fig
 
 def plot_som_u_matrix(som: MiniSom) -> go.Figure:
-    # distance of every neuron to its neighbours: pale cells are the middle of a
-    # cluster, dark ridges are the borders between two of them
-    distances = som.distance_map()
+    # mean distance of every neuron to its up to eight neighbours, divided by the largest one:
+    # pale cells are the middle of a cluster, dark ridges are the borders between two of them.
+    # the mean, not the sum, so cells on the edge with fewer neighbours do not look paler
+    distances = som.distance_map(scaling="mean")
 
     fig = px.imshow(
         distances,
@@ -172,44 +180,47 @@ def plot_som_u_matrix(som: MiniSom) -> go.Figure:
 
     return fig
 
-def plot_som_case_trajectory(trajectory: pd.DataFrame, color_mapping: dict, case_id: str) -> go.Figure:
+def plot_som_case_trajectory(trajectory: pd.DataFrame, state_colors: dict, case_id: str) -> go.Figure:
     # trajectory is what get_som_case_trajectory returns for the case
-    return _plot_trajectories(trajectory.assign(case=str(case_id)), color_mapping, f"Case {case_id}")
+    return _plot_trajectories(trajectory.assign(case=str(case_id)), state_colors, f"Case {case_id}")
 
-def plot_som_trajectories(trajectories: pd.DataFrame, color_mapping: dict) -> go.Figure:
-    # trajectories is what get_som_trajectories returns
-    return _plot_trajectories(trajectories, color_mapping)
+def plot_som_case_trajectories(trajectories: pd.DataFrame, state_colors: dict) -> go.Figure:
+    # trajectories is what get_som_case_trajectories returns
+    return _plot_trajectories(trajectories, state_colors)
 
-def plot_som_log_trajectory(trajectory: pd.DataFrame, color_mapping: dict) -> go.Figure:
+def plot_som_log_trajectory(trajectory: pd.DataFrame, state_colors: dict) -> go.Figure:
     # trajectory is what get_som_log_trajectory returns
-    return _plot_trajectories(trajectory.assign(case="log"), color_mapping, "Trajectory of the log")
+    return _plot_trajectories(trajectory.assign(case="log"), state_colors, "Trajectory of the log")
 
 
 # k-means
 
-def compute_kmeans_color_mapping(k: int) -> dict:
-    # a very different color for every cluster
-    return dict(zip(range(k), _distinct_colors(k)))
+def get_kmeans_state_colors(kmeans: KMeans) -> dict:
+    # a color for every cluster, clusters with close centers get close colors, see
+    # _colors_from_distances
+    distances = get_kmeans_state_distances(kmeans)
 
-def plot_kmeans_frequencies(frequencies: pd.Series, color_mapping: dict) -> go.Figure:
+    return dict(zip(range(kmeans.n_clusters), _colors_from_distances(distances.to_numpy())))
+
+def plot_kmeans_state_frequencies(frequencies: pd.Series, state_colors: dict) -> go.Figure:
     # frequencies is what get_kmeans_state_frequencies returns
-    return _plot_cluster_frequencies(frequencies, color_mapping, "k-means cluster")
+    return _plot_cluster_frequencies(frequencies, state_colors, "k-means cluster")
 
-def plot_kmeans_distances(distances: pd.DataFrame) -> go.Figure:
+def plot_kmeans_state_distances(distances: pd.DataFrame) -> go.Figure:
     # distances is what get_kmeans_state_distances returns
     return _plot_state_distances(distances, "Distances between k-means clusters")
 
-def plot_kmeans_case_trajectory(trajectory: pd.DataFrame, color_mapping: dict, case_id: str) -> go.Figure:
+def plot_kmeans_case_trajectory(trajectory: pd.DataFrame, state_colors: dict, case_id: str) -> go.Figure:
     # trajectory is what get_kmeans_case_trajectory returns for the case
-    return _plot_trajectories(trajectory.assign(case=str(case_id)), color_mapping, f"Case {case_id}")
+    return _plot_trajectories(trajectory.assign(case=str(case_id)), state_colors, f"Case {case_id}")
 
-def plot_kmeans_trajectories(trajectories: pd.DataFrame, color_mapping: dict) -> go.Figure:
-    # trajectories is what get_kmeans_trajectories returns
-    return _plot_trajectories(trajectories, color_mapping)
+def plot_kmeans_case_trajectories(trajectories: pd.DataFrame, state_colors: dict) -> go.Figure:
+    # trajectories is what get_kmeans_case_trajectories returns
+    return _plot_trajectories(trajectories, state_colors)
 
-def plot_kmeans_log_trajectory(trajectory: pd.DataFrame, color_mapping: dict) -> go.Figure:
+def plot_kmeans_log_trajectory(trajectory: pd.DataFrame, state_colors: dict) -> go.Figure:
     # trajectory is what get_kmeans_log_trajectory returns
-    return _plot_trajectories(trajectory.assign(case="log"), color_mapping, "Trajectory of the log")
+    return _plot_trajectories(trajectory.assign(case="log"), state_colors, "Trajectory of the log")
 
 
 # DBSCAN
@@ -232,44 +243,47 @@ def plot_dbscan_k_distance(df: pd.DataFrame, min_samples: int = 5, distance: str
 
     return fig
 
-def compute_dbscan_color_mapping(dbscan: DBSCAN) -> dict:
-    # a very different color for every cluster, and grey for the noise
+def get_dbscan_state_colors(dbscan: DBSCAN) -> dict:
+    # a color for every cluster, clusters whose core rows lie close get close colors, see
+    # _colors_from_distances. the noise gets a light grey
+    distances = get_dbscan_state_distances(dbscan)
     clusters = range(dbscan.labels_.max() + 1)
 
-    color_mapping = dict(zip(clusters, _distinct_colors(len(clusters))))
-    color_mapping[-1] = "#bbbbbb"
+    state_colors = dict(zip(clusters, _colors_from_distances(distances.to_numpy())))
+    state_colors[-1] = NOISE_COLOR
 
-    return color_mapping
+    return state_colors
 
-def plot_dbscan_frequencies(frequencies: pd.Series, color_mapping: dict) -> go.Figure:
+def plot_dbscan_state_frequencies(frequencies: pd.Series, state_colors: dict) -> go.Figure:
     # frequencies is what get_dbscan_state_frequencies returns
-    return _plot_cluster_frequencies(frequencies, color_mapping, "DBSCAN cluster")
+    return _plot_cluster_frequencies(frequencies, state_colors, "DBSCAN cluster")
 
-def plot_dbscan_distances(distances: pd.DataFrame) -> go.Figure:
+def plot_dbscan_state_distances(distances: pd.DataFrame) -> go.Figure:
     # distances is what get_dbscan_state_distances returns
     return _plot_state_distances(distances, "Distances between DBSCAN clusters")
 
-def plot_dbscan_case_trajectory(trajectory: pd.DataFrame, color_mapping: dict, case_id: str) -> go.Figure:
+def plot_dbscan_case_trajectory(trajectory: pd.DataFrame, state_colors: dict, case_id: str) -> go.Figure:
     # trajectory is what get_dbscan_case_trajectory returns for the case
-    return _plot_trajectories(trajectory.assign(case=str(case_id)), color_mapping, f"Case {case_id}")
+    return _plot_trajectories(trajectory.assign(case=str(case_id)), state_colors, f"Case {case_id}")
 
-def plot_dbscan_trajectories(trajectories: pd.DataFrame, color_mapping: dict) -> go.Figure:
-    # trajectories is what get_dbscan_trajectories returns
-    return _plot_trajectories(trajectories, color_mapping)
+def plot_dbscan_case_trajectories(trajectories: pd.DataFrame, state_colors: dict) -> go.Figure:
+    # trajectories is what get_dbscan_case_trajectories returns
+    return _plot_trajectories(trajectories, state_colors)
 
-def plot_dbscan_log_trajectory(trajectory: pd.DataFrame, color_mapping: dict) -> go.Figure:
+def plot_dbscan_log_trajectory(trajectory: pd.DataFrame, state_colors: dict) -> go.Figure:
     # trajectory is what get_dbscan_log_trajectory returns
-    return _plot_trajectories(trajectory.assign(case="log"), color_mapping, "Trajectory of the log")
+    return _plot_trajectories(trajectory.assign(case="log"), state_colors, "Trajectory of the log")
 
 
 # drift
 
-def plot_state_distributions(distributions: pd.DataFrame, color_mapping: dict) -> go.Figure:
+def plot_state_distributions(distributions: pd.DataFrame, state_colors: dict) -> go.Figure:
+    # distributions is what compute_state_distributions returns, one bar of shares per signal window
     fig = px.area(
         distributions,
-        color_discrete_map=_state_colors(color_mapping),
-        labels={"window": "Window", "value": "Fraction", "state": "State"},
-        title="State distribution per window",
+        color_discrete_map=_state_names(state_colors),
+        labels={"signal_window": "Signal window", "value": "Share", "state": "State"},
+        title="State distribution per signal window",
     )
 
     # plotly draws the dates as their wall time, so the lines get the same
@@ -277,64 +291,117 @@ def plot_state_distributions(distributions: pd.DataFrame, color_mapping: dict) -
 
     return fig
 
-def plot_divergences(divergences: pd.DataFrame, divergence: str = "kl", reference: str = "previous") -> go.Figure:
-    # x is the number of the window, hovering names its start
+def plot_drift_signal(drift_signal: pd.DataFrame, divergence: str = "kl", reference: str = "previous") -> go.Figure:
+    # drift_signal is what compute_drift_signal returns: over time, the start of every signal
+    # window, the drift score of the signal window, its divergence from the reference
     fig = px.line(
-        divergences,
-        x=divergences.index,
-        y="score",
-        hover_data=["window"],
-        labels={"index": "Window", "score": DIVERGENCES[divergence], "window": "Window start"},
-        title=f"{DIVERGENCES[divergence]} of every window against the {REFERENCES[reference]}",
+        drift_signal,
+        x="signal_window",
+        y="drift_score",
+        markers=True,
+        labels={"signal_window": "Signal window", "drift_score": f"Drift score ({DIVERGENCES[divergence]})"},
+        title=f"Drift signal: {DIVERGENCES[divergence]} of every signal window against the {REFERENCES[reference]}",
     )
-
-    _window_lines(fig, divergences.index)
-
-    return fig
-
-def plot_window_distances(distances: pd.DataFrame, distance: str = "euclidean", reference: str = "previous") -> go.Figure:
-    # distances is what compute_window_distances returns. x is the number of the window,
-    # hovering names its start
-    fig = px.line(
-        distances,
-        x=distances.index,
-        y="score",
-        hover_data=["window"],
-        labels={"index": "Window", "score": DISTANCES[distance], "window": "Window start"},
-        title=f"{DISTANCES[distance]} of every window to the {REFERENCES[reference]}",
-    )
-
-    _window_lines(fig, distances.index)
 
     return fig
 
 
 # shared by the functions above
 
-def _distinct_colors(n: int) -> list:
-    # evenly spaced hues are as far apart as colors get, shuffling them keeps
-    # neighbouring cells from ending up in similar tones
-    hues = np.linspace(0, 1, n, endpoint=False)
-    np.random.default_rng(0).shuffle(hues)
+def _colors_from_distances(distances: np.ndarray) -> list:
+    # a color for every state such that the color difference follows the distance between the
+    # states, so a trajectory only changes its color much when the case or the log moves to a
+    # far away state, and a slow drift through states in between shows as a slow change of color.
+    # the colors live in oklab, where equal steps look equally different, and
+    # 1. classical multidimensional scaling places the states in three dimensions with their
+    #    pairwise distances kept as well as possible,
+    # 2. a state far from all others is pulled in logarithmically beyond twice the median distance
+    #    from the center, so a single outlier does not squeeze all other states into one color,
+    # 3. the first axis runs from dark blue to light yellow, which stays readable with color
+    #    blindness and in grey, the second from green to magenta and the third is orthogonal to both,
+    # 4. one common scale, as large as the srgb colors and a lightness from 0.38 to 0.86 allow,
+    #    keeps the ratios of the distances.
+    # the colors show how far the states lie from each other relative to the other states, the
+    # signs of the axes are fixed, so the same states always get the same colors
+    n = len(distances)
 
-    colors = []
+    if n == 1:
+        return [_oklab_to_hex(np.array([0.62, 0.0, 0.0]))]
 
-    for hue in hues:
-        r, g, b = colorsys.hsv_to_rgb(hue, 0.65, 0.9)
-        colors.append(f"#{int(r * 255):02x}{int(g * 255):02x}{int(b * 255):02x}")
+    centering = np.eye(n) - np.ones((n, n)) / n
+    gram = -0.5 * centering @ (distances ** 2) @ centering
+    values, vectors = np.linalg.eigh(gram)
+    order = np.argsort(values)[::-1][:3]
+    coords = vectors[:, order] * np.sqrt(np.maximum(values[order], 0))
+    coords = np.pad(coords, ((0, 0), (0, 3 - coords.shape[1])))
 
-    return colors
+    # the first state lies on the negative side of every axis
+    coords *= np.where(coords[0] > 0, -1.0, 1.0)
 
-def _state_colors(color_mapping: dict) -> dict:
-    # the color mapping keyed by the state names the tables use
+    radii = np.linalg.norm(coords, axis=1)
+    knee = 2 * np.median(radii)
+
+    if knee > 0:
+        coords *= (knee * np.arcsinh(radii / knee) / np.where(radii > 0, radii, 1))[:, None]
+
+    first = np.array([1.0, 0.0, 0.6]) / np.linalg.norm([1.0, 0.0, 0.6])
+    second = np.array([0.0, 1.0, 0.0])
+    directions = coords @ np.vstack([first, second, np.cross(first, second)])
+    center = np.array([0.62, 0.0, 0.0])
+
+    if not np.abs(directions).max() > 0:
+        return [_oklab_to_hex(center)] * n
+
+    # the largest common scale that keeps every color displayable, by bisection
+    low, high = 0.0, 1.0 / np.abs(directions).max()
+
+    for _ in range(40):
+        scale = (low + high) / 2
+
+        if all(_displayable(center + scale * d) for d in directions):
+            low = scale
+        else:
+            high = scale
+
+    return [_oklab_to_hex(center + low * d) for d in directions]
+
+def _oklab_to_linear_rgb(lab: np.ndarray) -> np.ndarray:
+    # oklab to linear srgb (Ottosson, 2020)
+    l, m, s = np.array([
+        [1.0, 0.3963377774, 0.2158037573],
+        [1.0, -0.1055613458, -0.0638541728],
+        [1.0, -0.0894841775, -1.2914855480],
+    ]) @ lab
+
+    return np.array([
+        [4.0767416621, -3.3077115913, 0.2309699292],
+        [-1.2684380046, 2.6097574011, -0.3413193965],
+        [-0.0041960863, -0.7034186147, 1.7076147010],
+    ]) @ np.array([l ** 3, m ** 3, s ** 3])
+
+def _displayable(lab: np.ndarray) -> bool:
+    # inside srgb, and neither too dark to tell apart nor as light as the noise grey
+    rgb = _oklab_to_linear_rgb(lab)
+
+    return 0.38 <= lab[0] <= 0.86 and bool(np.all(rgb >= -1e-6) and np.all(rgb <= 1 + 1e-6))
+
+def _oklab_to_hex(lab: np.ndarray) -> str:
+    rgb = np.clip(_oklab_to_linear_rgb(lab), 0, 1)
+    # the srgb transfer function
+    rgb = np.where(rgb <= 0.0031308, 12.92 * rgb, 1.055 * rgb ** (1 / 2.4) - 0.055)
+
+    return "#" + "".join(f"{int(round(c * 255)):02x}" for c in rgb)
+
+def _state_names(state_colors: dict) -> dict:
+    # the state colors keyed by the state names the tables use
     return {
         f"({key[0]}, {key[1]})" if isinstance(key, tuple) else _cluster_name(key): color
-        for key, color in color_mapping.items()
+        for key, color in state_colors.items()
     }
 
-def _plot_cluster_frequencies(frequencies: pd.Series, color_mapping: dict, clusters: str) -> go.Figure:
+def _plot_cluster_frequencies(frequencies: pd.Series, state_colors: dict, clusters: str) -> go.Figure:
     # the frequencies are named after what they count, events or windows
-    colors = _state_colors(color_mapping)
+    colors = _state_names(state_colors)
     unit = frequencies.name.capitalize()
 
     # every cluster is drawn, also the ones without events in the range, so the plots of
@@ -366,7 +433,7 @@ def _plot_state_distances(distances: pd.DataFrame, title: str) -> go.Figure:
 
     return fig
 
-def _plot_trajectories(visits: pd.DataFrame, color_mapping: dict, title: str = None) -> go.Figure:
+def _plot_trajectories(visits: pd.DataFrame, state_colors: dict, title: str = None) -> go.Figure:
     # one row per case, the one that started first on top, and one bar per visit of a
     # state, from when the case entered it until it left
     cases = visits.groupby("case")["start"].min().sort_values().index
@@ -378,10 +445,10 @@ def _plot_trajectories(visits: pd.DataFrame, color_mapping: dict, title: str = N
         x_end="end",
         y="case",
         color="state",
-        color_discrete_map=_state_colors(color_mapping),
+        color_discrete_map=_state_names(state_colors),
         category_orders={"case": list(cases)},
-        # events of a case's visit, windows of the log's
-        hover_data=[column for column in ("events", "windows") if column in visits],
+        # events of a case's visit, feature windows of the log's
+        hover_data=[column for column in ("events", "feature_windows") if column in visits],
         title=title,
     )
 
@@ -394,7 +461,7 @@ def _plot_trajectories(visits: pd.DataFrame, color_mapping: dict, title: str = N
     return fig
 
 def _window_lines(fig: go.Figure, windows) -> None:
-    # a thin line at the start of every window
+    # a thin line at the start of every signal window
     fig.update_layout(shapes=[
         dict(type="line", xref="x", yref="paper", x0=window, x1=window, y0=0, y1=1,
              line=dict(color="white", width=0.5))

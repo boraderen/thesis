@@ -1,67 +1,1186 @@
 \chapter{State-Based Drift Detection}
 \label{chap:approach}
-Placeholder.
+In this chapter, we present our state-based framework and thereby answer \ref{item:intro:rq_states}. The input is an event log according to Definition~\ref{def:prelim:event_log}. The output consists of intra-case, resource and inter-case states and, for each perspective, a drift signal over time. A high value of this signal indicates a concept drift.
+
+\textcite{berti2025ocel} compute execution states of objects: They encode each event as a vector and concatenate the vectors of consecutive events of an object in sliding windows. A PCA compresses these windows, and a SOM maps them onto its cells, which are the states. We transfer these steps from objects to cases and additionally apply them to time windows to obtain resource and inter-case states. A fourth step turns the states into drift signals.
+
+Figure~\ref{fig:approach:overview} shows the four steps with their inputs and outputs:
+\begin{enumerate}
+	\item \emph{Feature extraction} (Section~\ref{sec:approach:features}): For each perspective, the event log yields a feature matrix $X \in \R^{m \times n}$. In the intra-case perspective, each row describes an event, and in the resource and inter-case perspectives a feature window.
+	\item \emph{Scaling and dimensionality reduction} (Section~\ref{sec:approach:reduction}): Scaling and PCA compress $X$ into a matrix $Z \in \R^{m \times d}$ with $d \le n$ principal components.
+	\item \emph{Clustering into states} (Section~\ref{sec:approach:clustering}): A SOM, k-means or DBSCAN assigns a cluster to each row of $Z$. Each cluster is a state.
+	\item \emph{Drift signals} (Section~\ref{sec:approach:drift_signals}): For each signal window, we compare the distribution of the states of its rows with a reference, e.g., the previous signal window, using a divergence. The divergence is the drift score of the signal window, and the drift signal is the time series of the drift scores.
+\end{enumerate}
+
+The three perspectives pass through the steps separately. Thus, each perspective has its own states and its own drift signal. Each section of this chapter covers one step and contains one subsection per perspective. Finally, Section~\ref{sec:approach:ai} introduces the AI-assisted analysis. It is not a step of the pipeline, but interprets the results of the pipeline with an LLM.
+
+\begin{figure}[tb]
+	\centering
+	\begin{tikzpicture}[font=\small, >={Stealth},
+			lane/.style={draw, rounded corners=2pt, fill=black!6, align=left, text width=2.8cm, minimum height=1.3cm},
+			stage/.style={draw, rounded corners=2pt, fill=black!6, align=center, text width=2cm, minimum height=4.3cm},
+			head/.style={align=center, text width=2.7cm, font=\small\bfseries},
+			io/.style={align=center, text width=2.7cm}]
+		% column headers, one per section of the chapter
+		\node[head, text width=1.3cm] at (0.65, 4.25) {Input};
+		\node[head] at (3.5, 4.25) {Feature extraction (Section~\ref{sec:approach:features})};
+		\node[head] at (6.7, 4.25) {Scaling and dimensionality reduction (Section~\ref{sec:approach:reduction})};
+		\node[head] at (9.45, 4.25) {Clustering into states (Section~\ref{sec:approach:clustering})};
+		\node[head] at (12.2, 4.25) {Drift signals (Section~\ref{sec:approach:drift_signals})};
+		% input
+		\node[draw, align=center, text width=1.1cm, minimum height=1.2cm] (log) at (0.65, 1.3) {Event log~$L$};
+		% feature extraction differs per perspective
+		\node[lane] (fi) at (3.5, 2.75) {\textbf{Intra-case:} one row per event};
+		\node[lane] (fr) at (3.5, 1.3) {\textbf{Resource:} one row per feature window};
+		\node[lane] (fn) at (3.5, -0.15) {\textbf{Inter-case:} one row per feature window};
+		% the later steps use the same techniques, but run separately per perspective
+		\node[stage] (dr) at (6.7, 1.3) {Scaling and PCA};
+		\node[stage] (cl) at (9.45, 1.3) {SOM, \mbox{k-means} or DBSCAN};
+		\node[stage] (ds) at (12.2, 1.3) {State distribution per signal window, divergence from a reference};
+		\foreach \lane in {fi, fr, fn} {
+			\draw[->] (log.east) -- (\lane.west);
+			\draw[->] (\lane.east) -- (\lane.east -| dr.west);
+			\draw[->] (\lane.east -| dr.east) -- (\lane.east -| cl.west);
+			\draw[->] (\lane.east -| cl.east) -- (\lane.east -| ds.west);
+		}
+		% output of each step
+		\node[head, text width=1.3cm] at (0.65, -1.75) {Output};
+		\node[io] at (3.5, -1.75) {feature matrix $X \in \R^{m \times n}$};
+		\node[io] at (6.7, -1.75) {compressed \mbox{matrix} $Z \in \R^{m \times d}$};
+		\node[io] at (9.45, -1.75) {one state per row of~$Z$};
+		\node[io] at (12.2, -1.75) {drift signal: one drift score per signal window};
+	\end{tikzpicture}
+	\caption[Overview of the state-based framework]{%
+		Overview of the state-based framework. The event log $L$ passes through the four steps separately for each perspective, shown by the three arrows between two steps. The bottom row gives the output of each step, and each column is one section of this chapter.}
+	\label{fig:approach:overview}
+\end{figure}
+
+The framework uses calendar windows (Definition~\ref{def:prelim:windows}) in two roles, which Definition~\ref{def:approach:window_roles} introduces formally:
+\begin{itemize}
+	\item \emph{Feature windows:} In the resource and inter-case perspectives, a feature vector describes the events of a feature window, e.g., of one day. The intra-case perspective has no feature windows.
+	\item \emph{Signal windows:} The drift signal has one drift score per signal window. A signal window summarizes the states of the events or feature windows that lie in it and is at least as long as a feature window.
+\end{itemize}
+
+As a running example, we generate the event log $L_3$ with 4,920 cases and 24,600 events from the year 2020 using Rheon (Chapter~\ref{chap:rheon}). Its cases execute the five activities $a$ to $e$, four resources handle them, and the amount is a numerical case attribute. $L_3$ contains one sudden drift per perspective (Table~\ref{tab:approach:running_drifts}):
+\begin{itemize}
+	\item \emph{Control-flow:} Before the drift, all cases follow the process tree ${\rightarrow}(a,\allowbreak {\rightarrow}({\rightarrow}(b, c),\allowbreak {\rightarrow}(d, e)))$. Afterwards, they follow ${\rightarrow}({\rightarrow}(a,\allowbreak {\wedge}(b, c)),\allowbreak {\wedge}(d, e))$, i.e., $b$ and $c$ as well as $d$ and $e$ swap their order.
+	\item \emph{Resource:} Each activity gets a new dominant resource.
+	\item \emph{Inter-case:} The mean amount of the cases rises from 1000 to 2500 euros.
+\end{itemize}
+Table~\ref{tab:approach:running_log} shows one case before and one case after all drifts. We choose the lengths of the feature and signal windows per perspective in each section.
+
+\begin{table}[tb]
+	\centering
+	\caption[Drifts of the running example]{%
+		The three sudden drifts of the running example $L_3$. The position is the fraction of the year 2020 at which Rheon injects the drift.}
+	\label{tab:approach:running_drifts}
+	\small
+	\begin{tabular}{@{}rlll@{}}
+		\toprule
+		Position & Drift point          & Perspective & Drift type             \\
+		\midrule
+		0.25     & Apr.~1, 2020, 06:00  & Intra-case  & \texttt{control\_flow} \\
+		0.50     & July~1, 2020, 12:00  & Resource    & \texttt{reassignment}  \\
+		0.75     & Sep.~30, 2020, 18:00 & Inter-case  & \texttt{amount}        \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{table}[tb]
+	\centering
+	\caption[Excerpt of the running example]{%
+		Two cases of the running example $L_3$, case~1 before and case~3711 after all drifts. Identifiers are abbreviated, timestamps are completion times, durations are in minutes and amounts in euros. Case~3711 swaps $b$ and $c$ as well as $d$ and $e$, its events are executed by the new dominant resources of their activities, and its amount is higher.}
+	\label{tab:approach:running_log}
+	\small
+	\begin{tabular}{@{}llllrrl@{}}
+		\toprule
+		Case & Activity & Timestamp     & Resource         & Duration & Amount  & Region            \\
+		\midrule
+		1    & $a$      & Jan.~1, 00:17 & \texttt{res\_01} & 17.57    & 780.51  & \texttt{region\_4} \\
+		1    & $b$      & Jan.~1, 00:49 & \texttt{res\_01} & 27.98    & 780.51  & \texttt{region\_4} \\
+		1    & $c$      & Jan.~1, 01:40 & \texttt{res\_02} & 39.92    & 780.51  & \texttt{region\_4} \\
+		1    & $d$      & Jan.~1, 02:16 & \texttt{res\_01} & 19.22    & 780.51  & \texttt{region\_4} \\
+		1    & $e$      & Jan.~1, 02:57 & \texttt{res\_04} & 25.82    & 780.51  & \texttt{region\_4} \\
+		\addlinespace
+		3711 & $a$      & Oct.~2, 01:07 & \texttt{res\_03} & 26.25    & 2476.48 & \texttt{region\_4} \\
+		3711 & $c$      & Oct.~2, 01:49 & \texttt{res\_03} & 31.48    & 2476.48 & \texttt{region\_4} \\
+		3711 & $b$      & Oct.~2, 02:19 & \texttt{res\_02} & 28.48    & 2476.48 & \texttt{region\_4} \\
+		3711 & $e$      & Oct.~2, 03:00 & \texttt{res\_02} & 28.42    & 2476.48 & \texttt{region\_4} \\
+		3711 & $d$      & Oct.~2, 03:45 & \texttt{res\_02} & 27.78    & 2476.48 & \texttt{region\_4} \\
+		\bottomrule
+	\end{tabular}
+\end{table}
 
 \section{Feature Extraction}
 \label{sec:approach:features}
-Placeholder.
+Feature extraction translates an event log into numbers. It is the only step that reads the event log, so a drift that no feature captures stays invisible in all following steps. In the intra-case perspective, a row of the feature matrix describes an event by the prefix of its case. In the other two perspectives, it describes a feature window by the events that lie in it.
+
+\medskip
+\noindent\emph{Notation:}
+\begin{itemize}[beginpenalty=10000]
+	\item \emph{One-hot vector:} For $1 \le i \le p$, $\mathit{onehot}_p(i) \in \R^p$ has a 1 at position $i$ and 0 elsewhere, e.g., $\mathit{onehot}_3(2) = (0, 1, 0)$. $\mathbf{0}$ is the zero vector.
+	\item \emph{Concatenation:} $(\mathbf{x}, \mathbf{y})$ appends the vector $\mathbf{y}$ to the vector $\mathbf{x}$, e.g., $((1, 2), (3)) = (1, 2, 3)$.
+	\item \emph{Statistics:} For a finite multiset $M = [x_1, \dots, x_k]$ of numbers, the mean and the sample standard deviation are
+	      \[
+		      \mathit{mean}(M) = \frac{1}{k} \sum_{i=1}^{k} x_i \quad\text{and}\quad \mathit{std}(M) = \sqrt{\frac{1}{k - 1} \sum_{i=1}^{k} (x_i - \mathit{mean}(M))^2}.
+	      \]
+	      We set $\mathit{mean}([\,]) = 0$, and $\mathit{std}(M) = 0$ for $k < 2$. For $p, q \in \N_0$, $\mathit{ratio}(p, q) = p / q$ for $q > 0$ and $\mathit{ratio}(p, 0) = 0$.
+	\item \emph{Time:} As in Section~\ref{sec:prelim:windows}, we treat timestamps as real numbers and give time differences in minutes.
+\end{itemize}
+
+\begin{definition}[Feature and Signal Windows]
+	\label{def:approach:window_roles}
+	Let $o \in \U{time}$ be an origin, and let $\Delta_f, \Delta_s \in \R$ with $0 < \Delta_f \le \Delta_s$.
+	\begin{itemize}
+		\item The feature windows are the calendar windows with the origin $o$ and the length $\Delta_f$, and the signal windows are those with the origin $o$ and the length $\Delta_s$ (Definition~\ref{def:prelim:windows}).
+		\item A feature window $w = [t, t + \Delta_f)$ lies in the signal window that contains its start $t$. An event lies in the signal window that contains its timestamp.
+	\end{itemize}
+\end{definition}
+
+Thus, each feature window lies in exactly one signal window. If $\Delta_s$ is a multiple of $\Delta_f$, the feature window lies completely in it. Otherwise, some feature windows reach into the next signal window, and the signal windows contain different numbers of feature windows (Figure~\ref{fig:approach:windows}).
+
+\begin{figure}[tb]
+	\centering
+	\definecolor{sigA}{RGB}{0,114,178}
+	\definecolor{sigB}{RGB}{230,159,0}
+	\definecolor{sigC}{RGB}{0,158,115}
+	\definecolor{sigD}{RGB}{204,121,167}
+	\begin{tikzpicture}[font=\small, x=1.2cm, y=0.8cm]
+		\node[anchor=east] at (-0.15, 2) {Events};
+		\node[anchor=east] at (-0.15, 1) {Feature windows};
+		\node[anchor=east] at (-0.15, 0) {Signal windows};
+		% signal windows of 2.5 days, the last one cut at day 8
+		\foreach \a/\b/\c/\n in {0/2.5/sigA/0, 2.5/5/sigB/1, 5/7.5/sigC/2} {
+			\draw[fill=\c!25, draw=\c] (\a, -0.3) rectangle (\b, 0.3);
+			\node at ({(\a + \b) / 2}, 0) {$v_{\n}$};
+		}
+		\draw[fill=sigD!25, draw=sigD] (7.5, -0.3) rectangle (8, 0.3);
+		\node at (7.75, 0) {$v_3$};
+		% feature windows of one day, each in the color of the signal window of its start
+		% the labels of w_2 and w_7 sit left of the signal window boundary that crosses them
+		\foreach \k/\c/\l in {0/sigA/0.5, 1/sigA/0.5, 2/sigA/0.22, 3/sigB/0.5, 4/sigB/0.5, 5/sigC/0.5, 6/sigC/0.5, 7/sigC/0.22} {
+			\draw[fill=\c!25, draw=\c] (\k + 0.04, 0.7) rectangle (\k + 0.96, 1.3);
+			\node at (\k + \l, 1) {$w_{\k}$};
+		}
+		% boundaries of the signal windows through all rows
+		\foreach \x in {2.5, 5, 7.5}
+			\draw[dashed, black!60] (\x, -0.45) -- (\x, 2.4);
+		% events, each in the color of the signal window of its timestamp
+		\foreach \t/\c in {0.4/sigA, 1.3/sigA, 1.8/sigA, 2.3/sigA, 2.7/sigB, 3.4/sigB, 4.2/sigB, 4.8/sigB, 5.5/sigC, 6.1/sigC, 6.9/sigC, 7.3/sigC, 7.7/sigD}
+			\fill[\c] (\t, 2) circle (3.2pt);
+		% time axis
+		\draw[->] (0, -0.75) -- (8.35, -0.75) node[right] {days};
+		\foreach \d in {0, ..., 8}
+			\draw (\d, -0.75) -- (\d, -0.85) node[below] {\d};
+	\end{tikzpicture}
+	\caption[Feature windows and signal windows]{%
+		Feature windows of $\Delta_f = 1$~day and signal windows of $\Delta_s = 2.5$~days with the same origin at day~0. Each feature window has the color of the signal window that contains its start, each event the color of the signal window that contains its timestamp, and dashed lines are the boundaries of the signal windows. Since 2.5 is no multiple of 1, $w_2$ and $w_7$ reach into the next signal window, and $v_0$, $v_1$ and $v_2$ hold three, two and three feature windows. The event after 2.5 days lies in $v_1$, whereas its feature window $w_2$ lies in $v_0$.}
+	\label{fig:approach:windows}
+\end{figure}
+
+\begin{definition}[Predecessors, Gaps and Feature Windows of an Event Log]
+	\label{def:approach:windows}
+	Let $L = (E, \pi, \preceq)$ be an event log, and let feature windows of the length $\Delta_f$ be given (Definition~\ref{def:approach:window_roles}).
+	\begin{itemize}
+		\item For a case with the events $e_1 \preceq \dots \preceq e_l$ (Definition~\ref{def:prelim:trace}), $\mathit{prev}_L(e_i) = e_{i-1}$ for $1 < i \le l$ is the predecessor of $e_i$. The first event of a case has no predecessor, so $\mathit{prev}_L \in E \pto E$.
+		\item For $e \in \dom(\mathit{prev}_L)$, $\mathit{gap}_L(e) = \pi_{\mathit{time}}(e) - \pi_{\mathit{time}}(\mathit{prev}_L(e))$ is the gap between $e$ and its predecessor.
+		\item For a feature window $w$, $E^w_L = \Set{e \in E \given \pi_{\mathit{time}}(e) \in w}$ is the set of its events.
+		\item $W_L$ are the feature windows from the window of the first to the window of the last event of $L$ in chronological order, including those without events.
+	\end{itemize}
+\end{definition}
+
+\begin{definition}[Feature Extraction]
+	\label{def:approach:feature_extraction}
+	Let $L = (E, \pi, \preceq)$ be an event log with the rows $s_1, \dots, s_m$, i.e., the events in the order $\preceq$ in the intra-case perspective and the feature windows $W_L$ (Definition~\ref{def:approach:windows}) in the other two perspectives.
+	\begin{itemize}
+		\item A feature group $f$ computes from $L$ a vector $f_L(s) \in \R^p$ for each row $s$, e.g., with one entry per activity.
+		\item For the chosen feature groups $f^1, \dots, f^g$, $\mathbf{x}_s = (f^1_L(s), \dots, f^g_L(s)) \in \R^n$ is the feature vector of the row $s$.
+		\item Together, the feature vectors of all rows form the feature matrix $X \in \R^{m \times n}$ with the rows $\mathbf{x}_{s_1}^\top, \dots, \mathbf{x}_{s_m}^\top$ (Section~\ref{sec:prelim:pca}).
+	\end{itemize}
+\end{definition}
+
+The following subsections define the feature groups of each perspective that we use in this thesis. The framework also works with only a part of these feature groups or with self-defined ones. In the dashboard, users choose the feature groups (Section~\ref{sec:impl:dashboard}), and our library kairo is flexible for custom features (Section~\ref{sec:impl:kairo}).
+
+For each perspective, a figure shows to which Rheon drift types our feature groups respond.
 
 \subsection{Intra-Case Perspective}
 \label{sec:approach:features:intra}
-Placeholder.
+The intra-case features describe each event $e$ by the prefix of its case, i.e., by the activities of the case up to and including $e$. Since a prefix has a variable length, the feature groups abstract it to different degrees. A multiset of the prefix ignores the order of the activities, a set additionally ignores their frequencies, and the last activity ignores all earlier ones. The current and the past activities adopt the encoding of \textcite{berti2025ocel}, which concatenates the one-hot vectors of the activities of consecutive events.
+
+\begin{definition}[Intra-Case Features]
+	\label{def:approach:intra}
+	Let $L = (E, \pi, \preceq)$ be an event log with the activities $A_L = \Set{\pi_{\mathit{act}}(e) \given e \in E} = \Set{a_1, \dots, a_p}$, let $D_L = \Set{d_1, \dots, d_u} \subseteq A_L \times A_L$ be the set of directly-follows pairs that occur in a trace of $L$, and let $h \in \N_0$. Let $e_k$ be the $k$-th of $l$ events of a case and $\sigma = \mathit{prefix}_L(e_k)$ (Definition~\ref{def:prelim:trace}). The built-in feature groups of $e_k$ are:
+	\begin{itemize}
+		\item \emph{Activity frequencies} (\texttt{act\_freqs}): the share of each activity among the first $k$ events of the case:
+		      \[
+			      \mathit{freq}_L(e_k) = (\partial_{\mathit{multiset}}(\sigma)(a_1), \dots, \partial_{\mathit{multiset}}(\sigma)(a_p)) / k.
+		      \]
+		\item \emph{Directly-follows counts} (\texttt{df\_counts}): how often each directly-follows pair occurs in the prefix:
+		      \[
+			      \mathit{dfc}_L(e_k) = (\mathit{df}(\sigma)(d_1), \dots, \mathit{df}(\sigma)(d_u)).
+		      \]
+		\item \emph{Activity set} (\texttt{act\_set}): $\mathit{set}_L(e_k) = \sum_{a_i \in \partial_{\mathit{set}}(\sigma)} \mathit{onehot}_p(i)$, i.e., a 1 for each activity that occurs in the prefix.
+		\item \emph{Case progress} (\texttt{case\_progress}): $\mathit{progress}_L(e_k) = k / l$.
+		\item \emph{Current activity} (\texttt{current\_act}): $\mathit{cur}_L(e_k) = \mathit{onehot}_p(i)$ for $\sigma(k) = a_i$.
+		\item \emph{Past activities} (\texttt{past\_acts}): $\mathit{past}^h_L(e_k) = (\mathbf{y}_1, \dots, \mathbf{y}_h)$, i.e., the activities of the $h$ previous events of the case, with $\mathbf{y}_j = \mathit{onehot}_p(i)$ for $j < k$ and $\sigma(k - j) = a_i$, and $\mathbf{y}_j = \mathbf{0}$ otherwise.
+	\end{itemize}
+\end{definition}
+
+\noindent\emph{Properties:}
+\begin{itemize}[beginpenalty=10000]
+	\item The feature groups only read the activities of a case. Only the directly-follows counts and the past together with the current activity capture the order.
+	\item The case progress knows the length of the whole case and thus requires a completely recorded event log (Section~\ref{sec:intro_ssec:probs}).
+	\item An activity or a directly-follows pair that only occurs after a drift gets its own column, which is 0 before the drift.
+\end{itemize}
+
+\begin{table}[tb]
+	\centering
+	\caption[Intra-case feature vectors of the running example]{%
+		Two rows of the intra-case feature matrix of $L_3$ with three feature groups: the third events of case~1 before and of case~3711 after the control-flow drift (Table~\ref{tab:approach:running_log}). The activity columns are in the order $a$ to $e$, the directly-follows columns in the order $a \to b$, $a \to c$, $b \to c$, $b \to d$, $b \to e$, $c \to b$, $c \to d$, $c \to e$, $d \to e$ and $e \to d$. Bold vectors differ between the two events.}
+	\label{tab:approach:features_intra}
+	\small
+	\begin{tabular}{@{}lll@{}}
+		\toprule
+		Feature group           & Case 1, prefix $\seq{a, b, c}$            & Case 3711, prefix $\seq{a, c, b}$         \\
+		\midrule
+		Activity frequencies    & $(1/3, 1/3, 1/3, 0, 0)$                   & $(1/3, 1/3, 1/3, 0, 0)$                   \\
+		Directly-follows counts & $\mathbf{(1, 0, 1, 0, 0, 0, 0, 0, 0, 0)}$ & $\mathbf{(0, 1, 0, 0, 0, 1, 0, 0, 0, 0)}$ \\
+		Current activity        & $\mathbf{(0, 0, 1, 0, 0)}$                & $\mathbf{(0, 1, 0, 0, 0)}$                \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{example}
+	\label{ex:approach:intra}
+	For the intra-case features of $L_3$, we choose the activity frequencies, the directly-follows counts and the current activity. With five activities and ten directly-follows pairs, a feature vector has $5 + 10 + 5 = 20$ entries. The prefixes $\seq{a, b, c}$ and $\seq{a, c, b}$ in Table~\ref{tab:approach:features_intra} contain the same activities in a different order, so only the directly-follows counts and the current activity differ.
+\end{example}
+
+% Styles and legend shared by the three figures that map the feature groups of a
+% perspective to the drift types of Rheon. The drift types keep the same rows in all
+% three figures, and drift types that reach the same feature groups lie next to each other
+\definecolor{perspIntra}{RGB}{0,114,178}
+\definecolor{perspResource}{RGB}{230,159,0}
+\definecolor{perspInter}{RGB}{0,158,115}
+\tikzset{
+	mapfeature/.style={anchor=east, inner sep=2pt},
+	mapdrift/.style={anchor=west, rounded corners=1.5pt, line width=1pt, inner sep=2.5pt, minimum width=2.8cm, text height=1.6ex, text depth=0.4ex},
+	mapunused/.style={text=black!40},
+	mapdirect/.style={line width=0.9pt},
+	mapindirect/.style={line width=0.9pt, dashed, black!55},
+}
+% the legend, its first row at the height #1
+\newcommand*{\maplegend}[1]{%
+	\draw[mapdirect] (-0.2, #1) -- ++(0.7, 0) node[right] (l1) {direct response};
+	\draw[mapindirect] ([xshift=0.4cm]l1.east) -- ++(0.7, 0) node[right, text=black] (l2) {response through a side effect};
+	\node[mapdrift, minimum width=0pt, draw=black!30, mapunused, right=0.4cm of l2] {no response};
+	\node[anchor=west] (p0) at (-0.2, #1 + 1.1) {Perspective of a drift type:};
+	\node[mapdrift, minimum width=0pt, draw=perspIntra, fill=perspIntra!12, right=0.3cm of p0] (p1) {intra-case};
+	\node[mapdrift, minimum width=0pt, draw=perspResource, fill=perspResource!12, right=0.3cm of p1] (p2) {resource};
+	\node[mapdrift, minimum width=0pt, draw=perspInter, fill=perspInter!12, right=0.3cm of p2] {inter-case};
+}
+
+\begin{figure}[tb]
+	\centering
+	\begin{tikzpicture}[font=\small, y=-0.65cm]
+		% the nine drift types of Rheon, in the same rows in all three figures
+		\node[mapdrift, draw=perspResource!45, mapunused] (wl) at (9.6, 0) {\texttt{workload}};
+		\node[mapdrift, draw=perspInter!45, mapunused] (ar) at (9.6, 1) {\texttt{arrival\_rate}};
+		\node[mapdrift, draw=perspInter!45, mapunused] (wt) at (9.6, 2) {\texttt{waiting\_time}};
+		\node[mapdrift, draw=perspResource!45, mapunused] (du) at (9.6, 3) {\texttt{duration}};
+		\node[mapdrift, draw=perspResource!45, mapunused] (ps) at (9.6, 4) {\texttt{pool\_size}};
+		\node[mapdrift, draw=perspIntra, fill=perspIntra!12] (cf) at (9.6, 5) {\texttt{control\_flow}};
+		\node[mapdrift, draw=perspResource!45, mapunused] (ra) at (9.6, 6) {\texttt{reassignment}};
+		\node[mapdrift, draw=perspInter!45, mapunused] (am) at (9.6, 7) {\texttt{amount}};
+		\node[mapdrift, draw=perspInter!45, mapunused] (rg) at (9.6, 8) {\texttt{region}};
+		% intra-case feature groups
+		\foreach \i/\lab in {0/Activity frequencies, 1/Directly-follows counts, 2/Activity set, 3/Case progress, 4/Current activity, 5/Past activities}
+			\node[mapfeature] (f\i) at (5.6, 8 * \i / 5) {\lab};
+		\foreach \f/\d in {0/cf, 1/cf, 2/cf, 3/cf, 4/cf, 5/cf}
+			\draw[mapdirect] (f\f.east) -- (\d.west);
+		\maplegend{9.5}
+	\end{tikzpicture}
+	\caption[Intra-case feature groups and the drift types they respond to]{%
+		The Rheon drift types (right) to which the intra-case feature groups (left) of Definition~\ref{def:approach:intra} respond. Only control-flow drifts reach them.}
+	\label{fig:approach:features_intra}
+\end{figure}
+
+Figure~\ref{fig:approach:features_intra} shows the mapping of the intra-case features. The directly-follows counts and the past activities capture a control-flow drift most directly (Section~\ref{sec:rheon:drifts}), and the other feature groups only if the drift changes the activities or the length of the cases. Among the Rheon drift types, a change of the intra-case states therefore only indicates control-flow drifts.
 
 \subsection{Resource Perspective}
 \label{sec:approach:features:resource}
-Placeholder.
+The resource features describe each feature window by how the resources work in it. \textcite{adams2023explainable} list, among others, the workload, service times, waiting times and handovers as features of time windows. The activity-resource shares correspond to the probabilities $P(a \to r)$ with which \textcite{khraiwesh2027window} describe which resource $r$ executes an activity $a$. \textcite{klijn2024multi} use handovers of cases between actors as a feature for drifts in the actor perspective.
+
+\begin{definition}[Resource Features]
+	\label{def:approach:resource}
+	Let $L = (E, \pi, \preceq)$ be an event log with a resource for each event, let $\mathit{prev}_L$, $\mathit{gap}_L$, $E^w_L$ and $W_L$ be as in Definition~\ref{def:approach:windows}, and let $R_L = \Set{\pi_{\mathit{res}}(e) \given e \in E} = \Set{r_1, \dots, r_q}$ be the set of resources.
+	\begin{itemize}
+		\item $H_L = \Set{e \in \dom(\mathit{prev}_L) \given \pi_{\mathit{res}}(\mathit{prev}_L(e)) \neq \pi_{\mathit{res}}(e)}$ is the set of handovers, i.e., of the events whose predecessor another resource executed, and $H^w_L = H_L \cap E^w_L$.
+		\item For $w \in W_L$ and $r \in R_L$, $E^{w,r}_L = \Set{e \in E^w_L \given \pi_{\mathit{res}}(e) = r}$ is the set of the events of $r$ in $w$.
+		\item $P_L = \Set{p_1, \dots, p_u}$ is the set of pairs of an activity and a resource, and $Q_L = \Set{q_1, \dots, q_v}$ the set of pairs of a handing-over and a receiving resource that occur in $L$.
+	\end{itemize}
+	For a feature window $w \in W_L$, the feature groups we use are:
+	\begin{itemize}
+		\item \emph{Events per resource} (\texttt{res\_events}):
+		      \[
+			      \mathit{events}_L(w) = (\abs{E^{w,r_1}_L}, \dots, \abs{E^{w,r_q}_L}).
+		      \]
+		\item \emph{Active cases per resource} (\texttt{res\_cases}):
+		      \[
+			      \mathit{cases}_L(w) = (x_1, \dots, x_q) \quad\text{with}\quad x_i = \abs{\Set{\pi_{\mathit{case}}(e) \given e \in E^{w,r_i}_L}}.
+		      \]
+		\item \emph{Mean event duration per resource} (\texttt{res\_durations}), if each event has a duration:
+		      \[
+			      \mathit{dur}_L(w) = (x_1, \dots, x_q) \quad\text{with}\quad x_i = \mathit{mean}(\MultiSet{\pi_{\mathit{duration}}(e) \given e \in E^{w,r_i}_L}).
+		      \]
+		\item \emph{Mean wait into resource} (\texttt{res\_waits}):
+		      \[
+			      \mathit{wait}_L(w) = (x_1, \dots, x_q) \quad\text{with}\quad x_i = \mathit{mean}(\MultiSet{\mathit{gap}_L(e) \given e \in H^w_L \cap E^{w,r_i}_L}).
+		      \]
+		\item \emph{Activity-resource event shares} (\texttt{act\_res\_shares}): the share of the events of $a$ in $w$ that $r$ executes, i.e., $\mathit{ar}_L(w) = (x_1, \dots, x_u)$, where for $p_i = (a, r)$:
+		      \[
+			      x_i = \mathit{ratio}(\abs{\Set{e \in E^{w,r}_L \given \pi_{\mathit{act}}(e) = a}}, \abs{\Set{e \in E^w_L \given \pi_{\mathit{act}}(e) = a}}).
+		      \]
+		\item \emph{Handover shares} (\texttt{handover\_shares}): the share of the handovers of $r$ in $w$ that go to $r'$, i.e., $\mathit{ho}_L(w) = (x_1, \dots, x_v)$, where for $q_i = (r, r')$:
+		      \[
+			      \begin{aligned}
+				      x_i = \mathit{ratio}( & \abs{\Set{e \in H^w_L \cap E^{w,r'}_L \given \pi_{\mathit{res}}(\mathit{prev}_L(e)) = r}}, \\
+				                      & \abs{\Set{e \in H^w_L \given \pi_{\mathit{res}}(\mathit{prev}_L(e)) = r}}).
+			      \end{aligned}
+		      \]
+	\end{itemize}
+\end{definition}
+
+\noindent\emph{Properties:}
+\begin{itemize}[beginpenalty=10000]
+	\item The counts grow with the number of cases per unit of time. The shares are normalized per activity or per handing-over resource and thus independent of this number.
+	\item A handover counts in the feature window of the receiving event $e$. Since the timestamps are completion times, $\mathit{gap}_L(e)$ covers the waiting time before $e$ and the duration of $e$.
+\end{itemize}
+
+\begin{table}[tb]
+	\centering
+	\caption[Resource feature vectors of the running example]{%
+		Rows of the resource feature matrix of $L_3$ with feature windows of one day and two feature groups, around the resource drift on July~1, 2020. The table is transposed: each column is the feature vector of a feature window. Of the activity-resource event shares, only those of activity $a$ for \texttt{res\_01} and \texttt{res\_03} are shown.}
+	\label{tab:approach:features_resource}
+	\small
+	\begin{tabular}{@{}lrrrr@{}}
+		\toprule
+		Feature                      & June~29 & June~30 & July~2 & July~3 \\
+		\midrule
+		\multicolumn{5}{@{}l}{\emph{Events per resource}}                    \\
+		\quad \texttt{res\_01}        & 45      & 40      & 3      & 4      \\
+		\quad \texttt{res\_02}        & 16      & 16      & 32     & 45     \\
+		\quad \texttt{res\_03}        & 2       & 3       & 26     & 33     \\
+		\quad \texttt{res\_04}        & 18      & 18      & 5      & 9      \\
+		\addlinespace
+		\multicolumn{5}{@{}l}{\emph{Activity-resource event shares}}         \\
+		\quad $a$ by \texttt{res\_01} & 0.94    & 0.88    & 0.08   & 0.05   \\
+		\quad $a$ by \texttt{res\_03} & 0.00    & 0.06    & 0.83   & 0.79   \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{example}
+	\label{ex:approach:resource}
+	For the resource features of $L_3$, we choose feature windows of one day and the feature groups events per resource and activity-resource event shares. With four resources and 20 pairs of an activity and a resource, a feature vector has $4 + 20 = 24$ entries. Before the drift, \texttt{res\_01} is the dominant resource of $a$, $b$ and $d$. Afterwards, \texttt{res\_02} and \texttt{res\_03} take over these activities (Table~\ref{tab:approach:features_resource}).
+\end{example}
+
+\begin{figure}[tb]
+	\centering
+	\begin{tikzpicture}[font=\small, y=-0.65cm]
+		% the nine drift types of Rheon, in the same rows in all three figures
+		\node[mapdrift, draw=perspResource, fill=perspResource!12] (wl) at (9.6, 0) {\texttt{workload}};
+		\node[mapdrift, draw=perspInter, fill=perspInter!12] (ar) at (9.6, 1) {\texttt{arrival\_rate}};
+		\node[mapdrift, draw=perspInter, fill=perspInter!12] (wt) at (9.6, 2) {\texttt{waiting\_time}};
+		\node[mapdrift, draw=perspResource, fill=perspResource!12] (du) at (9.6, 3) {\texttt{duration}};
+		\node[mapdrift, draw=perspResource, fill=perspResource!12] (ps) at (9.6, 4) {\texttt{pool\_size}};
+		\node[mapdrift, draw=perspIntra, fill=perspIntra!12] (cf) at (9.6, 5) {\texttt{control\_flow}};
+		\node[mapdrift, draw=perspResource, fill=perspResource!12] (ra) at (9.6, 6) {\texttt{reassignment}};
+		\node[mapdrift, draw=perspInter!45, mapunused] (am) at (9.6, 7) {\texttt{amount}};
+		\node[mapdrift, draw=perspInter!45, mapunused] (rg) at (9.6, 8) {\texttt{region}};
+		% resource feature groups
+		\foreach \i/\lab in {0/Events per resource, 1/Active cases per resource, 2/Mean event duration per resource, 3/Mean wait into resource, 4/Activity-resource event shares, 5/Handover shares}
+			\node[mapfeature] (f\i) at (5.6, 8 * \i / 5) {\lab};
+		\foreach \f/\d in {0/wl, 0/ps, 0/ra, 1/wl, 1/ps, 1/ra, 2/du, 2/ps, 3/wt, 4/ps, 4/ra, 5/ps, 5/ra}
+			\draw[mapdirect] (f\f.east) -- (\d.west);
+		\foreach \f/\d in {0/ar, 1/ar, 3/du, 3/ps, 3/ra, 5/cf}
+			\draw[mapindirect] (f\f.east) -- (\d.west);
+		\maplegend{9.5}
+	\end{tikzpicture}
+	\caption[Resource feature groups and the drift types they respond to]{%
+		The Rheon drift types (right) to which the resource feature groups (left) of Definition~\ref{def:approach:resource} respond. Besides the resource drift types, they also respond to arrival rate, waiting time and control-flow drifts.}
+	\label{fig:approach:features_resource}
+\end{figure}
+
+Figure~\ref{fig:approach:features_resource} shows the mapping of the resource features:
+\begin{itemize}
+	\item \emph{Reassignment and pool size} change which resource executes an activity and thus the counts and the shares. A pool size drift additionally scales the durations (Section~\ref{sec:rheon:drifts}) and therefore also reaches the feature groups of a duration drift.
+	\item \emph{Duration:} Since a gap includes the duration of the receiving event, the waiting times also respond to duration drifts.
+	\item \emph{Workload and arrival rate} both change the mean inter-arrival time in Rheon (Section~\ref{sec:rheon:generation}) and thus the counts in the same way. No resource feature distinguishes them.
+	\item \emph{Control-flow:} Since resources are bound to activities, a new order of the activities also changes the handovers.
+\end{itemize}
 
 \subsection{Inter-Case Perspective}
 \label{sec:approach:features:inter}
-Placeholder.
+The inter-case features describe each feature window by all cases that run in it. \textcite{kraus2026steady} describe a process as a system by the number of arriving, active and completed cases per period. Similarly, \textcite{senderovich2017intra} use the number of cases running at a point in time in their coarsest inter-case encoding.
 
-\section{Dimensionality Reduction}
+\begin{definition}[Inter-Case Features]
+	\label{def:approach:inter}
+	Let $L = (E, \pi, \preceq)$ be an event log, let $\mathit{prev}_L$, $\mathit{gap}_L$, $E^w_L$ and $W_L$ be as in Definition~\ref{def:approach:windows} with the length $\Delta_f$ of the feature windows, and let $\tau > 0$ be a stall threshold. Let $N_{\mathit{num}} = \Set{n_1, \dots, n_s}$ and $N_{\mathit{cat}}$ be disjoint sets of numerical and categorical case attributes of $L$ (Definition~\ref{def:prelim:event_log}) that every event has, and let $V = \Set{u_1, \dots, u_t}$ be the set of pairs $(n, v)$ of an attribute $n \in N_{\mathit{cat}}$ and one of its values $v$ in $L$. For a feature window $w = [t, t + \Delta_f) \in W_L$, oureature groups are:
+	\begin{itemize}
+		\item \emph{Active cases} (\texttt{active\_cases}): $\mathit{active}_L(w) = \abs{\Set{\pi_{\mathit{case}}(e) \given e \in E^w_L}}$.
+		\item \emph{New arrivals} (\texttt{new\_arrivals}): $\mathit{arrivals}_L(w) = \abs{\Set{c \in C_L \given \mathit{start}_L(c) \in w}}$.
+		\item \emph{Completions} (\texttt{completions}): $\mathit{completions}_L(w) = \abs{\Set{c \in C_L \given \mathit{end}_L(c) \in w}}$.
+		\item \emph{Events per active case} (\texttt{events\_per\_case}):
+		      \[
+			      \mathit{epc}_L(w) = \mathit{ratio}(\abs{E^w_L}, \mathit{active}_L(w)).
+		      \]
+		\item \emph{Mean within-case gap} (\texttt{mean\_delta\_t}) and \emph{standard deviation of within-case gaps} (\texttt{std\_delta\_t}): $\mathit{gapmean}_L(w) = \mathit{mean}(G)$ and $\mathit{gapstd}_L(w) = \mathit{std}(G)$ with
+		      \[
+			      G = \MultiSet{\mathit{gap}_L(e) \given e \in E^w_L \cap \dom(\mathit{prev}_L)}.
+		      \]
+		\item \emph{Stalled cases} (\texttt{stalled\_cases}): the cases whose last event lies more than $\tau$ before the end $t + \Delta_f$ of $w$ and that still have a later event:
+		      \[
+			      \mathit{stalled}_L(w) = \abs{\Set{\pi_{\mathit{case}}(e) \given e \in \dom(\mathit{prev}_L) \land \pi_{\mathit{time}}(\mathit{prev}_L(e)) + \tau < t + \Delta_f < \pi_{\mathit{time}}(e)}}.
+		      \]
+		\item \emph{Means} (\texttt{attr\_means}) and \emph{standard deviations of numerical attributes} (\texttt{attr\_stds}) with $M_n = \MultiSet{\pi_n(e) \given e \in E^w_L}$:
+		      \[
+			      \begin{aligned}
+				      \mathit{attrmean}_L(w) & = (\mathit{mean}(M_{n_1}), \dots, \mathit{mean}(M_{n_s})), \\
+				      \mathit{attrstd}_L(w)  & = (\mathit{std}(M_{n_1}), \dots, \mathit{std}(M_{n_s})).
+			      \end{aligned}
+		      \]
+		\item \emph{Value shares of categorical attributes} (\texttt{attr\_shares}): the share of the events in $w$ with the value $v$ of $n$, for $u_i = (n, v)$:
+		      \[
+			      \mathit{attrshare}_L(w) = (x_1, \dots, x_t) \quad\text{with}\quad x_i = \mathit{ratio}(\abs{\Set{e \in E^w_L \given \pi_n(e) = v}}, \abs{E^w_L}).
+		      \]
+	\end{itemize}
+\end{definition}
+
+\noindent\emph{Properties:}
+\begin{itemize}[beginpenalty=10000]
+	\item A case is active in every feature window that contains one of its events. Arrivals and completions, in contrast, count it only once.
+	\item If only the number of cases per unit of time rises, the events per active case stay about the same.
+	\item The stalled cases are only informative if $\tau$ is of the order of the gaps and many ends of feature windows fall into gaps.
+	\item The attribute features weight events, not cases. Without chosen case attributes, drifts in the case attributes stay invisible.
+\end{itemize}
+
+\begin{table}[tb]
+	\centering
+	\caption[Inter-case feature vectors of the running example]{%
+		Rows of the inter-case feature matrix of $L_3$ with feature windows of 12~hours and four feature groups, around the inter-case drift on September~30, 2020, 18:00. The table is transposed: each column is the feature vector of a feature window, given by its start. Gaps are in minutes and amounts in euros.}
+	\label{tab:approach:features_inter}
+	\small
+	\begin{tabular}{@{}lrrrr@{}}
+		\toprule
+		Feature              & Sep.~29, 12:00 & Sep.~30, 00:00 & Oct.~1, 00:00 & Oct.~1, 12:00 \\
+		\midrule
+		Active cases         & 6              & 9              & 7             & 8             \\
+		New arrivals         & 5              & 7              & 4             & 7             \\
+		Mean within-case gap & 50.66          & 45.22          & 44.29         & 42.50         \\
+		Mean of the amount   & 912.46         & 931.22         & 2375.81       & 2599.66       \\
+		\bottomrule
+	\end{tabular}
+\end{table}
+
+\begin{example}
+	\label{ex:approach:inter}
+	For the inter-case features of $L_3$, we choose shorter feature windows of 12~hours and the feature groups active cases, new arrivals, mean within-case gap and the mean of the amount. Only the mean amount jumps at the drift, while the other features fluctuate from window to window (Table~\ref{tab:approach:features_inter}).
+\end{example}
+
+\begin{figure}[tb]
+	\centering
+	\begin{tikzpicture}[font=\small, y=-0.65cm]
+		% the nine drift types of Rheon, in the same rows in all three figures
+		\node[mapdrift, draw=perspResource, fill=perspResource!12] (wl) at (9.6, 0) {\texttt{workload}};
+		\node[mapdrift, draw=perspInter, fill=perspInter!12] (ar) at (9.6, 1) {\texttt{arrival\_rate}};
+		\node[mapdrift, draw=perspInter, fill=perspInter!12] (wt) at (9.6, 2) {\texttt{waiting\_time}};
+		\node[mapdrift, draw=perspResource, fill=perspResource!12] (du) at (9.6, 3) {\texttt{duration}};
+		\node[mapdrift, draw=perspResource, fill=perspResource!12] (ps) at (9.6, 4) {\texttt{pool\_size}};
+		\node[mapdrift, draw=perspIntra, fill=perspIntra!12] (cf) at (9.6, 5) {\texttt{control\_flow}};
+		\node[mapdrift, draw=perspResource!45, mapunused] (ra) at (9.6, 6) {\texttt{reassignment}};
+		\node[mapdrift, draw=perspInter, fill=perspInter!12] (am) at (9.6, 7) {\texttt{amount}};
+		\node[mapdrift, draw=perspInter, fill=perspInter!12] (rg) at (9.6, 8) {\texttt{region}};
+		% inter-case feature groups
+		\foreach \i/\lab in {0/Active cases, 1/New arrivals, 2/Completions, 3/Events per active case, 4/Mean within-case gap, 5/Std of within-case gaps, 6/Stalled cases, 7/Means of numerical attributes, 8/Stds of numerical attributes, 9/Value shares of categorical attributes}
+			\node[mapfeature] (f\i) at (5.6, 8 * \i / 9) {\lab};
+		\foreach \f/\d in {0/ar, 0/wl, 1/ar, 1/wl, 2/ar, 2/wl, 3/wt, 3/du, 3/ps, 3/cf, 4/wt, 4/du, 4/ps, 5/wt, 5/du, 5/ps, 6/wt, 6/du, 6/ps, 7/am, 8/am, 9/rg}
+			\draw[mapdirect] (f\f.east) -- (\d.west);
+		\foreach \f/\d in {0/wt, 0/du, 0/ps, 2/wt, 2/du, 2/ps}
+			\draw[mapindirect] (f\f.east) -- (\d.west);
+		\maplegend{9.5}
+	\end{tikzpicture}
+	\caption[Inter-case feature groups and the drift types they respond to]{%
+		The Rheon drift types (right) to which the inter-case feature groups (left) of Definition~\ref{def:approach:inter} respond. The attribute features reach amount and region drifts only if the amount and the region are chosen as case attributes.}
+	\label{fig:approach:features_inter}
+\end{figure}
+
+Figure~\ref{fig:approach:features_inter} shows the mapping of the inter-case features:
+\begin{itemize}
+	\item \emph{Arrival rate and workload} change the active cases, arrivals and completions in the same way, so that, as in the resource perspective, no feature distinguishes them.
+	\item \emph{Waiting time, duration and pool size} change the gaps and the stalled cases. Since slower cases run longer, the number of active cases also rises.
+	\item \emph{Control-flow:} If a control-flow drift changes the length of the cases, the events per active case change.
+\end{itemize}
+Together, Figures~\ref{fig:approach:features_intra}, \ref{fig:approach:features_resource} and~\ref{fig:approach:features_inter} show that each Rheon drift type directly reaches at least one feature group of its perspective, but some drift types also reach other perspectives. The drift perspective of a drift therefore only follows from comparing the states of all three perspectives.
+
+\section{Scaling and Dimensionality Reduction}
 \label{sec:approach:reduction}
-Placeholder.
+The features of a perspective have different units and value ranges. Many of them are also correlated, e.g., the frequency of an activity and the directly-follows counts that contain the activity counts. Since the clustering compares rows (feature windows or events) by their distances, we first scale the features such that no feature dominates due to its value range. Then, PCA compresses the scaled features into few principal components (Section~\ref{sec:prelim:pca}). Similar to \textcite{berti2025ocel}, to choose the number of components we use the elbow of the reconstruction error as a heuristic. As a second heuristic, explained variance of the kept components is also useful. Both scaling and PCA are optional. Our framework is flexible and can easily be extended to different scaling techniques such as robust scaling or different dimensionality reduction techniques like Autoencoders.
+
+\begin{definition}[Scaling and Dimensionality Reduction]
+	\label{def:approach:reduction}
+	Let $X \in \R^{m \times n}$ be a feature matrix with $m \ge 2$ (Definition~\ref{def:approach:feature_extraction}), and let $B \subseteq \Set{1, \dots, n}$ be the columns of its binary feature groups, i.e., of the activity set, the current activity and the past activities (Definition~\ref{def:approach:intra}). In the resource and inter-case perspectives, $B = \emptyset$.
+	\begin{itemize}
+		\item The scaled matrix $X' \in \R^{m \times n}$ is either $X$ itself, or it has the entries $x'_{j,i} = x_{j,i}$ for $i \in B$ and, for $i \in \Set{1, \dots, n} \setminus B$, the entries of the z-score standardization or of the min-max normalization of $X$ (Definition~\ref{def:prelim:scaling}).
+		\item Let $\mathbf{x}'_1, \dots, \mathbf{x}'_m$ be the rows of $X'$, $\boldsymbol{\mu}$ its mean vector and $\mathbf{v}_1, \dots, \mathbf{v}_n$ its principal components (Definition~\ref{def:prelim:pca}). The reduced matrix $Z \in \R^{m \times d}$ is either $X'$ with $d = n$, or, for a cut $1 \le d \le n$, the matrix with the rows $\mathbf{z}_1^\top, \dots, \mathbf{z}_m^\top$, where
+		      \[
+			      \mathbf{z}_j = W_d^\top (\mathbf{x}'_j - \boldsymbol{\mu}) \quad\text{with}\quad W_d = [\mathbf{v}_1, \dots, \mathbf{v}_d]
+		      \]
+		      is the projection of $\mathbf{x}'_j$ onto the first $d$ principal components.
+	\end{itemize}
+\end{definition}
+
+\noindent\emph{Properties:}
+\begin{itemize}[beginpenalty=10000]
+	\item PCA is fitted on all rows of the feature matrix. Thus, the principal components describe the variance across all process versions.
+	\item We leave the binary feature groups unscaled.
+	\item The z-score standardization gives each feature the same variance. The min-max normalization keeps the features in $[0, 1]$. A single outlier thus compresses all other values of its feature.
+	\item Each principal component is a weighted sum of the features, and its largest weights show which features it describes. Without PCA, each dimension of $Z$ remains a single, named feature.
+\end{itemize}
 
 \subsection{Intra-Case Perspective}
 \label{sec:approach:reduction:intra}
-Placeholder.
+The intra-case feature matrix has a row per event and can be long, but its columns depend strongly on each other, e.g., the activity frequencies of a prefix sum to 1.
+
+\begin{figure}[tb]
+	\centering
+	\begin{subfigure}[b]{0.48\textwidth}
+		\centering
+		\begin{tikzpicture}[font=\small, x=0.5cm, y=0.1cm]
+			% bars: share of the variance of every component in percent
+			\foreach \i/\v in {1/28.67, 2/21.83, 3/13.85, 4/10.68, 5/10.43, 6/6.36, 7/3.04, 8/2.13, 9/1.82, 10/1.18}
+				\fill[black!45] (\i - 0.35, 0) rectangle (\i + 0.35, \v);
+			\draw[->] (0.3, 0) -- (10.8, 0);
+			\draw[->] (0.3, 0) -- (0.3, 33);
+			\foreach \i in {1, ..., 10}
+				\draw (\i, 0) -- (\i, -0.8) node[below] {\i};
+			\foreach \y in {0, 10, 20, 30}
+				\draw (0.3, \y) -- (0.1, \y) node[left] {\y};
+			\draw[dashed, thick] (6.5, 0) -- (6.5, 31) node[above] {cut $d = 6$};
+			\node[below=0.45cm] at (5.5, 0) {Principal component};
+			\node[rotate=90] at (-1.5, 16.5) {Explained variance (\%)};
+		\end{tikzpicture}
+		\caption{Explained variance per component}
+		\label{fig:approach:pca_intra_variance}
+	\end{subfigure}%
+	\hfill
+	\begin{subfigure}[b]{0.48\textwidth}
+		\centering
+		\begin{tikzpicture}[font=\small, x=0.5cm, y=1cm]
+			\draw[->] (-0.2, 0) -- (10.8, 0);
+			\draw[->] (-0.2, 0) -- (-0.2, 3.3);
+			\foreach \d in {0, 2, ..., 10}
+				\draw (\d, 0) -- (\d, -0.08) node[below] {\d};
+			\foreach \y in {0, 1, 2, 3}
+				\draw (-0.2, \y) -- (-0.4, \y) node[left] {\y};
+			\draw[thick] plot[mark=*, mark size=1.5pt] coordinates {(0, 2.848) (1, 2.031) (2, 1.410) (3, 1.015) (4, 0.711) (5, 0.414) (6, 0.233) (7, 0.146) (8, 0.085) (9, 0.034) (10, 0)};
+			\draw[dashed, thick] (6, 0) -- (6, 3.1) node[above] {cut $d = 6$};
+			\node[below=0.45cm] at (5, 0) {Components kept $d$};
+			\node[rotate=90] at (-1.9, 1.65) {Reconstruction error};
+		\end{tikzpicture}
+		\caption{Reconstruction error}
+		\label{fig:approach:pca_intra_error}
+	\end{subfigure}
+	\caption[PCA of the intra-case features of the running example]{%
+		PCA of the min-max normalized intra-case features of the running example $L_3$ (Example~\ref{ex:approach:reduction_intra}).
+		\subref{fig:approach:pca_intra_variance}~Share of the variance that each principal component explains. Components 11 to 20 explain no variance.
+		\subref{fig:approach:pca_intra_error}~Reconstruction error $\mathit{err}_{X'}(d)$ over the number $d$ of kept components. After the cut at $d = 6$ (dashed), a further component barely lowers the error.}
+	\label{fig:approach:pca_intra}
+\end{figure}
+
+\begin{example}
+	\label{ex:approach:reduction_intra}
+	We normalize the 20 intra-case feature columns of $L_3$ (Example~\ref{ex:approach:intra}) except for the five binary columns of the current activity. Then, we fit the PCA on the 24,600 events (Figure~\ref{fig:approach:pca_intra}).
+	\begin{itemize}
+		\item The min-max normalization stretches, e.g., the frequencies of $d$ and $e$ from $[0, 0.25]$ to $[0, 1]$.
+
+		\item The 24,600 rows only take 13 different vectors, one per prefix, and the columns are linearly dependent. Thus, only ten of the 20 principal components explain variance.
+
+		\item The reconstruction error knee is reached after six components, which keep 91.8\% of the variance. Thus, we cut at $d = 6$.
+
+		\item The first component mainly weights the directly-follows counts $b \to c$ and $a \to b$, the second $a \to c$ and $c \to b$. Thus, the first two principal components already separate the orders before and after the control-flow drift.
+	\end{itemize}
+\end{example}
 
 \subsection{Resource Perspective}
 \label{sec:approach:reduction:resource}
-Placeholder.
+The resource feature matrix has a row per feature window and is therefore short. Its columns mix counts and shares with very different value ranges. Moreover, many shares change together, e.g., when another resource takes over an activity, its share rises and that of the previous resource falls.
+
+\begin{figure}[tb]
+	\centering
+	\begin{subfigure}[b]{0.48\textwidth}
+		\centering
+		\begin{tikzpicture}[font=\small, x=0.27cm, y=0.075cm]
+			% bars: share of the variance of every component in percent
+			\foreach \i/\v in {1/52.88, 2/5.24, 3/4.84, 4/4.65, 5/4.48, 6/4.35, 7/4.28, 8/4.07, 9/3.88, 10/3.57, 11/3.23, 12/2.45, 13/0.70, 14/0.37, 15/0.33, 16/0.29, 17/0.28, 18/0.06, 19/0.03, 20/0.03}
+				\fill[black!45] (\i - 0.35, 0) rectangle (\i + 0.35, \v);
+			% share of the variance of a single standardized column
+			\draw[->] (0.5, 0) -- (20.8, 0);
+			\draw[->] (0.5, 0) -- (0.5, 57);
+			\foreach \i in {1, 5, 10, 15, 20}
+				\draw (\i, 0) -- (\i, -1.07) node[below] {\i};
+			\foreach \y in {0, 10, ..., 50}
+				\draw (0.5, \y) -- (0.13, \y) node[left] {\y};
+			\draw[dashed, thick] (1.5, 0) -- (1.5, 55);
+			\node[right] at (1.5, 50) {cut $d = 1$};
+			\node[below=0.45cm] at (10.5, 0) {Principal component};
+			\node[rotate=90] at (-2.4, 28) {Explained variance (\%)};
+		\end{tikzpicture}
+		\caption{Explained variance per component}
+		\label{fig:approach:pca_resource_variance}
+	\end{subfigure}%
+	\hfill
+	\begin{subfigure}[b]{0.48\textwidth}
+		\centering
+		\begin{tikzpicture}[font=\small, x=0.27cm, y=0.16cm]
+			\draw[->] (-0.37, 0) -- (20.8, 0);
+			\draw[->] (-0.37, 0) -- (-0.37, 26);
+			\foreach \d in {0, 5, ..., 20}
+				\draw (\d, 0) -- (\d, -0.5) node[below] {\d};
+			\foreach \y in {0, 5, ..., 20}
+				\draw (-0.37, \y) -- (-0.74, \y) node[left] {\y};
+			\draw[thick] plot[mark=*, mark size=1.5pt] coordinates {(0, 23.934) (1, 11.278) (2, 10.023) (3, 8.864) (4, 7.751) (5, 6.678) (6, 5.637) (7, 4.613) (8, 3.640) (9, 2.712) (10, 1.857) (11, 1.085) (12, 0.498) (13, 0.331) (14, 0.242) (15, 0.163) (16, 0.094) (17, 0.028) (18, 0.013) (19, 0.006) (20, 0)};
+			\draw[dashed, thick] (1, 0) -- (1, 25);
+			\node[right] at (1, 23) {cut $d = 1$};
+			\node[below=0.45cm] at (10, 0) {Components kept $d$};
+			\node[rotate=90] at (-3.1, 12.5) {Reconstruction error};
+		\end{tikzpicture}
+		\caption{Reconstruction error}
+		\label{fig:approach:pca_resource_error}
+	\end{subfigure}
+	\caption[PCA of the resource features of the running example]{%
+		PCA of the z-score standardized resource features of the running example $L_3$ (Example~\ref{ex:approach:reduction_resource}).
+		\subref{fig:approach:pca_resource_variance}~Share of the variance that each principal component explains. \subref{fig:approach:pca_resource_error}~Reconstruction error $\mathit{err}_{X'}(d)$ over the number $d$ of kept components.}
+	\label{fig:approach:pca_resource}
+\end{figure}
+
+\begin{example}
+	\label{ex:approach:reduction_resource}
+	We choose the z-score standardization, so that each of the 24 resource feature columns of $L_3$ (Example~\ref{ex:approach:resource}) contributes the same variance to the PCA. Then, we fit the PCA on the 366 feature windows (Figure~\ref{fig:approach:pca_resource}).
+	\begin{itemize}
+		\item Without scaling, the events per resource with standard deviations of up to 17.75 would dominate the shares with at most 0.41. The first component would then explain 83.8\% of the variance and weight almost only the events per resource.
+
+		\item After the standardization, the first component explains 52.9\% of the variance. It weights the ten shares of the dominant resources before and after the reassignment with about $\pm 0.27$. The weights are negative for the dominant resources before the drift and positive for those after it, e.g., $-0.27$ for $a$ by \texttt{res\_01} and $+0.27$ for $a$ by \texttt{res\_03} (Table~\ref{tab:approach:features_resource}).
+
+		\item The reconstruction error with the first component is 11.28 and we keep only the first component.
+
+		\item The first component alone separates the feature windows before and after the drift. It lies between $-4.36$ and $-2.63$ for the 182 days before July~1 and between 1.95 and 4.56 for the 183 days after it.
+	\end{itemize}
+\end{example}
 
 \subsection{Inter-Case Perspective}
 \label{sec:approach:reduction:inter}
-Placeholder.
+Most inter-case feature groups have a single column, so the inter-case feature matrix has only a few columns. These columns measure different quantities, e.g., counts, minutes and euros. Thus, scaling is essential, whereas PCA only saves a few dimensions. Without PCA, each dimension of $Z$ remains a named feature.
+
+\begin{example}
+	\label{ex:approach:reduction_inter}
+	The inter-case feature matrix of $L_3$ has four columns and 731 feature windows (Example~\ref{ex:approach:inter}). We choose the z-score standardization and skip PCA, so the reduced matrix consists of the four standardized features.
+	\begin{itemize}
+		\item Without scaling, the mean amount with a standard deviation of 674 euros would explain 99.99\% of the variance, and the other three features would hardly count.
+
+		\item The feature window of July~18, 00:00, contains no events, so all its features are 0. With the min-max normalization, this window would squeeze more than 90\% of the mean within-case gaps into $[0.73, 0.89]$. The z-score standardization gives all four features the standard deviation 1, and this window becomes an outlier with the standardized mean gap $-14.53$.
+
+		\item The active cases and the new arrivals have the correlation 0.90. PCA merges them into the first component with 47.6\% of the variance, which gives the mean amount almost no weight. A cut at $d = 1$ would therefore lose the drift.
+
+		\item The mean amount and the mean within-case gap are hardly correlated (0.07), so the second and third components mix them with almost equal weights. A cut at the elbow $d = 3$ would keep 97.4\% of the variance, but spread the amount over two components and only save one dimension.
+
+		\item Without PCA, the standardized mean amount rises directly from $-0.67$ in the feature window of September~30, 00:00, to $1.48$ in that of October~1, 00:00 (Table~\ref{tab:approach:features_inter}).
+	\end{itemize}
+\end{example}
+
+The three examples show that the explained variance alone does not decide the cut. The first resource component keeps only 52.9\% of the variance, but separates the days before and after the reassignment. The first inter-case component keeps almost as much, 47.6\%, but misses the amount drift.
 
 \section{Clustering into States}
 \label{sec:approach:clustering}
-Placeholder.
+A clustering groups the rows (feature windows or events) of the reduced matrix such that rows that describe similar behavior end up in the same cluster. We treat each cluster as a state. We use the three clustering algorithms k-means, SOM and DBSCAN (Section~\ref{sec:prelim:clustering}). Similar to the previous steps, our framework is flexible and can easily be extended with further clustering algorithms such as k-medoids or hierarchical clustering. For each perspective, users choose the algorithm and its parameters depending on the event log, e.g., in the dashboard (Section~\ref{sec:impl:dashboard}).
+
+The algorithms also help to choose each other's parameters. For example, a SOM with a large grid shows how many groups of frequently used cells lie far apart from each other, which suggests the number $k$ of clusters for k-means. The evaluation measures of Section~\ref{sec:prelim:cluster_eval} additionally show how good a clustering is and support the choice of the grid size, $k$, $\varepsilon$ and $\mathit{minPts}$.
+
+Our framework supports various distances for the clustering. Besides the Euclidean distance, the SOM and DBSCAN also work with the Manhattan, Chebyshev and cosine distances (Section~\ref{sec:prelim:pca}). k-means only uses the Euclidean distance, since each of its centers is the mean of its vectors (Definition~\ref{def:prelim:kmeans}). In the running example, all three algorithms use the Euclidean distance.
+
+\begin{definition}[States and Trajectories]
+	\label{def:approach:states}
+	Let $L$ be an event log, let $Z \in \R^{m \times d}$ be its reduced matrix with the rows $\mathbf{z}_1^\top, \dots, \mathbf{z}_m^\top$ (Definition~\ref{def:approach:reduction}), and let $\mathit{cl} \in \Set{1, \dots, m} \to K$ be a clustering of $Z$ by a SOM, k-means or DBSCAN (Definitions~\ref{def:prelim:som}, \ref{def:prelim:kmeans} and~\ref{def:prelim:dbscan}).
+	\begin{itemize}
+		\item $K$ is the set of states, and $\mathit{state}(\mathbf{z}_j) = \mathit{cl}(j)$ is the state of the row $\mathbf{z}_j$ for $1 \le j \le m$. For DBSCAN, $\mathit{noise}$ is also a state.
+		\item In the intra-case perspective, each row belongs to an event (Definition~\ref{def:approach:feature_extraction}). A case whose events belong to the rows $\mathbf{z}_{j_1}, \dots, \mathbf{z}_{j_l}$ in the order $\preceq$ has the trajectory $\seq{\mathit{state}(\mathbf{z}_{j_1}), \dots, \mathit{state}(\mathbf{z}_{j_l})}$.
+		\item In the resource and inter-case perspectives, the rows $\mathbf{z}_1, \dots, \mathbf{z}_m$ belong to the feature windows $W_L = \seq{w_1, \dots, w_m}$ (Definition~\ref{def:approach:windows}). The event log has the trajectory $\seq{\mathit{state}(\mathbf{z}_1), \dots, \mathit{state}(\mathbf{z}_m)}$.
+	\end{itemize}
+\end{definition}
+
+\noindent\emph{Properties:}
+\begin{itemize}[beginpenalty=10000]
+	\item Similar to PCA, the clustering uses all rows of $Z$. Therefore, all process versions share the same states. Section~\ref{sec:approach:drift_signals} measures this change.
+	\item In the intra-case perspective, each event has a state, whereas in the resource and inter-case perspectives each feature window has a state.
+	\item Consecutive equal states of a trajectory form a visit of the state. A trajectory thus shows how long a case or the event log stays in a state.
+	\item In the intra-case perspective, a trajectory only covers a single case. Thus, a drift only shows when we compare the trajectories of cases before and after it. In the resource and inter-case perspectives, the trajectory covers the whole event log, so a change of its state already indicates a drift.
+	\item Each state has a representative vector: the prototype of its cell, its center or the mean of its core points. The distance between two representatives shows how similar two states are. Our implementation gives close states similar colors (Section~\ref{sec:impl:kairo}).
+\end{itemize}
+
+In each perspective of the running example, we use a different algorithm. Table~\ref{tab:approach:cluster_eval} shows the chosen clusterings, and the following examples interpret the resulting states.
+
+\begin{table}[tb]
+	\centering
+	\caption[Evaluation of the chosen clusterings of the running example]{%
+		Metrics of the chosen clusterings of $L_3$ (Section~\ref{sec:prelim:cluster_eval}). DBSCAN has two clusters and noise.}
+	\label{tab:approach:cluster_eval}
+	\small
+	\begin{tabular}{@{}llrrrrrr@{}}
+		\toprule
+		Perspective & Clustering                                            & States & $\mathit{sil}$ & $\mathit{ch}$ & $\mathit{qe}$ & $\mathit{ent}$ & $\mathit{dbcv}$ \\
+		\midrule
+		Intra-case  & SOM, $3 \times 3$                                     & 9      & 0.857          & 36,694        & 0.288         & 0.973          & --              \\
+		Resource    & k-means, $k = 2$                                      & 2      & 0.934          & 24,779        & --            & --             & --              \\
+		Inter-case  & DBSCAN, $\varepsilon = 0.7$, $\mathit{minPts} = 8$    & 3      & 0.382          & 271           & --            & --             & 0.141           \\
+		\bottomrule
+	\end{tabular}
+\end{table}
 
 \subsection{Intra-Case Perspective}
 \label{sec:approach:clustering:intra}
-Placeholder.
+An intra-case state describes how far a case has progressed and on which path. Since the intra-case features only read the activities of a case, all cases of the same trace variant have the same trajectory. Thus, many events share the same row of the reduced matrix, e.g., the $k$-th events of all cases of a trace variant.
+
+\begin{figure}[tb]
+	\centering
+	\definecolor{lineA}{RGB}{0,114,178}
+	\definecolor{lineB}{RGB}{230,159,0}
+	\begin{subfigure}[b]{0.48\textwidth}
+		\centering
+		\begin{tikzpicture}[font=\small, x=0.95cm, y=2.4cm]
+			\draw[->] (1.6, 0) -- (5.4, 0);
+			\draw[->] (1.6, 0) -- (1.6, 1.12);
+			\foreach \n in {2, ..., 5}
+				\draw (\n, 0) -- (\n, -0.03) node[below] {$\n$};
+			\foreach \y in {0, 0.5, 1}
+				\draw (1.6, \y) -- (1.53, \y) node[left] {$\y$};
+			\draw[dotted, thick] (3, 0) -- (3, 1.08);
+			\draw[thick, lineA] plot[mark=*, mark size=1.6pt] coordinates {(2, 0.527) (3, 0.857) (4, 0.948) (5, 0.975)};
+			\draw[thick, dashed, lineB] plot coordinates {(2, 0.993) (3, 0.973) (4, 0.826) (5, 0.727)};
+			\foreach \n/\y in {2/0.993, 3/0.973, 4/0.826, 5/0.727}
+				\fill[lineB] (\n, \y) ++(-1.6pt, -1.6pt) rectangle ++(3.2pt, 3.2pt);
+			\node[lineA, below right=-1pt] at (2, 0.527) {$\mathit{sil}$};
+			\node[lineB, below=1pt] at (4.5, 0.776) {$\mathit{ent}$};
+			\node[below=0.45cm] at (3.5, 0) {Grid size $n \times n$};
+		\end{tikzpicture}
+		\caption{SOM evaluation}
+		\label{fig:approach:cluster_eval_som}
+	\end{subfigure}%
+	\hfill
+	\begin{subfigure}[b]{0.48\textwidth}
+		\centering
+		\input{figures/tikz/u_matrix_intra}
+		\caption{U-matrix}
+		\label{fig:approach:state_plots_umatrix}
+	\end{subfigure}
+
+	\medskip
+	\begin{subfigure}{\textwidth}
+		\centering
+		\input{figures/tikz/trajectories_intra}
+		\caption{Trajectories of case~1 and case~3711}
+		\label{fig:approach:trajectories_cases}
+	\end{subfigure}
+	\caption[Intra-case clustering of the running example]{%
+		SOM clustering of the intra-case features of the running example $L_3$ (Example~\ref{ex:approach:clustering_intra}).
+		\subref{fig:approach:cluster_eval_som}~Silhouette (blue) and occupancy entropy (orange) over the grid size. The dotted line marks the chosen $3 \times 3$ grid.
+		\subref{fig:approach:state_plots_umatrix}~Mean distance of the prototype of each cell to the prototypes of its neighboring cells, divided by the largest mean.
+		\subref{fig:approach:trajectories_cases}~Each box is a visit of a state with its cell of Figure~\ref{fig:approach:som_intra}. The last state of a case is a dot.}
+	\label{fig:approach:clustering_intra}
+\end{figure}
+
+\begin{figure}[tb]
+	\centering
+	\definecolor{stateFill}{RGB}{0,114,178}
+	\definecolor{trajectory}{RGB}{213,94,0}
+	\tikzset{
+		cell/.style={draw=black!50},
+		prefixes/.style={font=\small\itshape, align=center, anchor=north, inner sep=0pt},
+		visit/.style={circle, fill=trajectory, text=white, font=\small\bfseries, inner sep=1pt, minimum size=4mm},
+	}
+	% square cells of 1.4 cm: #1 row, #2 column, #3 fill intensity, #4 prefixes, one per line,
+	% #5 position of the cell in the trajectory
+	\newcommand*{\somcell}[5]{%
+		\fill[stateFill!#3] ({(#2 - 1) * 1.4}, {-(#1 - 1) * 1.4}) rectangle ++(1.4, -1.4);
+		\draw[cell] ({(#2 - 1) * 1.4}, {-(#1 - 1) * 1.4}) rectangle ++(1.4, -1.4);
+		\node[prefixes] at ({(#2 - 0.5) * 1.4}, {-(#1 - 1) * 1.4 - 0.12}) {#4};
+		\if\relax\detokenize{#5}\relax\else
+			\node[visit] at ({(#2 - 0.5) * 1.4}, {-#1 * 1.4 + 0.29}) {#5};
+		\fi
+	}
+	\newcommand*{\gridlabels}{%
+		\foreach \k in {1, 2, 3} {
+			\node[font=\small] at ({(\k - 0.5) * 1.4}, 0.3) {$\k$};
+			\node[font=\small] at (-0.3, {-(\k - 0.5) * 1.4}) {$\k$};
+		}
+	}
+	\begin{subfigure}[t]{0.49\textwidth}
+		\centering
+		\begin{tikzpicture}
+			\gridlabels
+			\somcell{1}{1}{40}{a}{1}
+			\somcell{1}{2}{0}{}{}
+			\somcell{1}{3}{0}{}{}
+			\somcell{2}{1}{40}{ab}{2}
+			\somcell{2}{2}{0}{}{}
+			\somcell{2}{3}{0}{}{}
+			\somcell{3}{1}{40}{abcde}{5}
+			\somcell{3}{2}{40}{abcd}{4}
+			\somcell{3}{3}{40}{abc}{3}
+		\end{tikzpicture}
+		\caption{Before the drift, with case 1}
+		\label{fig:approach:som_intra_before}
+	\end{subfigure}%
+	\hfill
+	\begin{subfigure}[t]{0.49\textwidth}
+		\centering
+		\begin{tikzpicture}
+			\gridlabels
+			\somcell{1}{1}{40}{a}{1}
+			\somcell{1}{2}{18}{acbd\\acbed}{5}
+			\somcell{1}{3}{18}{acbde\\acbe}{4}
+			\somcell{2}{1}{18}{ab}{}
+			\somcell{2}{2}{18}{acb}{3}
+			\somcell{2}{3}{18}{ac}{2}
+			\somcell{3}{1}{18}{abcde\\abce}{}
+			\somcell{3}{2}{18}{abcd\\abced}{}
+			\somcell{3}{3}{18}{abc}{}
+		\end{tikzpicture}
+		\caption{After the drift, with case 3711}
+		\label{fig:approach:som_intra_after}
+	\end{subfigure}
+	\caption[Intra-case states of the running example]{%
+		The $3 \times 3$ SOM of the intra-case states of $L_3$ (Example~\ref{ex:approach:clustering_intra}). Each cell lists the prefixes of its events, e.g., \emph{abc} for $\seq{a, b, c}$. Dark cells hold about 20\% and light cells about 10\% of the events. A circle with the number $k$ marks the state of the $k$-th event of the case.
+		\subref{fig:approach:som_intra_before}~The 6,255 events before the drift fall into five cells.
+		\subref{fig:approach:som_intra_after}~The 18,345 events after the drift use all nine cells.}
+	\label{fig:approach:som_intra}
+\end{figure}
+
+\begin{example}
+	\label{ex:approach:clustering_intra}
+	Like \textcite{berti2025ocel}, we choose a SOM, interpret its cells as states and read the trajectory of a case as a path on the grid. Neighboring cells have similar prototypes, so the grid also shows which states are similar. We cluster the reduced intra-case matrix of $L_3$ (Example~\ref{ex:approach:reduction_intra}) with SOMs of the grid sizes $2 \times 2$ to $5 \times 5$ (Figure~\ref{fig:approach:cluster_eval_som}). With the grid size, the quantization error falls from 0.917 to 0.052, and the silhouette rises from 0.527 to 0.975. At the same time, the occupancy entropy falls from 0.993 to 0.727, since the $5 \times 5$ grid only uses 12 cells and gives almost each of the 13 prefixes its own cell. The $3 \times 3$ grid uses all cells almost evenly with the occupancy entropy 0.973 and reaches the silhouette 0.857 with the quantization error 0.288. Thus, we choose the $3 \times 3$ grid (Figure~\ref{fig:approach:som_intra}).
+	\begin{itemize}
+		\item Before the control-flow drift, all cases follow the trace $\seq{a, b, c, d, e}$. Its five prefixes occupy five cells, and case~1 has the trajectory $\seq{(1, 1),\allowbreak (2, 1),\allowbreak (3, 3),\allowbreak (3, 2),\allowbreak (3, 1)}$.
+
+		\item After the drift, the prefixes that start with $\seq{a, c}$ occupy the four remaining cells. Case~3711 has the trajectory $\seq{(1, 1),\allowbreak (2, 3),\allowbreak (2, 2),\allowbreak (1, 3),\allowbreak (1, 2)}$ and thus only shares its first state with case~1.
+
+		\item The prefixes $\seq{a, b, c, e}$ and $\seq{a, b, c, e, d}$ only occur after the drift, but share their cells with older prefixes. Thus, the cells $(3, 1)$ and $(3, 2)$ occur before and after the drift.
+
+		\item Both cases take about 160~minutes, and each of their first four visits lasts 30 to 51~minutes (Figure~\ref{fig:approach:trajectories_cases}). Thus, the drift changes the states, but not the duration of the cases.
+
+		\item The prototypes of consecutive states of both cases lie 1.63 to 2.00 apart, and those of all states 2.23 on average. Since our implementation chooses the colors by these distances, the color only changes gradually along a trajectory.
+
+		\item The U-matrix only ranges from 0.81 to 1.00, so the grid shows no border between larger groups of states (Figure~\ref{fig:approach:state_plots_umatrix}). The four new cells form the top right region. Their prototypes lie closer to their neighbors than those of the old cells, with 0.87 against 0.94 on average.
+	\end{itemize}
+\end{example}
 
 \subsection{Resource Perspective}
 \label{sec:approach:clustering:resource}
-Placeholder.
+A resource state describes how the work of a feature window is distributed among the resources. Consecutive feature windows of a stable process lie close together, so a few compact clusters suffice.
+
+\begin{figure}[tb]
+	\centering
+	\definecolor{stateA}{RGB}{0,114,178}
+	\definecolor{stateB}{RGB}{230,159,0}
+	\begin{subfigure}{\textwidth}
+		\centering
+		\input{figures/tikz/states_resource}
+		\caption{First principal component of the feature windows}
+		\label{fig:approach:states_resource}
+	\end{subfigure}
+
+	\medskip
+	\begin{subfigure}{\textwidth}
+		\centering
+		\input{figures/tikz/log_trajectory_resource}
+		\caption{Trajectory of the event log}
+		\label{fig:approach:trajectories_resource}
+	\end{subfigure}
+	\caption[Resource clustering of the running example]{%
+		k-means clustering of the resource features of the running example $L_3$ (Example~\ref{ex:approach:clustering_resource}). Blue is state~1 and orange state~2.
+		\subref{fig:approach:states_resource}~Each symbol is a feature window. The dotted lines are the two centers.
+		\subref{fig:approach:trajectories_resource}~Each box is a visit of a state.
+		Dashed lines mark the reassignment drift.}
+	\label{fig:approach:clustering_resource}
+\end{figure}
+
+\begin{example}
+	\label{ex:approach:clustering_resource}
+	Since a few compact clusters suffice, we choose k-means with a small $k$. The reduced resource matrix of $L_3$ only has the first principal component (Example~\ref{ex:approach:reduction_resource}). For $k = 2$, k-means reaches the highest silhouette of 0.934 and the highest Cali\'nski--Harabasz index of 24,779. For $k = 3$ to 5, the silhouette drops to between 0.719 and 0.739, and for $k = 6$ to 0.539. Thus, we choose $k = 2$ with the centers $-3.53$ and $3.53$ (Figure~\ref{fig:approach:states_resource}).
+	\begin{itemize}
+		\item State~1 contains the 183 days up to July~1, and state~2 the 183 days from July~2. Thus, the trajectory of the event log consists of two visits of 183 days each (Figure~\ref{fig:approach:trajectories_resource}).
+
+		\item The feature window of July~1 contains the reassignment at 12:00. With $-0.11$, the feature window lies between both centers, but since k-means assigns each row to a state, it is assigned to state~1.
+
+		\item With $k = 3$, k-means splits the days after the drift into two states, and the trajectory has 96 instead of two visits. With $k = 6$, it also splits the days before the drift. These state changes look like drifts, although the process is stable.
+	\end{itemize}
+\end{example}
 
 \subsection{Inter-Case Perspective}
 \label{sec:approach:clustering:inter}
-Placeholder.
+An inter-case state describes the load and the cases of a feature window. Unusual feature windows, e.g., with very few arrivals, occur in every process version, but do not describe a typical situation of the process.
+
+\begin{figure}[tbp]
+	\centering
+	\definecolor{stateA}{RGB}{0,114,178}
+	\definecolor{stateB}{RGB}{230,159,0}
+	\begin{subfigure}[b]{0.42\textwidth}
+		\centering
+		\input{figures/tikz/k_distance_inter}
+		\caption{DBSCAN evaluation}
+		\label{fig:approach:cluster_eval_dbscan}
+	\end{subfigure}%
+	\hfill
+	\begin{subfigure}[b]{0.55\textwidth}
+		\centering
+		\begin{tikzpicture}[font=\small, x=0.032cm, y=1cm]
+			% shares of the states in percent, before and after the amount drift
+			\node[left] at (0, 1.4) {Before};
+			\fill[stateA] (0, 1.15) rectangle (95.8, 1.65);
+			\fill[black!35] (95.8, 1.15) rectangle (100, 1.65);
+			\node[right, inner sep=2pt] at (100, 1.4) {4.2\%};
+			\node[text=white] at (47.9, 1.4) {95.8\%};
+			\node[left] at (0, 0.5) {After};
+			\fill[stateB] (0, 0.25) rectangle (80.9, 0.75);
+			\fill[black!35] (80.9, 0.25) rectangle (100, 0.75);
+			\node at (40.5, 0.5) {80.9\%};
+			\node[right, inner sep=2pt] at (100, 0.5) {19.1\%};
+			\draw[->] (0, 0) -- (105, 0);
+			\foreach \x in {0, 50, 100}
+				\draw (\x, 0) -- (\x, -0.08) node[below] {\x};
+			\node[below=0.45cm] at (50, 0) {Share of feature windows (\%)};
+		\end{tikzpicture}
+		\caption{State frequencies}
+		\label{fig:approach:state_plots_frequencies}
+	\end{subfigure}
+
+	\medskip
+	\begin{subfigure}{\textwidth}
+		\centering
+		\input{figures/tikz/states_inter}
+		\caption{Standardized mean amount of the feature windows}
+		\label{fig:approach:states_inter}
+	\end{subfigure}
+
+	\medskip
+	\begin{subfigure}{\textwidth}
+		\centering
+		\input{figures/tikz/log_trajectory_inter}
+		\caption{Trajectory of the event log}
+		\label{fig:approach:trajectories_inter}
+	\end{subfigure}
+	\caption[Inter-case clustering of the running example]{%
+		DBSCAN clustering of the inter-case features of the running example $L_3$ (Example~\ref{ex:approach:clustering_inter}). Blue is state~1, orange state~2 and gray noise.
+		\subref{fig:approach:cluster_eval_dbscan}~Sorted 8-distance graph with the chosen radius $\varepsilon = 0.7$ (dashed), cut at 3.
+		\subref{fig:approach:state_plots_frequencies}~Shares of the states before and after the amount drift.
+		\subref{fig:approach:states_inter}~Each symbol is a feature window. Since DBSCAN also uses the other three features, some noise lies within the clusters.
+		\subref{fig:approach:trajectories_inter}~Each box is a visit of a state.
+		In \subref{fig:approach:states_inter} and \subref{fig:approach:trajectories_inter}, dashed lines mark the amount drift.}
+	\label{fig:approach:clustering_inter}
+\end{figure}
+
+\begin{example}
+	\label{ex:approach:clustering_inter}
+	We choose DBSCAN, which marks unusual feature windows as noise instead of forcing them into a state. We cluster the four standardized inter-case features of $L_3$ (Example~\ref{ex:approach:reduction_inter}) with $\mathit{minPts} = 8$, i.e., twice the number of features. The sorted 8-distance graph rises gradually and only steeply for a few outliers, so it has no clear knee (Figure~\ref{fig:approach:cluster_eval_dbscan}). The largest 8-distance of 13.06 belongs to the empty feature window of July~18, 00:00, with the standardized mean gap $-14.53$. Therefore, we compare the radii $\varepsilon \in \Set{0.6, 0.7, 0.8, 0.9}$ with DBCV, and $\varepsilon = 0.7$ reaches the highest DBCV of 0.141.
+	\begin{itemize}
+		\item State~1 contains 525 feature windows before the amount drift, and state~2 contains 148 after it (Figure~\ref{fig:approach:states_inter}). The remaining 58 feature windows are noise.
+
+		\item The feature window of September~30, 12:00, contains cases before and after the drift. Its standardized mean amount of 0.53 lies between both clusters, so it is noise.
+
+		\item Before the drift, 4.2\% of the feature windows are noise, and after it 19.1\% (Figure~\ref{fig:approach:state_plots_frequencies}).
+
+		\item The trajectory of the event log has 98 visits (Figure~\ref{fig:approach:trajectories_inter}). State~1 has 23 visits of up to 45 days and state~2 has 26 visits of up to 9.5 days. The 49 visits of the noise last at most 2 days and only briefly interrupt the visits of the clusters.
+
+		\item For $\varepsilon \ge 1.0$, DBSCAN merges both clusters into one state, and the drift disappears from the states.
+	\end{itemize}
+\end{example}
+
+Table~\ref{tab:approach:cluster_eval} compares the chosen clusterings of the three perspectives. In the intra-case and the resource perspective, the drift clearly separates the rows, so the silhouettes reach 0.857 and 0.934. In the inter-case perspective, the drift only changes one of the four features, and the other features scatter the clusters. Thus, the silhouette of 0.382 and the DBCV of 0.141 stay low, although the states show the drift. The Cali\'nski--Harabasz index depends on the scale of the features and thus only compares clusterings of the same perspective.
 
 \section{Drift Signals}
 \label{sec:approach:drift_signals}
 Placeholder.
 
+\begin{definition}[State Distributions, Drift Scores and Drift Signal]
+	\label{def:approach:drift_signal}
+	Let $L$ be an event log with the rows $s_1, \dots, s_m$ (Definition~\ref{def:approach:feature_extraction}), let $\mathit{cl} \in \Set{1, \dots, m} \to K$ be a clustering of its reduced matrix with the set of states $K$ (Definition~\ref{def:approach:states}), and let signal windows of the length $\Delta_s$ be given (Definition~\ref{def:approach:window_roles}).
+	\begin{itemize}
+		\item For a signal window $v$, $J_v = \Set{j \in \Set{1, \dots, m} \given s_j \text{ lies in } v}$ is the set of its rows, i.e., of the events whose timestamp lies in $v$ or of the feature windows whose start lies in $v$.
+		\item $v_1, \dots, v_n$ are the signal windows with $J_{v_i} \neq \emptyset$ in chronological order, and $t_i$ is the start of $v_i$.
+		\item The state distribution of $v_i$ is $p_i \in K \to [0, 1]$ with
+		      \[
+			      p_i(\kappa) = \frac{\abs{\Set{j \in J_{v_i} \given \mathit{cl}(j) = \kappa}}}{\abs{J_{v_i}}} \quad\text{for } \kappa \in K.
+		      \]
+		\item For $i_0 \le i \le n$, the reference $q_i$ of $v_i$ is one of the following distributions over $K$, where we take means of distributions separately for each $\kappa \in K$:
+		      \begin{itemize}
+			      \item \emph{previous signal window} (\texttt{previous}): $q_i = p_{i-1}$ with $i_0 = 2$,
+			      \item \emph{mean of the $h$ previous signal windows} (\texttt{recent}): $q_i = \frac{1}{h} \sum_{l = i-h}^{i-1} p_l$ for an $h \in \N$ with $i_0 = h + 1$,
+			      \item \emph{mean of all signal windows} (\texttt{baseline}): $q_i = \frac{1}{n} \sum_{l=1}^{n} p_l$ with $i_0 = 1$.
+		      \end{itemize}
+		\item For a divergence $D$ of Definition~\ref{def:prelim:divergences}, $\mathit{score}_i = D(p_i, q_i)$ is the drift score of $v_i$ for $i_0 \le i \le n$.
+		\item The drift signal is the sequence $\seq{(t_{i_0}, \mathit{score}_{i_0}), \dots, (t_n, \mathit{score}_n)}$.
+	\end{itemize}
+\end{definition}
+
+Placeholder.
+
+\begin{figure}[tb]
+	\centering
+	\definecolor{stateA}{RGB}{0,114,178}
+	\definecolor{stateB}{RGB}{230,159,0}
+	\begin{tikzpicture}[font=\small, x=1.7cm, y=1cm]
+		% state distributions of the five signal windows, a share of 1 is 2.2 cm high
+		\foreach \i/\a/\b in {1/0.8/0.2, 2/0.8/0.2, 3/0.8/0.2, 4/0.2/0.8, 5/0.2/0.8} {
+			\fill[stateA] (\i - 0.32, 0) rectangle (\i + 0.32, 2.2 * \a);
+			\fill[stateB] (\i - 0.32, 2.2 * \a) rectangle (\i + 0.32, 2.2);
+			\node[text=white] at (\i, 1.1 * \a) {\a};
+			\node at (\i, 2.2 - 1.1 * \b) {\b};
+			\node at (\i, -0.3) {$v_{\i}$};
+		}
+		% sudden drift between v_3 and v_4
+		\draw[dashed, thick] (3.5, -2.05) -- (3.5, 2.45) node[above] {drift};
+		% legend
+		\fill[stateB] (5.6, 1.75) rectangle ++(0.15, 0.25);
+		\node[right] at (5.75, 1.875) {state 2};
+		\fill[stateA] (5.6, 1.25) rectangle ++(0.15, 0.25);
+		\node[right] at (5.75, 1.375) {state 1};
+		% KL drift scores against the three references
+		\node[anchor=east] at (0.55, -0.95) {\texttt{previous}};
+		\foreach \i/\s in {1/--, 2/0, 3/0, 4/0.832, 5/0}
+			\node at (\i, -0.95) {\s};
+		\node[anchor=east] at (0.55, -1.45) {\texttt{recent}, $h = 2$};
+		\foreach \i/\s in {1/--, 2/--, 3/0, 4/0.832, 5/0.193}
+			\node at (\i, -1.45) {\s};
+		\node[anchor=east] at (0.55, -1.95) {\texttt{baseline}};
+		\foreach \i/\s in {1/0.128, 2/0.128, 3/0.128, 4/0.272, 5/0.272}
+			\node at (\i, -1.95) {\s};
+	\end{tikzpicture}
+	\caption[Example of a drift signal]{%
+		Drift signal of Example~\ref{ex:approach:drift_signal} with the states 1 (blue) and 2 (orange). Each bar is the state distribution of a signal window $v_i$ with the shares of both states, and the dashed line marks a sudden drift between $v_3$ and $v_4$. The rows below give the KL drift score of each signal window against the three references of Definition~\ref{def:approach:drift_signal}: the previous signal window (\texttt{previous}), the mean of the $h = 2$ previous signal windows (\texttt{recent}) and the mean of all signal windows (\texttt{baseline}). A dash marks a signal window without a reference.}
+	\label{fig:approach:drift_signal_example}
+\end{figure}
+
+\begin{example}
+	\label{ex:approach:drift_signal}
+	Placeholder.
+\end{example}
+
 \subsection{Intra-Case Perspective}
 \label{sec:approach:drift_signals:intra}
 Placeholder.
+
+\begin{figure}[tb]
+	\centering
+	\begin{subfigure}{\textwidth}
+		\centering
+		\input{figures/tikz/drift_signal_intra_1d}
+		\caption{Signal windows of one day, mean of the 7 previous signal windows as reference}
+		\label{fig:approach:drift_signal_intra_day}
+	\end{subfigure}
+
+	\medskip
+	\begin{subfigure}{\textwidth}
+		\centering
+		\input{figures/tikz/drift_signal_intra_7d}
+		\caption{Signal windows of one week, mean of all signal windows as reference}
+		\label{fig:approach:drift_signal_intra_week}
+	\end{subfigure}
+	\caption[Intra-case drift signals of the running example]{%
+		Drift signals of the intra-case states of the running example $L_3$ with the KL divergence (Example~\ref{ex:approach:drift_signal_intra}). Each step is a signal window at its drift score, cut at the bounds of the year 2020. The dashed line marks the control-flow drift on April~1, 2020, 06:00.
+		\subref{fig:approach:drift_signal_intra_day}~The first seven signal windows have no reference. The drift gets the highest drift score of 3.47.
+		\subref{fig:approach:drift_signal_intra_week}~The signal windows before the drift lie far from the mean of all signal windows and those after it close to it, so the drift shows as a step. The last signal window only holds the three events of December~31.}
+	\label{fig:approach:drift_signal_intra}
+\end{figure}
+
+\begin{example}
+	\label{ex:approach:drift_signal_intra}
+	Placeholder.
+\end{example}
 
 \subsection{Resource Perspective}
 \label{sec:approach:drift_signals:resource}
 Placeholder.
 
+\begin{figure}[tb]
+	\centering
+	\begin{subfigure}{\textwidth}
+		\centering
+		\input{figures/tikz/drift_signal_resource_1d}
+		\caption{Signal windows of one day, previous signal window as reference}
+		\label{fig:approach:drift_signal_resource_day}
+	\end{subfigure}
+
+	\medskip
+	\begin{subfigure}{\textwidth}
+		\centering
+		\input{figures/tikz/drift_signal_resource_30d}
+		\caption{Signal windows of 30 days, mean of the 3 previous signal windows as reference}
+		\label{fig:approach:drift_signal_resource_month}
+	\end{subfigure}
+	\caption[Resource drift signals of the running example]{%
+		Drift signals of the resource states of the running example $L_3$ with the KL divergence (Example~\ref{ex:approach:drift_signal_resource}). Each step is a signal window at its drift score, cut at the bounds of the year 2020, and signal windows without a reference have no drift score. The dashed line marks the reassignment drift on July~1, 2020, 12:00.
+		\subref{fig:approach:drift_signal_resource_day}~Each signal window holds one feature window. The only drift score above 0 is $\log 10^9 \approx 20.72$ on July~2, the first day in state~2.
+		\subref{fig:approach:drift_signal_resource_month}~The drift lies in the signal window from June~7 to July~6 and spreads over two signal windows. Afterwards, the drift score decays over three signal windows.}
+	\label{fig:approach:drift_signal_resource}
+\end{figure}
+
+\begin{example}
+	\label{ex:approach:drift_signal_resource}
+	Placeholder.
+\end{example}
+
 \subsection{Inter-Case Perspective}
 \label{sec:approach:drift_signals:inter}
 Placeholder.
+
+\begin{figure}[tb]
+	\centering
+	\begin{subfigure}{\textwidth}
+		\centering
+		\input{figures/tikz/drift_signal_inter_7d}
+		\caption{Signal windows of one week, previous signal window as reference}
+		\label{fig:approach:drift_signal_inter_week}
+	\end{subfigure}
+
+	\medskip
+	\begin{subfigure}{\textwidth}
+		\centering
+		\input{figures/tikz/drift_signal_inter_30d}
+		\caption{Signal windows of 30 days, mean of all signal windows as reference}
+		\label{fig:approach:drift_signal_inter_month}
+	\end{subfigure}
+	\caption[Inter-case drift signals of the running example]{%
+		Drift signals of the inter-case states of the running example $L_3$ with the KL divergence (Example~\ref{ex:approach:drift_signal_inter}). Each step is a signal window at its drift score, cut at the bounds of the year 2020. The dashed line marks the amount drift on September~30, 2020, 18:00.
+		\subref{fig:approach:drift_signal_inter_week}~The first signal window after the drift gets the drift score 14.96. The smaller steps come from feature windows that DBSCAN marks as noise.
+		\subref{fig:approach:drift_signal_inter_month}~The three signal windows after the drift lie far from the mean of all signal windows, so the drift shows as a step upwards.}
+	\label{fig:approach:drift_signal_inter}
+\end{figure}
+
+\begin{example}
+	\label{ex:approach:drift_signal_inter}
+	Placeholder.
+\end{example}
+
+Placeholder.
+
+\section{AI-Assisted Analysis}
+\label{sec:approach:ai}
+Placeholder.
+\begin{itemize}
+	\item To be explained: the role of an LLM as an analysis assistant on top of the framework. It is not a step of the pipeline and computes neither states nor drift signals, but interprets their results together with the user.
+	\item Input and output: every result of the pipeline (log statistics, features, PCA, states, trajectories, state distributions, drift signal) becomes a text abstraction and optionally a plot as an image. The output is a textual answer: an interpretation of the results, e.g., when and in which perspective a drift happened and what changed, and suggestions for a better configuration.
+	\item The abstractions: why the results are summarized as text instead of passed on as raw data (size of the context, interpretability), and what each abstraction contains.
+	\item The system prompt: it explains the method, the feature groups with their glossary, and the strengths and limits of each perspective. It also tells the model to judge the configuration before the drift signal, to stay skeptical of contradicting drift signals and never to invent numbers.
+	\item Human in the loop: the user asks questions and requests further steps in a chat, so the analysis is interactive. Link to drift characterization (\ref{item:intro:rq_characterization}) and to research goals \ref{item:intro:rg_library} and \ref{item:intro:rg_dashboard}.
+	\item Risks: hallucinations and misleading interpretations, which Chapter~\ref{chap:discussion} discusses (\ref{item:intro:rg_limitations}).
+	\item The implementation, i.e., the providers, the connectors and the Copilot of the dashboard, follows in Sections~\ref{sec:impl:kairo} and~\ref{sec:impl:dashboard}.
+	\item Possibly a figure: the pipeline of Figure~\ref{fig:approach:overview} with the LLM reading the abstractions of every step.
+\end{itemize}

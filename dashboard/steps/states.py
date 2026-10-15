@@ -38,24 +38,24 @@ def compute_states(p: str, method: str, compressed: pd.DataFrame) -> dict:
         size = (int(st.session_state[f"{p}_sel_rows"]), int(st.session_state[f"{p}_sel_cols"]))
         distance = st.session_state[f"{p}_sel_som_distance"]
         model = kairo.compute_som(compressed, size, float(st.session_state[f"{p}_sel_learning_rate"]), distance)
-        states = meta.join(kairo.get_som_winners(compressed, model))
+        states = meta.join(kairo.get_som_states(compressed, model))
         frequencies = kairo.get_som_state_frequencies(states)
-        colors = kairo.compute_som_color_mapping(size)
+        colors = kairo.get_som_state_colors(model, distance)
         distances = kairo.get_som_state_distances(model, distance)
     elif method == "k-means":
         k = int(st.session_state[f"{p}_sel_k"])
         model = kairo.compute_kmeans(compressed, k)
-        states = meta.join(kairo.get_kmeans_clusters(compressed, model))
+        states = meta.join(kairo.get_kmeans_states(compressed, model))
         frequencies = kairo.get_kmeans_state_frequencies(states)
-        colors = kairo.compute_kmeans_color_mapping(k)
+        colors = kairo.get_kmeans_state_colors(model)
         distances = kairo.get_kmeans_state_distances(model)
     else:
         model = kairo.compute_dbscan(compressed, float(st.session_state[f"{p}_sel_eps"]),
                                      int(st.session_state[f"{p}_sel_min_samples"]),
                                      st.session_state[f"{p}_sel_dbscan_distance"])
-        states = meta.join(kairo.get_dbscan_clusters(compressed, model))
+        states = meta.join(kairo.get_dbscan_states(compressed, model))
         frequencies = kairo.get_dbscan_state_frequencies(states)
-        colors = kairo.compute_dbscan_color_mapping(model)
+        colors = kairo.get_dbscan_state_colors(model)
         distances = kairo.get_dbscan_state_distances(model)
 
     return {"method": method, "model": model, "states": states, "frequencies": frequencies,
@@ -102,7 +102,7 @@ def show(p: str) -> None:
                             f"views/{p}/pca.py", "PCA")
     rows = ui.ROWS[p]
 
-    # the windowed perspectives have a few hundred rows, a smaller grid fits them better
+    # the resource and inter-case perspectives have a few hundred feature windows, a smaller grid fits them better
     seed_widget(f"{p}_sel_method", "SOM")
     seed_widget(f"{p}_sel_rows", 5 if p == "intra" else 3)
     seed_widget(f"{p}_sel_cols", 5 if p == "intra" else 3)
@@ -135,8 +135,8 @@ def show(p: str) -> None:
     if p == "intra":
         st.caption("Every event gets a state from its compressed features, then cases are followed through them.")
     else:
-        st.caption("Every calendar window gets a state from its compressed features, "
-                   "then the log is followed through them window by window.")
+        st.caption("Every feature window gets a state from its compressed features, "
+                   "then the log is followed through them feature window by feature window.")
 
     if method == "DBSCAN":
         st.subheader("k-distance curve")
@@ -189,12 +189,15 @@ def show(p: str) -> None:
 
     # the colors of k-means and dbscan clusters show in their frequency bars, the som grid
     # gets its own plot
+    st.caption("The state colors follow the distances between the states: close states get similar colors, "
+               "far apart states very different ones, so a trajectory only changes its color much when it "
+               "moves to a really different state.")
     if computed == "SOM":
         colors_column, distances_column = st.columns(2)
         with colors_column:
             st.subheader("State colors")
             if st.button("Plot state colors", icon=":material/palette:"):
-                st.session_state[f"{p}_plot_colors"] = kairo.plot_som_colors(states, colors)
+                st.session_state[f"{p}_plot_colors"] = kairo.plot_som_state_colors(states, colors)
             ui.show_plot(f"{p}_plot_colors", f"The color of every cell, with how many {rows} it holds.")
     else:
         distances_column = st.container()
@@ -205,12 +208,12 @@ def show(p: str) -> None:
             if computed == "SOM":
                 fig = kairo.plot_som_u_matrix(model)
             elif computed == "k-means":
-                fig = kairo.plot_kmeans_distances(st.session_state[f"{p}_distances"])
+                fig = kairo.plot_kmeans_state_distances(st.session_state[f"{p}_distances"])
             else:
-                fig = kairo.plot_dbscan_distances(st.session_state[f"{p}_distances"])
+                fig = kairo.plot_dbscan_state_distances(st.session_state[f"{p}_distances"])
             st.session_state[f"{p}_plot_distances"] = fig
         ui.show_plot(f"{p}_plot_distances",
-                     "For a SOM the u-matrix, the distance of every neuron to its neighbours. "
+                     "For a SOM the u-matrix, the mean distance of every neuron to its neighbours. "
                      "For k-means and DBSCAN the distance between every two clusters.")
 
     st.subheader("Frequencies")
@@ -223,10 +226,10 @@ def show(p: str) -> None:
                 if computed == "SOM":
                     fig = kairo.plot_som_heatmap(states, model.get_weights().shape[:2], start_date, end_date)
                 elif computed == "k-means":
-                    fig = kairo.plot_kmeans_frequencies(
+                    fig = kairo.plot_kmeans_state_frequencies(
                         kairo.get_kmeans_state_frequencies(states, start_date, end_date), colors)
                 else:
-                    fig = kairo.plot_dbscan_frequencies(
+                    fig = kairo.plot_dbscan_state_frequencies(
                         kairo.get_dbscan_state_frequencies(states, start_date, end_date), colors)
                 if computed != "SOM":
                     # the range was picked for the getter, the title shows it like the som heatmap's
@@ -288,14 +291,14 @@ def case_trajectories(p: str, log: pd.DataFrame, states: pd.DataFrame, computed:
         max_cases = int(st.session_state[f"{p}_sel_traj_count"])
         with st.spinner("Following the cases through their states…"):
             if computed == "SOM":
-                trajectories = kairo.get_som_trajectories(states, start_date, end_date, max_cases)
-                fig = kairo.plot_som_trajectories(trajectories, colors)
+                trajectories = kairo.get_som_case_trajectories(states, start_date, end_date, max_cases)
+                fig = kairo.plot_som_case_trajectories(trajectories, colors)
             elif computed == "k-means":
-                trajectories = kairo.get_kmeans_trajectories(states, start_date, end_date, max_cases)
-                fig = kairo.plot_kmeans_trajectories(trajectories, colors)
+                trajectories = kairo.get_kmeans_case_trajectories(states, start_date, end_date, max_cases)
+                fig = kairo.plot_kmeans_case_trajectories(trajectories, colors)
             else:
-                trajectories = kairo.get_dbscan_trajectories(states, start_date, end_date, max_cases)
-                fig = kairo.plot_dbscan_trajectories(trajectories, colors)
+                trajectories = kairo.get_dbscan_case_trajectories(states, start_date, end_date, max_cases)
+                fig = kairo.plot_dbscan_case_trajectories(trajectories, colors)
         st.session_state[f"{p}_range_trajectories"] = trajectories
         st.session_state[f"{p}_plot_trajectories"] = fig
     ui.show_plot(f"{p}_plot_trajectories", "Pick the dates and plot the trajectories.")
@@ -303,8 +306,8 @@ def case_trajectories(p: str, log: pd.DataFrame, states: pd.DataFrame, computed:
 
 def log_trajectory(p: str, log: pd.DataFrame, states: pd.DataFrame, computed: str, colors: dict) -> None:
     st.subheader("Trajectory of the log")
-    st.caption("The state of every calendar window between the two dates, left open for the whole log. "
-               "Consecutive windows in the same state are one visit.")
+    st.caption("The state of every feature window between the two dates, left open for the whole log. "
+               "Consecutive feature windows in the same state are one visit.")
     range_inputs(f"{p}_sel_log_traj", log)
     if st.button("Plot trajectory", icon=":material/view_timeline:"):
         start_date, end_date = picked_range(f"{p}_sel_log_traj")
@@ -316,7 +319,7 @@ def log_trajectory(p: str, log: pd.DataFrame, states: pd.DataFrame, computed: st
             trajectory = kairo.get_dbscan_log_trajectory(states, start_date, end_date)
 
         if trajectory.empty:
-            st.warning("No windows start between the two dates.")
+            st.warning("No feature windows start between the two dates.")
         else:
             if computed == "SOM":
                 fig = kairo.plot_som_log_trajectory(trajectory, colors)

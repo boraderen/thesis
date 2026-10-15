@@ -3,7 +3,7 @@
 
 To evaluate whether a detector detects a drift, we need event logs with known drifts. Public event logs with known drifts are hard to find and mostly contain drifts in the control-flow perspective or timing attributes. The Concept Drift Log Generator (CDLG) developed by \textcite{grimm2022cdlg} generates synthetic event logs with control-flow drifts and the authors mention multi-perspective drifts as future work.
 
-We introduce Rheon in this chapter in order to fill this gap. Rheon is a Python library developed in this thesis that generates synthetic event logs with injected concept drifts. It allows users to configure the generation parameters comprehensively and to inject concept drifts from intra-case, resource and inter-case perspectives. The input comprises parameters of a base process model and a list of drifts. The output is an event log with activities, timestamps, resources, two case attributes and a metadata file that comprehensively describes the base process parameters as well as the injected drifts together with their drift types. Rheon supports nine drift types from the three perspectives and the two drift modes sudden and gradual. We will use Rheon logs in Chapter~\ref{chap:eval} to evaluate our state-based framework on known drifts.
+We introduce Rheon in this chapter in order to fill this gap. Rheon is a Python library developed in this thesis that generates synthetic event logs with injected concept drifts. Its source code\footnote{\url{https://github.com/boraderen/rheon}} and documentation\footnote{\url{https://boraderen.github.io/rheon/}} are publicly available. It allows users to configure the generation parameters comprehensively and to inject concept drifts from intra-case, resource and inter-case perspectives. The input comprises parameters of a base process model and a list of drifts. The output is an event log with activities, timestamps, resources, two case attributes and a metadata file that comprehensively describes the base process parameters as well as the injected drifts together with their drift types. Rheon supports nine drift types from the three perspectives and the two drift modes sudden and gradual. We will use Rheon logs in Chapter~\ref{chap:eval} to evaluate our state-based framework on known drifts.
 
 Section~\ref{sec:rheon:schema} introduces the log schema of Rheon-generated logs and gives an example. Section~\ref{sec:rheon:generation} gives an overview of the generation of an event log using Rheon. Section~\ref{sec:rheon:drifts} introduces the nine drift types supported by Rheon. In Section~\ref{sec:rheon:examples} we give examples of generated logs and figures showing the drifts visually. Section~\ref{sec:rheon:limitations} discusses the limitations and future work of Rheon.
 
@@ -271,7 +271,7 @@ We illustrate one drift per perspective with three example logs (Table~\ref{tab:
 	\centering
 	\begin{subfigure}{\textwidth}
 		\centering
-		\includegraphics[width=0.85\textwidth]{figures/control_flow_counts}
+		\includegraphics[width=0.65\textwidth]{figures/control_flow_counts}
 		\caption{Directly-follows counts}
 		\label{fig:rheon:example_cf_counts}
 	\end{subfigure}
@@ -279,13 +279,13 @@ We illustrate one drift per perspective with three example logs (Table~\ref{tab:
 	\medskip
 	\begin{subfigure}{0.3\textwidth}
 		\centering
-		\includegraphics[height=8.6cm]{figures/celonis-variant-explorer-pre}
+		\includegraphics[height=7.2cm]{figures/celonis-variant-explorer-pre}
 		\caption{Before the drift}
 		\label{fig:rheon:example_cf_celonis_pre}
 	\end{subfigure}
 	\begin{subfigure}{0.45\textwidth}
 		\centering
-		\includegraphics[height=8.6cm]{figures/celonis-variant-explorer-post}
+		\includegraphics[height=7.2cm]{figures/celonis-variant-explorer-post}
 		\caption{After the drift}
 		\label{fig:rheon:example_cf_celonis_post}
 	\end{subfigure}
@@ -302,7 +302,7 @@ We illustrate one drift per perspective with three example logs (Table~\ref{tab:
 	\centering
 	\begin{subfigure}{\textwidth}
 		\centering
-		\includegraphics[width=\textwidth]{figures/resource_reassignment}
+		\includegraphics[width=0.65\textwidth]{figures/resource_reassignment}
 		\caption{Events per activity and resource}
 		\label{fig:rheon:example_res_counts}
 	\end{subfigure}
@@ -310,7 +310,7 @@ We illustrate one drift per perspective with three example logs (Table~\ref{tab:
 	\medskip
 	\begin{subfigure}{\textwidth}
 		\centering
-		\includegraphics[width=0.9\textwidth]{figures/celonis-workload-by-activities}
+		\includegraphics[width=0.75\textwidth]{figures/celonis-workload-by-activities}
 		\caption{Events per resource and activity in Celonis}
 		\label{fig:rheon:example_res_celonis}
 	\end{subfigure}
@@ -325,7 +325,7 @@ We illustrate one drift per perspective with three example logs (Table~\ref{tab:
 
 \begin{figure}[tbp]
 	\centering
-	\includegraphics[width=\textwidth]{figures/celonis-dotted-chart-by-drift}
+	\includegraphics[width=0.7\textwidth]{figures/celonis-dotted-chart-by-drift}
 	\caption[Example log with an arrival rate drift]{%
 		Screenshot of the dotted chart of Celonis for the example log with a sudden arrival rate drift on July 1, 2020 (dashed line). Each dot is an event, placed at its time and at its case, with the cases ordered by their arrival. The chart shows the cases from February 2020 on, with the cases before the drift in green and after the drift in red. After the drift, the mean inter-arrival time rises from 219 to 4,380 minutes, so only a few cases arrive.}
 	\label{fig:rheon:example_inter}

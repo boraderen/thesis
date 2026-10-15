@@ -1,14 +1,29 @@
 import pandas as pd
 
-FEATURES = [
-    "act_freqs",
-    "df_counts",
-    "act_set",
-    "case_counts",
-    "case_progress",
-    "current_act",
-    "past_acts",
-]
+# every feature group with its label and what it computes, the single source for the docs,
+# the dashboard and the language models. the prefix of an event is its case up to and
+# including the event
+GLOSSARY = {
+    "act_freqs": ("Activity frequencies",
+                  "One column per activity: how often the activity occurs in the prefix, divided by the "
+                  "number of events in the prefix."),
+    "df_counts": ("Directly-follows counts",
+                  "One column per directly-follows pair a -> b that occurs in the log: how often b "
+                  "directly follows a in the prefix."),
+    "act_set": ("Activity set",
+                "One column per activity: 1 if the activity occurs in the prefix, else 0."),
+    "case_progress": ("Case progress",
+                      "One column: the position of the event in its case, divided by the number of events "
+                      "of the whole case, so the last event has 1."),
+    "current_act": ("Current activity",
+                    "One column per activity: 1 for the activity of the event, else 0."),
+    "past_acts": ("Past activities",
+                  "One block of activity columns per step back k = 1, ..., h, where h is the sliding window "
+                  "size: 1 for the activity of the event k steps earlier in the same case, else 0. All 0 if "
+                  "the case has fewer than k earlier events."),
+}
+
+FEATURES = list(GLOSSARY)
 
 def compute_features_intra(log: pd.DataFrame, features: list = FEATURES, sliding_window_size: int = 0) -> pd.DataFrame:
     # Every feature looks at the events of a case up to and including the current one,
@@ -97,7 +112,7 @@ def compute_current_activity(log: pd.DataFrame) -> pd.DataFrame:
 
 def compute_past_activities(log: pd.DataFrame, n: int) -> pd.DataFrame:
     # n is sliding window size: one block of activity columns per previous event.
-    # Shifting inside the case keeps the window from reaching into another case
+    # Shifting inside the case keeps the sliding window from reaching into another case
     one_hot = pd.get_dummies(log["concept:name"], dtype=float)
 
     blocks = []

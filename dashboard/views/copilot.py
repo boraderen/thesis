@@ -62,15 +62,11 @@ def perspective_abstractions(p: str) -> dict:
         texts["Trajectory of the log"] = lambda: kairo.abstract_log_trajectory(state[f"{p}_log_trajectory"])
 
     if f"{p}_distributions" in state:
-        texts["State distributions"] = lambda: kairo.abstract_distributions(state[f"{p}_distributions"])
+        texts["State distributions"] = lambda: kairo.abstract_state_distributions(state[f"{p}_distributions"])
 
-    if f"{p}_divergences" in state:
-        texts["Drift signal"] = lambda: kairo.abstract_divergences(
-            state[f"{p}_divergences"], **state[f"{p}_divergence_config"])
-
-    if f"{p}_window_distances" in state:
-        texts["Window distances"] = lambda: kairo.abstract_window_distances(
-            state[f"{p}_window_distances"], **state[f"{p}_window_distance_config"])
+    if f"{p}_drift_signal" in state:
+        texts["Drift signal"] = lambda: kairo.abstract_drift_signal(
+            state[f"{p}_drift_signal"], **state[f"{p}_drift_signal_config"])
 
     return texts
 

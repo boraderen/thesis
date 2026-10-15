@@ -26,11 +26,11 @@ with cards[1], st.container(border=True):
     st.page_link("views/intra/features.py", label="Intra-case states", icon=":material/route:")
 with cards[2], st.container(border=True):
     st.markdown("**3 · Resource**")
-    st.caption("Features per calendar window → PCA → clustered states → the log's trajectory.")
+    st.caption("A feature vector per feature window → PCA → clustered states → the log's trajectory.")
     st.page_link("views/resource/features.py", label="Resource states", icon=":material/group:")
 with cards[3], st.container(border=True):
     st.markdown("**4 · Inter-case**")
-    st.caption("Features per calendar window → PCA → clustered states → the log's trajectory.")
+    st.caption("A feature vector per feature window → PCA → clustered states → the log's trajectory.")
     st.page_link("views/inter/features.py", label="Inter-case states", icon=":material/hub:")
 
 st.title("Overview of the pipelines")
@@ -46,45 +46,30 @@ digraph {
 
     subgraph cluster_intra {
         label="Intra-case" fontcolor="#888888" color="#bbbbbb"
-        intra_feat [label="Intra-case features" width=2.1]
-        intra_red [label="PCA"]
-        intra_som [label="SOM / clustering states"]
-        intra_div [label="Freq. distri divergences"]
-        intra_sig [label="Drift signals"]
-        intra_feat -> intra_red -> intra_som
-        intra_som -> intra_div
-        intra_som -> intra_sig
-        intra_div -> intra_sig
+        intra_feat [label="Intra-case features per event" width=2.3]
+        intra_red [label="Scaling and PCA"]
+        intra_som [label="States: SOM, k-means or DBSCAN"]
+        intra_dist [label="State distribution per signal window"]
+        intra_sig [label="Drift signal: divergence per signal window"]
+        intra_feat -> intra_red -> intra_som -> intra_dist -> intra_sig
     }
     subgraph cluster_resource {
         label="Resource" fontcolor="#888888" color="#bbbbbb"
-        res_feat [label="Windowed resource features" width=2.1]
-        res_red [label="PCA"]
-        res_som [label="SOM / clustering states"]
-        res_div [label="Freq. distri divergences"]
-        res_dist [label="Window distances"]
-        res_sig [label="Drift signals"]
-        res_feat -> res_red -> res_som
-        res_red -> res_dist
-        res_som -> res_div
-        res_som -> res_sig
-        res_div -> res_sig
-        res_dist -> res_sig
+        res_feat [label="Resource features per feature window" width=2.3]
+        res_red [label="Scaling and PCA"]
+        res_som [label="States: SOM, k-means or DBSCAN"]
+        res_dist [label="State distribution per signal window"]
+        res_sig [label="Drift signal: divergence per signal window"]
+        res_feat -> res_red -> res_som -> res_dist -> res_sig
     }
     subgraph cluster_inter {
         label="Inter-case" fontcolor="#888888" color="#bbbbbb"
-        inter_feat [label="Windowed inter-case features" width=2.1]
-        inter_red [label="PCA"]
-        inter_som [label="SOM / clustering states"]
-        inter_div [label="Freq. distri divergences"]
-        inter_dist [label="Window distances"]
-        inter_sig [label="Drift signals"]
-        inter_feat -> inter_red -> inter_som
-        inter_red -> inter_dist
-        inter_som -> inter_div
-        inter_som -> inter_sig
-        inter_div -> inter_sig
-        inter_dist -> inter_sig
+        inter_feat [label="Inter-case features per feature window" width=2.3]
+        inter_red [label="Scaling and PCA"]
+        inter_som [label="States: SOM, k-means or DBSCAN"]
+        inter_dist [label="State distribution per signal window"]
+        inter_sig [label="Drift signal: divergence per signal window"]
+        inter_feat -> inter_red -> inter_som -> inter_dist -> inter_sig
     }
 
     log -> intra_feat

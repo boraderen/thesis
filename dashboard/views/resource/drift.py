@@ -1,4 +1,4 @@
-"""Resource drift signal: the states counted per calendar window, compared window by window."""
+"""Resource drift signal: the states counted per signal window, every signal window compared with a reference."""
 from steps import drift
 
 drift.show("resource")
