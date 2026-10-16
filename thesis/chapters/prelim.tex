@@ -826,7 +826,7 @@ For SOMs, we also measure how closely the prototypes fit the vectors and how eve
 
 \section{Divergences}
 \label{sec:prelim:divergences}
-A clustering gives each cluster a share of the vectors, i.e., a distribution over the set of clusters $K$. A divergence measures how much two such distributions differ. We use four divergences. In Chapter~\ref{chap:approach}, they compare the distributions of states in different calendar windows.
+A divergence measures how much two probability distributions over the same finite set differ. We use four divergences. In Chapter~\ref{chap:approach}, we compute the drift signals with them.
 
 \begin{definition}[Divergences]
 	\label{def:prelim:divergences}
@@ -854,7 +854,7 @@ A clustering gives each cluster a share of the vectors, i.e., a distribution ove
 \begin{table}[tb]
 	\centering
 	\caption[Divergences of the example distributions]{%
-		The four divergences of the distributions $p = (0.5, 0.5, 0)$ and $q = (0.25, 0.25, 0.5)$ over the clusters $K = \Set{1, 2, 3}$ of Example~\ref{ex:prelim:divergences} in both directions. Since $p$ lacks cluster~3, only $D_{\mathrm{KL}}(q, p)$ is infinite.}
+		The four divergences of the distributions $p = (0.5, 0.5, 0)$ and $q = (0.25, 0.25, 0.5)$ over $K = \Set{1, 2, 3}$ of Example~\ref{ex:prelim:divergences} in both directions. Since $p(3) = 0 < q(3)$, only $D_{\mathrm{KL}}(q, p)$ is infinite.}
 	\label{tab:prelim:divergences}
 	\begin{tabular}{@{}lrr@{}}
 		\toprule
@@ -870,15 +870,15 @@ A clustering gives each cluster a share of the vectors, i.e., a distribution ove
 
 \begin{example}
 	\label{ex:prelim:divergences}
-	A clustering with the clusters $K = \Set{1, 2, 3}$ spreads two sets of vectors differently over the clusters (Table~\ref{tab:prelim:divergences}). We write a distribution $p$ over $K$ as $(p(1), p(2), p(3))$.
+	We compare two distributions over $K = \Set{1, 2, 3}$ (Table~\ref{tab:prelim:divergences}). We write a distribution $p$ over $K$ as $(p(1), p(2), p(3))$.
 	\begin{itemize}
-		\item The distributions are $p = (0.5, 0.5, 0)$ and $q = (0.25, 0.25, 0.5)$. Thus, cluster~3 only occurs in $q$.
+		\item The distributions are $p = (0.5, 0.5, 0)$ and $q = (0.25, 0.25, 0.5)$. Thus, only $q$ gives the element~3 a share.
 
 		\item $D_{\mathrm{KL}}(p, q) = 2 \cdot 0.5 \log \frac{0.5}{0.25} = \log 2 \approx 0.693$. Conversely, $D_{\mathrm{KL}}(q, p) = \infty$, since $q(3) = 0.5$ and $p(3) = 0$.
 
 		\item With $m = (0.375, 0.375, 0.25)$, $D_{\mathrm{JS}}(p, q) = \frac{1}{2} D_{\mathrm{KL}}(p, m) + \frac{1}{2} D_{\mathrm{KL}}(q, m) \approx \frac{1}{2} \cdot 0.288 + \frac{1}{2} \cdot 0.144 \approx 0.216$.
 
-		\item $D_{\mathrm{TV}}(p, q) = \frac{1}{2} (0.25 + 0.25 + 0.5) = 0.5$, i.e., a share of 0.5 moves from cluster~3 to the clusters~1 and~2. $D_{\mathrm{H}}(p, q) \approx 0.541$.
+		\item $D_{\mathrm{TV}}(p, q) = \frac{1}{2} (0.25 + 0.25 + 0.5) = 0.5$, i.e., a share of 0.5 moves from the element~3 to the elements~1 and~2. $D_{\mathrm{H}}(p, q) \approx 0.541$.
 
 		\item $D_{\mathrm{JS}}$, $D_{\mathrm{TV}}$ and $D_{\mathrm{H}}$ are finite and the same in both directions, whereas $D_{\mathrm{KL}}$ depends on the direction.
 	\end{itemize}

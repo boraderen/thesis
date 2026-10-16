@@ -10,3 +10,15 @@ Placeholder.
 \section{Dashboard}
 \label{sec:impl:dashboard}
 Placeholder.
+
+\section{Copilot and Analyst Skill}
+\label{sec:impl:copilot}
+Placeholder.
+\begin{itemize}
+	\item To be explained: the implementation of the two uses of an LLM from Section~\ref{sec:approach:ai} (Figure~\ref{fig:approach:ai}).
+	\item Copilot: the page of the dashboard on which the user picks the text abstractions (Section~\ref{sec:approach:ai}) and plots of all perspectives to share, asks a question or picks a suggested one, and chats with the LLM. The chat keeps its history, so shared results need not be shared again, and the page estimates the input tokens before sending.
+	\item Providers and connectors: \texttt{LLMConnector} of kairo connects to Anthropic, OpenAI, Google or a custom OpenAI-compatible host, e.g., LM Studio or vLLM for local models. The chat starts with the default system prompt of kairo.
+	\item Analyst skill: the instructions for an analysis agent that runs kairo itself, i.e., which functions to call in which order, how to choose and compare configurations, how to read the abstractions and plots, and how to report a drift with its perspective, mode and what changed.
+	\item Why a library: kairo consists of small functions with DataFrames as input and output, which an agent can call, combine and extend.
+	\item Link to research goals \ref{item:intro:rg_library} and \ref{item:intro:rg_dashboard}, and to the risks in Chapter~\ref{chap:discussion} (\ref{item:intro:rg_limitations}).
+\end{itemize}

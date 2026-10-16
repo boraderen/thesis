@@ -425,7 +425,7 @@ The inter-case features describe each feature window by all cases that run in it
 
 \begin{definition}[Inter-Case Features]
 	\label{def:approach:inter}
-	Let $L = (E, \pi, \preceq)$ be an event log, let $\mathit{prev}_L$, $\mathit{gap}_L$, $E^w_L$ and $W_L$ be as in Definition~\ref{def:approach:windows} with the length $\Delta_f$ of the feature windows, and let $\tau > 0$ be a stall threshold. Let $N_{\mathit{num}} = \Set{n_1, \dots, n_s}$ and $N_{\mathit{cat}}$ be disjoint sets of numerical and categorical case attributes of $L$ (Definition~\ref{def:prelim:event_log}) that every event has, and let $V = \Set{u_1, \dots, u_t}$ be the set of pairs $(n, v)$ of an attribute $n \in N_{\mathit{cat}}$ and one of its values $v$ in $L$. For a feature window $w = [t, t + \Delta_f) \in W_L$, oureature groups are:
+	Let $L = (E, \pi, \preceq)$ be an event log, let $\mathit{prev}_L$, $\mathit{gap}_L$, $E^w_L$ and $W_L$ be as in Definition~\ref{def:approach:windows} with the length $\Delta_f$ of the feature windows, and let $\tau > 0$ be a stall threshold. Let $N_{\mathit{num}} = \Set{n_1, \dots, n_s}$ and $N_{\mathit{cat}}$ be disjoint sets of numerical and categorical case attributes of $L$ (Definition~\ref{def:prelim:event_log}) that every event has, and let $V = \Set{u_1, \dots, u_t}$ be the set of pairs $(n, v)$ of an attribute $n \in N_{\mathit{cat}}$ and one of its values $v$ in $L$. For a feature window $w = [t, t + \Delta_f) \in W_L$, our feature groups are:
 	\begin{itemize}
 		\item \emph{Active cases} (\texttt{active\_cases}): $\mathit{active}_L(w) = \abs{\Set{\pi_{\mathit{case}}(e) \given e \in E^w_L}}$.
 		\item \emph{New arrivals} (\texttt{new\_arrivals}): $\mathit{arrivals}_L(w) = \abs{\Set{c \in C_L \given \mathit{start}_L(c) \in w}}$.
@@ -524,7 +524,7 @@ Together, Figures~\ref{fig:approach:features_intra}, \ref{fig:approach:features_
 
 \section{Scaling and Dimensionality Reduction}
 \label{sec:approach:reduction}
-The features of a perspective have different units and value ranges. Many of them are also correlated, e.g., the frequency of an activity and the directly-follows counts that contain the activity counts. Since the clustering compares rows (feature windows or events) by their distances, we first scale the features such that no feature dominates due to its value range. Then, PCA compresses the scaled features into few principal components (Section~\ref{sec:prelim:pca}). Similar to \textcite{berti2025ocel}, to choose the number of components we use the elbow of the reconstruction error as a heuristic. As a second heuristic, explained variance of the kept components is also useful. Both scaling and PCA are optional. Our framework is flexible and can easily be extended to different scaling techniques such as robust scaling or different dimensionality reduction techniques like Autoencoders.
+The features of a perspective have different units and value ranges. Many of them are also correlated, e.g., the frequency of an activity and the directly-follows counts that contain the activity. Since the clustering compares rows (feature windows or events) by their distances, we first scale the features such that no feature dominates due to its value range. Then, PCA compresses the scaled features into a few principal components (Section~\ref{sec:prelim:pca}). Similar to \textcite{berti2025ocel}, to choose the number of components we use the elbow of the reconstruction error as a heuristic. As a second heuristic, the explained variance of the kept components is also useful. Both scaling and PCA are optional. Our framework is flexible and can easily be extended to different scaling techniques such as robust scaling or different dimensionality reduction techniques like autoencoders.
 
 \begin{definition}[Scaling and Dimensionality Reduction]
 	\label{def:approach:reduction}
@@ -719,7 +719,7 @@ Our framework supports various distances for the clustering. Besides the Euclide
 
 \noindent\emph{Properties:}
 \begin{itemize}[beginpenalty=10000]
-	\item Similar to PCA, the clustering uses all rows of $Z$. Therefore, all process versions share the same states. Section~\ref{sec:approach:drift_signals} measures this change.
+	\item Similar to PCA, the clustering uses all rows of $Z$. Therefore, all process versions share the same states. A drift does not change the states, but how often each state occurs. Section~\ref{sec:approach:drift_signals} measures this change.
 	\item In the intra-case perspective, each event has a state, whereas in the resource and inter-case perspectives each feature window has a state.
 	\item Consecutive equal states of a trajectory form a visit of the state. A trajectory thus shows how long a case or the event log stays in a state.
 	\item In the intra-case perspective, a trajectory only covers a single case. Thus, a drift only shows when we compare the trajectories of cases before and after it. In the resource and inter-case perspectives, the trajectory covers the whole event log, so a change of its state already indicates a drift.
@@ -1007,17 +1007,22 @@ Table~\ref{tab:approach:cluster_eval} compares the chosen clusterings of the thr
 
 \section{Drift Signals}
 \label{sec:approach:drift_signals}
-Placeholder.
+A state describes a single row, whereas a drift describes a change over time. Since all process versions share the same states, a drift can be seen in how often each state occurs. A state that only occurs after a drift has the frequency 0 before the drift. A drift signal makes these changes measurable. For each signal window, we count how often the rows have the states and obtain a state distribution. A divergence compares these state distributions with a reference, e.g., the state distribution of the previous signal window. The divergence of a signal window is the drift score of that signal window. The time series of drift scores over the signal windows is the drift signal.
+
+Clustering-based detectors observe how the composition of clusters changes over time (\textcite{sato2022survey}). The drift signal quantifies this change for each signal window. The comparison with a reference follows the window-based detectors. ProDrift compares the distribution of the runs of a reference window and a detection window using a $\chi^2$ test (\textcite{maaradji2017detecting}). In our framework, we compare states instead of runs. Therefore, this step works the same way in all three perspectives.
+
+Our framework uses the four divergences of Section~\ref{sec:prelim:divergences}, which kairo implements as \texttt{kl}, \texttt{js}, \texttt{tv} and \texttt{hellinger} (Section~\ref{sec:impl:kairo}).
 
 \begin{definition}[State Distributions, Drift Scores and Drift Signal]
 	\label{def:approach:drift_signal}
-	Let $L$ be an event log with the rows $s_1, \dots, s_m$ (Definition~\ref{def:approach:feature_extraction}), let $\mathit{cl} \in \Set{1, \dots, m} \to K$ be a clustering of its reduced matrix with the set of states $K$ (Definition~\ref{def:approach:states}), and let signal windows of the length $\Delta_s$ be given (Definition~\ref{def:approach:window_roles}).
+	Let $Z \in \R^{m \times d}$ be a reduced matrix with the rows $\mathbf{z}_1^\top, \dots, \mathbf{z}_m^\top$ (Definition~\ref{def:approach:reduction}), let $K$ be the set of states with $\mathit{state}(\mathbf{z}_j) \in K$ for $1 \le j \le m$ (Definition~\ref{def:approach:states}), and let signal windows of the length $\Delta_s$ be given (Definition~\ref{def:approach:window_roles}).
 	\begin{itemize}
-		\item For a signal window $v$, $J_v = \Set{j \in \Set{1, \dots, m} \given s_j \text{ lies in } v}$ is the set of its rows, i.e., of the events whose timestamp lies in $v$ or of the feature windows whose start lies in $v$.
+		\item For $1 \le j \le m$, $\mathit{time}(\mathbf{z}_j)$ is the time of the row $\mathbf{z}_j$, i.e., the timestamp of its event in the intra-case perspective and the start of its feature window in the resource and inter-case perspectives.
+		\item For a signal window $v$, $J_v = \Set{j \in \Set{1, \dots, m} \given \mathit{time}(\mathbf{z}_j) \in v}$ is the set of its rows.
 		\item $v_1, \dots, v_n$ are the signal windows with $J_{v_i} \neq \emptyset$ in chronological order, and $t_i$ is the start of $v_i$.
 		\item The state distribution of $v_i$ is $p_i \in K \to [0, 1]$ with
 		      \[
-			      p_i(\kappa) = \frac{\abs{\Set{j \in J_{v_i} \given \mathit{cl}(j) = \kappa}}}{\abs{J_{v_i}}} \quad\text{for } \kappa \in K.
+			      p_i(\kappa) = \frac{\abs{\Set{j \in J_{v_i} \given \mathit{state}(\mathbf{z}_j) = \kappa}}}{\abs{J_{v_i}}} \quad\text{for } \kappa \in K.
 		      \]
 		\item For $i_0 \le i \le n$, the reference $q_i$ of $v_i$ is one of the following distributions over $K$, where we take means of distributions separately for each $\kappa \in K$:
 		      \begin{itemize}
@@ -1030,7 +1035,31 @@ Placeholder.
 	\end{itemize}
 \end{definition}
 
-Placeholder.
+\noindent\emph{Properties:}
+\begin{itemize}[beginpenalty=10000]
+	\item Each divergence is 0 for $p_i = q_i$ (Section~\ref{sec:prelim:divergences}).
+	\item A high drift score indicates that the state distribution of a signal window diverges from its reference.
+	\item If a state from the signal window does not occur in the reference, the drift score based on the KL divergence $D_{\mathrm{KL}}(p_i, q_i)$ is infinite.
+	\item The divergences only compare the shares of the states but not their similarities.
+	\item A transition into a similar state, thus, counts as much as a transition to a very different state.
+\end{itemize}
+
+The reference determines which changes the drift score measures:
+\begin{itemize}[beginpenalty=10000]
+	\item \emph{Previous signal window}: This reference compares neighboring signal windows. A sudden drift causes a spike in the first signal window after it. The drift score drops afterwards since the state shares of the signal windows are similar again. Random fluctuations can also cause a false positive spike in the drift score of a signal window.
+	\item \emph{Mean of the $h$ previous signal windows}: This reference fluctuates less and is more stable. For each state, it is defined over the mean of that state's share in the $h$ state distributions.
+	\item \emph{Mean of all signal windows}: This reference compares each signal window with the mean behavior of the entire event log. A drift shows itself more in the form of a step between two levels instead of a spike. This reference assumes complete event logs and is not applicable for online concept drift detection.
+\end{itemize}
+
+The size $\Delta_s$ of the signal window balances fluctuations against granularity in time. A short signal window has fewer rows and can have more random fluctuations in the state distributions and divergences. A long signal window smooths the frequencies but only signals a drift point as granular as $\Delta_s$.
+
+We should be skeptical about the drift scores at the end of an event log. The last signal window often only contains the remaining events of cases that started earlier, while no new cases arrive. Thus, only certain states occur, e.g., the states of late prefixes in the intra-case perspective, and the state distribution can be misleading without any drift. An example is the last intra-case signal window of the running example, which only holds the three events of December~31 (Figure~\ref{fig:approach:drift_signal_intra}).
+
+Similar to the earlier steps of our pipeline, this step is also flexible. The framework is extendable to different divergences (e.g., Earth Mover's Distance) as well as to distances between the state distributions of the signal windows.
+
+In the resource and inter-case perspectives, each row belongs to a feature window. Therefore, in these perspectives, we obtain a log-level trajectory of states from the clustering. In this case, the state vectors of the signal windows can also be compared directly using distance measures. In this thesis, we focus on our approach over frequencies and divergences. The main benefit of our choice is that it aligns the result format of the three perspectives into a drift signal.
+
+The drift signal alone cannot decide whether there is a drift. In Chapter~\ref{chap:eval}, we detect drifts with thresholds on the drift scores, which depend on the event log and the used divergence. Since each drift signal is a time series, other well-known drift detection approaches like PELT (\textcite{adams2023explainable}) or ADWIN (\textcite{baier2020handling}) can be used with those drift signals.
 
 \begin{figure}[tb]
 	\centering
@@ -1070,12 +1099,25 @@ Placeholder.
 
 \begin{example}
 	\label{ex:approach:drift_signal}
-	Placeholder.
+	Figure~\ref{fig:approach:drift_signal_example} shows five signal windows $v_1, \dots, v_5$ with the states $K = \Set{1, 2}$. We write a distribution $p$ over $K$ as $(p(1), p(2))$.
+	\begin{itemize}
+		\item The state distributions are $p_1 = p_2 = p_3 = (0.8, 0.2)$ and $p_4 = p_5 = (0.2, 0.8)$. Thus, 60\% of the rows move from state~1 to state~2 between $v_3$ and $v_4$.
+
+		\item With the previous signal window as reference,
+		      \[
+			      \mathit{score}_4 = D_{\mathrm{KL}}(p_4, p_3) = 0.2 \log \frac{0.2}{0.8} + 0.8 \log \frac{0.8}{0.2} \approx 0.832.
+		      \]
+		      All other drift scores are 0, and $v_1$ has no drift score.
+
+		\item With the mean of the $h = 2$ previous signal windows as reference, $v_4$ also gets the drift score 0.832. The reference $q_5 = (0.5, 0.5)$ still contains $v_3$, so $v_5$ gets the drift score 0.193.
+
+		\item With the mean of all signal windows $(0.56, 0.44)$ as reference, $v_1$ to $v_3$ get the drift score 0.128 and $v_4$ and $v_5$ the drift score 0.272. Thus, the drift shows as a step. Since only two signal windows follow the drift, they lie further from the reference.
+	\end{itemize}
 \end{example}
 
 \subsection{Intra-Case Perspective}
 \label{sec:approach:drift_signals:intra}
-Placeholder.
+In the intra-case perspective, the rows are events. A signal window counts the states of all events whose timestamps lie in it, i.e., prefixes of many cases at different positions. Thus, the state distribution shows how often each prefix occurs in a signal window. A control-flow drift changes this mix as soon as cases of the new process version produce events.
 
 \begin{figure}[tb]
 	\centering
@@ -1102,12 +1144,23 @@ Placeholder.
 
 \begin{example}
 	\label{ex:approach:drift_signal_intra}
-	Placeholder.
+	We compute two drift signals of the intra-case states of $L_3$ (Example~\ref{ex:approach:clustering_intra}) with the KL divergence (Figure~\ref{fig:approach:drift_signal_intra}).
+	\begin{itemize}
+		\item First, we choose signal windows of one day and the mean of the seven previous signal windows as reference. The 366 signal windows hold 66 events in the median.
+
+		\item Before the drift, all drift scores are at most 0.013. On April~1, the drift score reaches its highest value 3.47, since the four new cells of the SOM (Figure~\ref{fig:approach:som_intra}) do not occur in the reference.
+
+		\item With the previous signal window as reference, July~19 (7.98) and May~2 (5.52) exceed the drift. On July~18, all five cases execute $c$ before $b$, and on May~1, all eight cases execute $b$ before $c$. Thus, the cells of the other order are missing in the reference of the next day.
+
+		\item Second, we choose signal windows of one week and the mean of all signal windows as reference. Before the drift, the drift scores lie between 0.35 and 0.36, and after it, their median is 0.028.
+
+		\item Since 40 of the 54 signal windows lie after the drift, the reference is close to the new process version. Thus, the drift shows as a step downwards.
+	\end{itemize}
 \end{example}
 
 \subsection{Resource Perspective}
 \label{sec:approach:drift_signals:resource}
-Placeholder.
+In the resource perspective, the rows are feature windows. Thus, a signal window holds far fewer rows than in the intra-case perspective. If $\Delta_s = \Delta_f$, each signal window holds exactly one feature window. Then, the drift signal with the previous signal window as reference shows exactly the state changes in the trajectory of the event log.
 
 \begin{figure}[tb]
 	\centering
@@ -1134,12 +1187,23 @@ Placeholder.
 
 \begin{example}
 	\label{ex:approach:drift_signal_resource}
-	Placeholder.
+	We compute two drift signals of the resource states of $L_3$ (Example~\ref{ex:approach:clustering_resource}) with the KL divergence (Figure~\ref{fig:approach:drift_signal_resource}).
+	\begin{itemize}
+		\item First, we choose signal windows of one day and the previous signal window as reference. All drift scores are 0 except the one of July~2, the first feature window in state~2.
+
+		\item State~2 does not occur in the reference, so the KL divergence is infinite. Our implementation adds a share of $10^{-9}$ to each state, so the drift score is $\log 10^9 \approx 20.72$ instead.
+
+		\item With the mean of all signal windows as reference, each drift score is $\log 2 \approx 0.69$, since both states cover 183 days. Thus, the drift disappears from the drift signal.
+
+		\item Second, we choose signal windows of 30 days and the mean of the three previous signal windows as reference. The signal window from June~7 to July~6 contains the drift with 25 days in state~1 and 5 days in state~2 and reaches 3.00. The next signal window lies completely in state~2 and reaches 2.89.
+
+		\item Afterwards, the drift score decays to 0.94 and 0.33, since the reference still contains signal windows in state~1.
+	\end{itemize}
 \end{example}
 
 \subsection{Inter-Case Perspective}
 \label{sec:approach:drift_signals:inter}
-Placeholder.
+As in the resource perspective, a signal window counts the states of its feature windows. With DBSCAN, noise is also a state (Definition~\ref{def:approach:states}). Thus, unusual feature windows change the state distribution also without a drift.
 
 \begin{figure}[tb]
 	\centering
@@ -1166,21 +1230,104 @@ Placeholder.
 
 \begin{example}
 	\label{ex:approach:drift_signal_inter}
-	Placeholder.
+	We compute two drift signals of the inter-case states of $L_3$ (Example~\ref{ex:approach:clustering_inter}) with the KL divergence (Figure~\ref{fig:approach:drift_signal_inter}).
+	\begin{itemize}
+		\item First, we choose signal windows of one week and the previous signal window as reference. The 54 signal windows hold 14 feature windows in the median.
+
+		\item The signal window from October~1 reaches the highest drift score 14.96. In this signal window, 71.4\% of the feature windows lie in state~2, which does not occur in the previous signal window.
+
+		\item Ten further signal windows exceed 1. Except the last one, they contain one or two noise feature windows after a signal window without noise. The drift is still 5.9 times higher than the highest of them (2.55).
+
+		\item Second, we choose signal windows of 30 days and the mean of all signal windows as reference. Before the drift, the drift scores lie between 0.22 and 0.27, and after it between 1.31 and 1.35.
+
+		\item Since the amount drift lies at three quarters of the year, only three of the 13 signal windows follow the new process version. They lie far from the reference, so the drift shows as a step upwards, unlike in the intra-case perspective.
+	\end{itemize}
 \end{example}
 
-Placeholder.
+The examples show how the reference and the length of the signal windows shape the drift signal. In all three perspectives, the drift creates a state that does not occur before. Therefore, with the previous signal window or the mean of the previous signal windows as reference, the drift signal reaches its highest value in the first or second signal window after the drift. Exceptions are short signal windows with only a few cases or feature windows, whose random fluctuations reach or exceed the drift. With the mean of all signal windows as reference, the drift shows as a step, and the dominant process version decides its direction. Chapter~\ref{chap:eval} evaluates which configurations signal the known drift points in Rheon logs. Table~\ref{tab:approach:running_config} summarizes the configuration of all steps for the three perspectives of the running example.
+
+\begin{table}[tb]
+	\centering
+	\caption[Configuration of the running example]{%
+		Configuration of the running example $L_3$ per perspective. Feature groups are given by their identifiers (Definitions~\ref{def:approach:intra}, \ref{def:approach:resource} and~\ref{def:approach:inter}). The drift signals use the KL divergence and give the length of the signal windows and the reference (Definition~\ref{def:approach:drift_signal}).}
+	\label{tab:approach:running_config}
+	\small
+	\begin{tabular}{@{}l|>{\raggedright\arraybackslash}p{3.3cm}|>{\raggedright\arraybackslash}p{3.3cm}|>{\raggedright\arraybackslash}p{3.3cm}@{}}
+		\hline
+		Step           & Intra-case                                                    & Resource                                                       & Inter-case                                                                          \\
+		\hline
+		Rows           & 24,600 events                                                 & 366 windows of 1 day                                           & 731 windows of 12 h                                                                 \\
+		\hline
+		Feature groups & \texttt{act\_freqs}, \texttt{df\_counts}, \texttt{current\_act} & \texttt{res\_events}, \texttt{act\_res\_shares}                & \texttt{active\_cases}, \texttt{new\_arrivals}, \texttt{mean\_delta\_t}, \texttt{attr\_means} \\
+		\hline
+		Columns        & 20                                                            & 24                                                             & 4                                                                                   \\
+		\hline
+		Scaling        & min-max                                                       & z-score                                                        & z-score                                                                             \\
+		\hline
+		PCA            & $d = 6$                                                       & $d = 1$                                                        & none                                                                                \\
+		\hline
+		Clustering     & SOM, $3 \times 3$                                             & k-means, $k = 2$                                               & DBSCAN, $\varepsilon = 0.7$, $\mathit{minPts} = 8$                                  \\
+		\hline
+		States         & 9                                                             & 2                                                              & 2 and noise                                                                         \\
+		\hline
+		Drift signals  & 1 day, \texttt{recent}, $h = 7$; 7 days, \texttt{baseline}    & 1 day, \texttt{previous}; 30 days, \texttt{recent}, $h = 3$    & 7 days, \texttt{previous}; 30 days, \texttt{baseline}                               \\
+		\hline
+	\end{tabular}
+\end{table}
 
 \section{AI-Assisted Analysis}
 \label{sec:approach:ai}
 Placeholder.
-\begin{itemize}
-	\item To be explained: the role of an LLM as an analysis assistant on top of the framework. It is not a step of the pipeline and computes neither states nor drift signals, but interprets their results together with the user.
-	\item Input and output: every result of the pipeline (log statistics, features, PCA, states, trajectories, state distributions, drift signal) becomes a text abstraction and optionally a plot as an image. The output is a textual answer: an interpretation of the results, e.g., when and in which perspective a drift happened and what changed, and suggestions for a better configuration.
-	\item The abstractions: why the results are summarized as text instead of passed on as raw data (size of the context, interpretability), and what each abstraction contains.
-	\item The system prompt: it explains the method, the feature groups with their glossary, and the strengths and limits of each perspective. It also tells the model to judge the configuration before the drift signal, to stay skeptical of contradicting drift signals and never to invent numbers.
-	\item Human in the loop: the user asks questions and requests further steps in a chat, so the analysis is interactive. Link to drift characterization (\ref{item:intro:rq_characterization}) and to research goals \ref{item:intro:rg_library} and \ref{item:intro:rg_dashboard}.
-	\item Risks: hallucinations and misleading interpretations, which Chapter~\ref{chap:discussion} discusses (\ref{item:intro:rg_limitations}).
-	\item The implementation, i.e., the providers, the connectors and the Copilot of the dashboard, follows in Sections~\ref{sec:impl:kairo} and~\ref{sec:impl:dashboard}.
-	\item Possibly a figure: the pipeline of Figure~\ref{fig:approach:overview} with the LLM reading the abstractions of every step.
-\end{itemize}
+
+\begin{figure}[tb]
+	\centering
+	\begin{tikzpicture}[font=\small, >={Stealth},
+			box/.style={draw, rounded corners=2pt, fill=black!6, align=center, minimum height=1.1cm},
+			head/.style={anchor=west, font=\small\bfseries},
+			label/.style={font=\footnotesize}]
+		% use case (a): the results of a pipeline go to the llm as text abstractions and plots
+		\node[head] at (-0.1, 3.75) {(a) Analysis of the results};
+		\node[box, text width=2.1cm] (results) at (1.1, 2.2) {Results of the pipeline (Figure~\ref{fig:approach:overview})};
+		\node[box, text width=2.9cm] (abstractions) at (4.3, 2.2) {Text \mbox{abstractions} and plots};
+		\node[box, text width=1.6cm] (llm) at (7.2, 2.2) {LLM};
+		\node[box, text width=2.2cm, minimum height=0.8cm] (prompt) at (7.2, 3.75) {System prompt};
+		\node[box, text width=1.6cm] (user) at (10.9, 2.2) {User};
+		\draw[->] (results) -- (abstractions);
+		\draw[->] (abstractions) -- (llm);
+		\draw[->] (prompt) -- (llm);
+		\draw[->] ([yshift=0.25cm]user.west) -- node[label, above] {question} ([yshift=0.25cm]llm.east);
+		\draw[->] ([yshift=-0.25cm]llm.east) -- node[label, below] {answer} ([yshift=-0.25cm]user.west);
+		% use case (b): an analysis agent runs the pipeline itself with the functions of kairo
+		\node[head] at (-0.1, 0.55) {(b) Analysis agent};
+		\node[box, text width=4.3cm] (kairo) at (2.3, -0.6) {kairo: the steps of the pipeline, plots and text abstractions as functions};
+		\node[box, text width=1.6cm] (agent) at (7.2, -0.6) {Analysis agent (LLM)};
+		\node[box, text width=1.6cm] (user2) at (10.9, -0.6) {User};
+		\draw[->] ([yshift=0.25cm]agent.west) -- node[label, above] {calls} ([yshift=0.25cm]kairo.east);
+		\draw[->] ([yshift=-0.25cm]kairo.east) -- node[label, below] {results} ([yshift=-0.25cm]agent.west);
+		\draw[->] ([yshift=0.25cm]user2.west) -- node[label, above] {task} ([yshift=0.25cm]agent.east);
+		\draw[->] ([yshift=-0.25cm]agent.east) -- node[label, below] {report} ([yshift=-0.25cm]user2.west);
+	\end{tikzpicture}
+	\caption[Two uses of an LLM on top of the framework]{%
+		Two uses of an LLM on top of the framework. Boxes are components, and arrows show what they pass on.
+		(a)~The results of a pipeline reach the LLM as text abstractions and plots, and a system prompt instructs the LLM. The user and the LLM interact in a chat.
+		(b)~An analysis agent runs the pipeline itself by calling the functions of kairo and reads their results.}
+	\label{fig:approach:ai}
+\end{figure}
+
+Placeholder.
+
+\begin{figure}[tb]
+	\centering
+	\begin{minipage}{0.95\textwidth}
+		\footnotesize
+		\input{figures/tikz/abstraction_drift_signal_inter}
+	\end{minipage}
+	\caption[Text abstraction of a drift signal]{%
+		Text abstraction of the inter-case drift signal of the running example $L_3$ with signal windows of one week and the previous signal window as reference, as the LLM reads it (Example~\ref{ex:approach:ai}). Long lines are wrapped. The abstraction names the divergence and the reference, summarizes the 54 drift scores and lists the five signal windows with the highest drift scores.}
+	\label{fig:approach:abstraction}
+\end{figure}
+
+\begin{example}
+	\label{ex:approach:ai}
+	Placeholder.
+\end{example}
