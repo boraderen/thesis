@@ -14,6 +14,7 @@ dependencies = [
     "pandas>=2.0",
     "pm4py>=2.7",
     "scikit-learn>=1.4",
+    "scipy>=1.11",
     "minisom>=2.3.1",
     "plotly>=5.20",
     "requests>=2.31",

@@ -1271,6 +1271,7 @@ dependencies = [
     { name = "pm4py" },
     { name = "requests" },
     { name = "scikit-learn" },
+    { name = "scipy" },
 ]
 
 [package.metadata]
@@ -1285,6 +1286,7 @@ requires-dist = [
     { name = "pm4py", specifier = ">=2.7" },
     { name = "requests", specifier = ">=2.31" },
     { name = "scikit-learn", specifier = ">=1.4" },
+    { name = "scipy", specifier = ">=1.11" },
 ]
 
 [package.metadata.requires-dev]

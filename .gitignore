@@ -1,84 +1,41 @@
-# Local notes and agent instructions
+# Agent instructions, results and notes
 /AGENTS.md
-/CLAUDE.md
-/instructions.md
-/notes.md
-/how-to-write-papers.md
-
-/literature_agent.md
-/literature_review.md
-
-/benchmark_results.md
-/benchmark_agent.md
-
-/analysis_results.md
-/analyst_agent.md
-
 /software_agent.md
-rheon_docs.html
+/benchmark_agent.md
+/benchmark_results.md
+/analysis_results.md
+/literature_review.md
+/how-to-write-papers.md
+/notes.md
 
-# Local editable/vendor checkouts
-/cdlg-package/
-/pm4py-docs/
-/rheon/
-/rheon_paper/
-/data/thesis
-
-# Virtualenv and local config
-/.venv/
+# Agent config, skills and skill links
 /.claude/
+/.agents/
+/.opencode/
+/skills/
+
+# Event logs and the analysis agent's run folders
+/data/
+/analyses/
+
+# Local drafts and documents
+/thesis-de/
+/chapters/
+/paper/
+/presentation/
+
+# Python and Jupyter
+/.venv/
+__pycache__/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# Secrets
 .env
 .env.*
 
-# OS/editor files
+# OS and editor
 .DS_Store
 /.vscode/
-/.idea/
 
-# Python cache / bytecode
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Test and tool caches
-.pytest_cache/
-.hypothesis/
-.ruff_cache/
-.mypy_cache/
-.coverage
-coverage.xml
-htmlcov/
-
-# Jupyter
-.ipynb_checkpoints/
-
-# LaTeX temp files
-thesis/*.aux
-thesis/*.bbl
-thesis/*.blg
-thesis/*.bcf
-thesis/*.fdb_latexmk
-thesis/*.fls
-thesis/*.log
-thesis/*.out
-thesis/*.run.xml
-thesis/*.synctex.gz
-thesis/*.toc
-thesis/*.lof
-thesis/*.lot
-thesis/*.idx
-thesis/*.ind
-thesis/*.ilg
-/thesis-de/
-/chapters/
-
-/paper
-
-# Event logs and generated artifacts — keep only the generator scripts
-/data/*.xes
-/data/*_meta.md
-/data/autoencoder/*
-!/data/autoencoder/generate_logs.py
-/data/drifted_logs
-
-/presentation/
+# LaTeX build files are ignored in thesis/.gitignore

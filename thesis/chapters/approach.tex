@@ -1277,7 +1277,9 @@ The examples show how the reference and the length of the signal windows shape t
 
 \section{AI-Assisted Analysis}
 \label{sec:approach:ai}
-Placeholder.
+Our framework has a very flexible design in the pipelines, there are lots of configurations possible due to the choice of hyperparameters, algorithm choices. The large hyperparameter space has the effect that the framework can be very strong as well as very misleading in detecting concept drifts. A main challenge is to deal with this flexibility and the quality of results mostly depend on the chosen configuration. Another challenge is to interprete the results, anaylze their meaning e.g., how the detected states should be read, what do the noise states from DBSCAN mean etc. At this point, the usage of AI systems and LLMs might be beneficial for the users to deal with that complexity and help them in the analysis process. Therefore, in this chapter we introduce an AI extension to our framwork. This extension should not be seen as a further step of the pipeline, rather as an assitant to use the framework, find appropriate configuration based on the current data, analyze and interprete the results.
+
+We use LLMs in two main ways. 
 
 \begin{figure}[tb]
 	\centering
