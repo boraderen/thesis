@@ -15,7 +15,7 @@
 /skills/
 
 # Event logs and the analysis agent's run folders
-/data/
+/data/thesis
 /analyses/
 
 # Local drafts and documents
