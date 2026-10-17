@@ -3,20 +3,146 @@
 
 Placeholder.
 
+\begin{figure}[tb]
+	\centering
+	\begin{tikzpicture}[font=\small, >={Stealth},
+			box/.style={draw, rounded corners=2pt, fill=black!6, align=center, minimum height=1.1cm},
+			head/.style={anchor=west, font=\small\bfseries},
+			label/.style={font=\footnotesize}]
+		% use case (a): the results of a pipeline go to the llm as text abstractions and plots
+		\node[head] at (-0.1, 3.75) {(a) Analysis of the results};
+		\node[box, text width=2.1cm] (results) at (1.1, 2.2) {Results of the pipeline (Figure~\ref{fig:approach:overview})};
+		\node[box, text width=2.9cm] (abstractions) at (4.3, 2.2) {Text \mbox{abstractions} and plots};
+		\node[box, text width=1.6cm] (llm) at (7.2, 2.2) {LLM};
+		\node[box, text width=2.2cm, minimum height=0.8cm] (prompt) at (7.2, 3.75) {System prompt};
+		\node[box, text width=1.6cm] (user) at (10.9, 2.2) {User};
+		\draw[->] (results) -- (abstractions);
+		\draw[->] (abstractions) -- (llm);
+		\draw[->] (prompt) -- (llm);
+		\draw[->] ([yshift=0.25cm]user.west) -- node[label, above] {question} ([yshift=0.25cm]llm.east);
+		\draw[->] ([yshift=-0.25cm]llm.east) -- node[label, below] {answer} ([yshift=-0.25cm]user.west);
+		% use case (b): an analysis agent runs the pipeline itself with the functions of kairo
+		\node[head] at (-0.1, 0.55) {(b) Analysis agent};
+		\node[box, text width=4.3cm] (kairo) at (2.3, -0.6) {kairo: the steps of the pipeline, plots and text abstractions as functions};
+		\node[box, text width=1.6cm] (agent) at (7.2, -0.6) {Analysis agent (LLM)};
+		\node[box, text width=1.6cm] (user2) at (10.9, -0.6) {User};
+		\draw[->] ([yshift=0.25cm]agent.west) -- node[label, above] {calls} ([yshift=0.25cm]kairo.east);
+		\draw[->] ([yshift=-0.25cm]kairo.east) -- node[label, below] {results} ([yshift=-0.25cm]agent.west);
+		\draw[->] ([yshift=0.25cm]user2.west) -- node[label, above] {task} ([yshift=0.25cm]agent.east);
+		\draw[->] ([yshift=-0.25cm]agent.east) -- node[label, below] {report} ([yshift=-0.25cm]user2.west);
+	\end{tikzpicture}
+	\caption[Two uses of an LLM on top of the framework]{%
+		Two uses of an LLM on top of the framework. Boxes are components, and arrows show what they pass on.
+		(a)~The results of a pipeline reach the LLM as text abstractions and plots, and a system prompt instructs the LLM. The user and the LLM interact in a chat.
+		(b)~An analysis agent runs the pipeline itself by calling the functions of kairo and reads their results.}
+	\label{fig:impl:ai}
+\end{figure}
+
 \section{Kairo}
 \label{sec:impl:kairo}
 Placeholder.
+
+\subsection{Running the Pipeline in Python}
+\label{sec:impl:kairo:pipeline}
+Placeholder.
+
+\begin{figure}[tbp]
+	\centering
+	\input{figures/tikz/kairo_workflow}
+	\caption[Workflow of kairo]{%
+		Workflow of kairo for one perspective. Each arrow is a function of kairo that takes the output above it and returns the output below it. Gray text gives the type of each output: except for the event log, every output is a pandas DataFrame, and fitting PCA or a clustering returns the fitted model, which the next function applies. The gray first column of the matrices stands for the meta columns, e.g., \texttt{time:timestamp}, which travel along but do not enter the computations. Scaling and PCA can be skipped.}
+	\label{fig:impl:workflow}
+\end{figure}
+
+\begin{figure}[tb]
+	\centering
+	\begin{subfigure}[b]{0.6\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{figures/kairo/resource_log_trajectory.pdf}
+		\caption{}
+		\label{fig:impl:plots_trajectory}
+	\end{subfigure}
+	\hfill
+	\begin{subfigure}[b]{0.38\textwidth}
+		\centering
+		\includegraphics[width=\textwidth]{figures/kairo/intra_som_heatmap.pdf}
+		\caption{}
+		\label{fig:impl:plots_heatmap}
+	\end{subfigure}
+	\caption[Two plots of kairo]{%
+		Two plots of kairo for the running example $L_3$ with the configuration of Table~\ref{tab:approach:running_config}.
+		\subref{fig:impl:plots_trajectory}~The log trajectory of the resource states: the log stays in one state until the reassignment drift in July and in the other state afterwards. Each color is a state.
+		\subref{fig:impl:plots_heatmap}~The number of events per cell $(i, j)$ of the $3 \times 3$ SOM of the intra-case states, counted from 0.}
+	\label{fig:impl:plots}
+\end{figure}
+
+\subsection{Agentic Analysis}
+\label{sec:impl:kairo:agent}
+Placeholder.
+
+\begin{figure}[tb]
+	\centering
+	\begin{minipage}{0.95\textwidth}
+		\footnotesize
+		\input{figures/tikz/abstraction_drift_signal_inter}
+	\end{minipage}
+	\caption[Text abstraction of a drift signal]{%
+		Text abstraction of the inter-case drift signal of the running example $L_3$ with signal windows of one week and the previous signal window as reference, as the LLM reads it (Example~\ref{ex:impl:abstraction}). Long lines are wrapped. The abstraction names the divergence and the reference, summarizes the 54 drift scores and lists the five signal windows with the highest drift scores.}
+	\label{fig:impl:abstraction}
+\end{figure}
+
+\begin{example}
+	\label{ex:impl:abstraction}
+	Placeholder.
+\end{example}
 
 \section{Dashboard}
 \label{sec:impl:dashboard}
 Placeholder.
 
+\subsection{Running the Pipeline in the Browser}
+\label{sec:impl:dashboard:pipeline}
+Placeholder.
+
+\begin{figure}[tb]
+	\centering
+	\includegraphics[width=\textwidth]{figures/dashboard/resource_drift_signal.png}
+	\caption[Drift signal page of the dashboard]{%
+		Drift signal page of the dashboard for the resource perspective of the running example $L_3$. In the sidebar, the user chooses the signal window, the divergence and the reference. The page shows the drift signal with its spike at the reassignment drift in July.}
+	\label{fig:impl:dashboard}
+\end{figure}
+
+\subsection{Kairo Copilot}
+\label{sec:impl:dashboard:copilot}
+Placeholder.
+
+\begin{figure}[tb]
+	\centering
+	\includegraphics[width=\textwidth]{figures/dashboard/copilot.png}
+	\caption[Copilot page of the dashboard]{%
+		Copilot page of the dashboard for the running example $L_3$. The user picks the abstractions and plots to share, here the log statistics and the states and drift signal of the resource perspective, and asks a suggested question. The sidebar holds the provider, the host, the model and the maximum number of output tokens.}
+	\label{fig:impl:copilot}
+\end{figure}
+
 \section{Copilot and Analyst Skill}
-\label{sec:impl:copilot}
+\label{sec:impl:ai}
+Our framework has a very flexible design in the pipelines, there are lots of configurations possible due to the choice of hyperparameters, algorithm choices. The large hyperparameter space has the effect that the framework can be very strong as well as very misleading in detecting concept drifts. A main challenge is to deal with this flexibility and the quality of results mostly depend on the chosen configuration. Another challenge is to interprete the results, anaylze their meaning e.g., how the detected states should be read, what do the noise states from DBSCAN mean etc. At this point, the usage of AI systems and LLMs might be beneficial for the users to deal with that complexity and help them in the analysis process. Therefore, in this chapter we introduce an AI extension to our framwork. This extension should not be seen as a further step of the pipeline, rather as an assitant to use the framework, find appropriate configuration based on the current data, analyze and interprete the results.
+
+We use LLMs in two main ways:
+
+\begin{itemize}
+	\item \emph{Analyze the results:} An LLM helps the user to interprete the results of pipelines e.g., in which perspective and when a drift in detected and what changed. Besides, it suggests new configurations, hyperparameters or what to examine next.
+	\item \emph{Analysis agent:} An agent runs the pipelines itself using our library kairo~\ref{sec:impl:kairo} and tests various configurations. That is why we designed our implementation as a flexible library built around \mbox{DataFrames} with a dashboard tool based on it.
+\end{itemize}
+Section~\ref{sec:impl:ai} descbribes both use cases more in detail.
+
+The results of each step including the plots are abstracted into text when sending to an LLM.
+According to \textcite{berti2024abstractions}, it is infeasible to send a complete event log to an LLM due to its size. Therefore, they implement abstractions of process mining artefacts
+
 Placeholder.
 \begin{itemize}
-	\item To be explained: the implementation of the two uses of an LLM from Section~\ref{sec:approach:ai} (Figure~\ref{fig:approach:ai}).
-	\item Copilot: the page of the dashboard on which the user picks the text abstractions (Section~\ref{sec:approach:ai}) and plots of all perspectives to share, asks a question or picks a suggested one, and chats with the LLM. The chat keeps its history, so shared results need not be shared again, and the page estimates the input tokens before sending.
+	\item To be explained: the implementation of the two uses of an LLM from Section~\ref{sec:impl:ai} (Figure~\ref{fig:impl:ai}).
+	\item Copilot: the page of the dashboard on which the user picks the text abstractions (Section~\ref{sec:impl:ai}) and plots of all perspectives to share, asks a question or picks a suggested one, and chats with the LLM. The chat keeps its history, so shared results need not be shared again, and the page estimates the input tokens before sending.
 	\item Providers and connectors: \texttt{LLMConnector} of kairo connects to Anthropic, OpenAI, Google or a custom OpenAI-compatible host, e.g., LM Studio or vLLM for local models. The chat starts with the default system prompt of kairo.
 	\item Analyst skill: the instructions for an analysis agent that runs kairo itself, i.e., which functions to call in which order, how to choose and compare configurations, how to read the abstractions and plots, and how to report a drift with its perspective, mode and what changed.
 	\item Why a library: kairo consists of small functions with DataFrames as input and output, which an agent can call, combine and extend.

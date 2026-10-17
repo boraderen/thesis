@@ -2,10 +2,11 @@ import base64
 import colorsys
 import math
 import struct
+from types import SimpleNamespace
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from openai import OpenAI
+from openai import BadRequestError, OpenAI
 from anthropic import Anthropic
 from sklearn.decomposition import PCA
 
@@ -68,6 +69,22 @@ class LLMConnector:
 
         return self.connector.call(messages, max_tokens)
 
+    def stream(
+        self,
+        prompt: str | None = None,
+        system_prompt: str | None = None,
+        plots: list[go.Figure] | None = None,
+        max_tokens: int = 1000,
+        messages: list | None = None,
+    ):
+        # the same request as call, but the answer comes in pieces of text as they arrive.
+        # after the last piece, response holds the whole answer with its usage, like call
+        if messages is None:
+            messages = create_messages(self.provider, system_prompt, [prompt], plots or [])
+
+        self.response = None
+        self.response = yield from self.connector.stream(messages, max_tokens)
+
 
 class _OpenAIConnector:
     def __init__(
@@ -89,6 +106,32 @@ class _OpenAIConnector:
             max_tokens=max_tokens,
         )
 
+    def stream(self, messages: list, max_tokens: int):
+        # the last chunk carries the usage. a host that does not know stream_options gets the
+        # request again without it, and the answer then has no usage
+        request = {"model": self.model, "messages": messages, "max_tokens": max_tokens, "stream": True}
+
+        try:
+            chunks = self.client.chat.completions.create(**request, stream_options={"include_usage": True})
+        except BadRequestError:
+            chunks = self.client.chat.completions.create(**request)
+
+        pieces = []
+        usage = None
+
+        for chunk in chunks:
+            if getattr(chunk, "usage", None) is not None:
+                usage = chunk.usage
+
+            if chunk.choices and chunk.choices[0].delta.content:
+                pieces.append(chunk.choices[0].delta.content)
+                yield pieces[-1]
+
+        # shaped like a chat completion, so get_response_text and count_output_tokens read it
+        message = SimpleNamespace(content="".join(pieces))
+
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)], usage=usage)
+
 class _AnthropicConnector:
     def __init__(
         self,
@@ -100,9 +143,8 @@ class _AnthropicConnector:
             api_key=api_key,
         )
 
-    def call(self, messages: list, max_tokens: int):
-        # anthropic takes the system prompt apart from the messages. the answer is streamed,
-        # the sdk refuses to wait for more than about 21,000 tokens otherwise
+    def _request(self, messages: list, max_tokens: int) -> dict:
+        # anthropic takes the system prompt apart from the messages
         kwargs = {
             "model": self.model,
             "max_tokens": max_tokens,
@@ -114,7 +156,17 @@ class _AnthropicConnector:
         if system:
             kwargs["system"] = system[0]
 
-        with self.client.messages.stream(**kwargs) as stream:
+        return kwargs
+
+    def call(self, messages: list, max_tokens: int):
+        # the answer is streamed, the sdk refuses to wait for more than about 21,000 tokens otherwise
+        with self.client.messages.stream(**self._request(messages, max_tokens)) as stream:
+            return stream.get_final_message()
+
+    def stream(self, messages: list, max_tokens: int):
+        with self.client.messages.stream(**self._request(messages, max_tokens)) as stream:
+            yield from stream.text_stream
+
             return stream.get_final_message()
 
 
@@ -232,7 +284,11 @@ def count_input_tokens(provider: str, messages: list) -> int:
     return characters // 4 + tokens
 
 def count_output_tokens(provider: str, response) -> int:
-    # the api reports it exactly, reasoning included
+    # the api reports it exactly, reasoning included. a streaming host that does not report it
+    # gets an estimate of 4 characters a token
+    if getattr(response, "usage", None) is None:
+        return len(get_response_text(response)) // 4
+
     if provider == "anthropic":
         return response.usage.output_tokens
 

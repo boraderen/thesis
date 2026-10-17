@@ -12,7 +12,7 @@ Figure~\ref{fig:approach:overview} shows the four steps with their inputs and ou
 	\item \emph{Drift signals} (Section~\ref{sec:approach:drift_signals}): For each signal window, we compare the distribution of the states of its rows with a reference, e.g., the previous signal window, using a divergence. The divergence is the drift score of the signal window, and the drift signal is the time series of the drift scores.
 \end{enumerate}
 
-The three perspectives pass through the steps separately. Thus, each perspective has its own states and its own drift signal. Each section of this chapter covers one step and contains one subsection per perspective. Finally, Section~\ref{sec:approach:ai} introduces the AI-assisted analysis. It is not a step of the pipeline, but interprets the results of the pipeline with an LLM.
+The three perspectives pass through the steps separately. Thus, each perspective has its own states and its own drift signal. Each section of this chapter covers one step and contains one subsection per perspective. Section~\ref{sec:impl:ai} introduces the AI-assisted analysis. It is not a step of the pipeline, but interprets the results of the pipeline with an LLM.
 
 \begin{figure}[tb]
 	\centering
@@ -1274,62 +1274,3 @@ The examples show how the reference and the length of the signal windows shape t
 		\hline
 	\end{tabular}
 \end{table}
-
-\section{AI-Assisted Analysis}
-\label{sec:approach:ai}
-Our framework has a very flexible design in the pipelines, there are lots of configurations possible due to the choice of hyperparameters, algorithm choices. The large hyperparameter space has the effect that the framework can be very strong as well as very misleading in detecting concept drifts. A main challenge is to deal with this flexibility and the quality of results mostly depend on the chosen configuration. Another challenge is to interprete the results, anaylze their meaning e.g., how the detected states should be read, what do the noise states from DBSCAN mean etc. At this point, the usage of AI systems and LLMs might be beneficial for the users to deal with that complexity and help them in the analysis process. Therefore, in this chapter we introduce an AI extension to our framwork. This extension should not be seen as a further step of the pipeline, rather as an assitant to use the framework, find appropriate configuration based on the current data, analyze and interprete the results.
-
-We use LLMs in two main ways. 
-
-\begin{figure}[tb]
-	\centering
-	\begin{tikzpicture}[font=\small, >={Stealth},
-			box/.style={draw, rounded corners=2pt, fill=black!6, align=center, minimum height=1.1cm},
-			head/.style={anchor=west, font=\small\bfseries},
-			label/.style={font=\footnotesize}]
-		% use case (a): the results of a pipeline go to the llm as text abstractions and plots
-		\node[head] at (-0.1, 3.75) {(a) Analysis of the results};
-		\node[box, text width=2.1cm] (results) at (1.1, 2.2) {Results of the pipeline (Figure~\ref{fig:approach:overview})};
-		\node[box, text width=2.9cm] (abstractions) at (4.3, 2.2) {Text \mbox{abstractions} and plots};
-		\node[box, text width=1.6cm] (llm) at (7.2, 2.2) {LLM};
-		\node[box, text width=2.2cm, minimum height=0.8cm] (prompt) at (7.2, 3.75) {System prompt};
-		\node[box, text width=1.6cm] (user) at (10.9, 2.2) {User};
-		\draw[->] (results) -- (abstractions);
-		\draw[->] (abstractions) -- (llm);
-		\draw[->] (prompt) -- (llm);
-		\draw[->] ([yshift=0.25cm]user.west) -- node[label, above] {question} ([yshift=0.25cm]llm.east);
-		\draw[->] ([yshift=-0.25cm]llm.east) -- node[label, below] {answer} ([yshift=-0.25cm]user.west);
-		% use case (b): an analysis agent runs the pipeline itself with the functions of kairo
-		\node[head] at (-0.1, 0.55) {(b) Analysis agent};
-		\node[box, text width=4.3cm] (kairo) at (2.3, -0.6) {kairo: the steps of the pipeline, plots and text abstractions as functions};
-		\node[box, text width=1.6cm] (agent) at (7.2, -0.6) {Analysis agent (LLM)};
-		\node[box, text width=1.6cm] (user2) at (10.9, -0.6) {User};
-		\draw[->] ([yshift=0.25cm]agent.west) -- node[label, above] {calls} ([yshift=0.25cm]kairo.east);
-		\draw[->] ([yshift=-0.25cm]kairo.east) -- node[label, below] {results} ([yshift=-0.25cm]agent.west);
-		\draw[->] ([yshift=0.25cm]user2.west) -- node[label, above] {task} ([yshift=0.25cm]agent.east);
-		\draw[->] ([yshift=-0.25cm]agent.east) -- node[label, below] {report} ([yshift=-0.25cm]user2.west);
-	\end{tikzpicture}
-	\caption[Two uses of an LLM on top of the framework]{%
-		Two uses of an LLM on top of the framework. Boxes are components, and arrows show what they pass on.
-		(a)~The results of a pipeline reach the LLM as text abstractions and plots, and a system prompt instructs the LLM. The user and the LLM interact in a chat.
-		(b)~An analysis agent runs the pipeline itself by calling the functions of kairo and reads their results.}
-	\label{fig:approach:ai}
-\end{figure}
-
-Placeholder.
-
-\begin{figure}[tb]
-	\centering
-	\begin{minipage}{0.95\textwidth}
-		\footnotesize
-		\input{figures/tikz/abstraction_drift_signal_inter}
-	\end{minipage}
-	\caption[Text abstraction of a drift signal]{%
-		Text abstraction of the inter-case drift signal of the running example $L_3$ with signal windows of one week and the previous signal window as reference, as the LLM reads it (Example~\ref{ex:approach:ai}). Long lines are wrapped. The abstraction names the divergence and the reference, summarizes the 54 drift scores and lists the five signal windows with the highest drift scores.}
-	\label{fig:approach:abstraction}
-\end{figure}
-
-\begin{example}
-	\label{ex:approach:ai}
-	Placeholder.
-\end{example}

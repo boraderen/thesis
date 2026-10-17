@@ -146,6 +146,8 @@ st.caption("Ask about the results of every perspective so far. The llm sees only
 
 history = st.session_state.get("copilot_chat_history", [])
 show_chat()
+# the turn being asked appears here while its answer streams in
+live = st.container()
 
 if history:
     st.button("New chat", on_click=new_chat, icon=":material/add_comment:")
@@ -184,7 +186,7 @@ if st.button("Ask", type="primary", icon=":material/send:"):
         base_url=st.session_state["copilot_sel_host"] if provider == "custom" else None,
     )
 
-    with st.spinner("Asking…"):
+    with st.spinner("Preparing what is shared…"):
         try:
             # the plots go along as bare images, so the text names them in the order they are attached
             picked_plots = st.session_state["copilot_sel_plots"]
@@ -201,11 +203,26 @@ if st.button("Ask", type="primary", icon=":material/send:"):
                 [plots[name] for name in picked_plots],
             )
             input_tokens = kairo.count_input_tokens(provider, chat_history)
-            response = connector.call(messages=chat_history, max_tokens=int(st.session_state["copilot_sel_max_tokens"]))
         except Exception as exc:
             st.error(f"The request failed: {exc}")
             st.stop()
 
+    # the answer is written piece by piece below the chat, the rerun then moves the turn into it
+    with live:
+        with st.chat_message("user"):
+            st.markdown(question)
+            picked = st.session_state["copilot_sel_texts"] + picked_plots
+            st.caption("Shared: " + ", ".join(picked) if picked else "Nothing new shared")
+
+        with st.chat_message("assistant"):
+            try:
+                st.write_stream(connector.stream(messages=chat_history,
+                                                 max_tokens=int(st.session_state["copilot_sel_max_tokens"])))
+            except Exception as exc:
+                st.error(f"The request failed: {exc}")
+                st.stop()
+
+    response = connector.response
     answer = kairo.get_response_text(response)
     chat_history.append({"role": "assistant", "content": answer})
 

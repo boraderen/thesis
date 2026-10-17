@@ -1082,6 +1082,17 @@ plot_dbscan_state_frequencies(frequencies, state_colors) -&gt; go.Figure</code><
 </tbody></table>
 <p><strong>Returns</strong> the provider's response, read with <code>get_response_text</code>.</p>
 
+<h3 id="api-stream"><code>LLMConnector.stream</code></h3>
+<p>Sends one request and hands the answer on in pieces of text as they arrive, e.g. for
+  <code>st.write_stream</code> in Streamlit.</p>
+<pre><code>stream(prompt=None, system_prompt=None, plots=None, max_tokens=1000, messages=None)</code></pre>
+<p>Takes the same arguments as <code>LLMConnector.call</code>.</p>
+<p><strong>Returns</strong> a generator of text pieces. After the last piece, <code>LLMConnector.response</code>
+  holds the whole answer, read with <code>get_response_text</code> and <code>count_output_tokens</code>.</p>
+<pre><code>for piece in llm.stream(messages=messages, max_tokens=16000):
+    print(piece, end="")
+print(kairo.count_output_tokens("anthropic", llm.response))</code></pre>
+
 <h3 id="api-create_messages"><code>create_messages</code></h3>
 <p>Builds the messages of a request in the format the provider's API takes.</p>
 <pre><code>create_messages(provider, system_prompt, prompts, plots) -&gt; list</code></pre>
@@ -1108,15 +1119,16 @@ plot_dbscan_state_frequencies(frequencies, state_colors) -&gt; go.Figure</code><
 <pre><code>count_output_tokens(provider, response) -&gt; int</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>provider</code></td><td>the provider the request went to</td><td>Where the count sits in the response.</td></tr>
-<tr><td><code>response</code></td><td>from <code>LLMConnector.call</code></td><td>The answer.</td></tr>
+<tr><td><code>response</code></td><td>from <code>LLMConnector.call</code>, or <code>LLMConnector.response</code> after <code>stream</code></td><td>The answer.</td></tr>
 </tbody></table>
-<p><strong>Returns</strong> the output tokens the API reports, reasoning included.</p>
+<p><strong>Returns</strong> the output tokens the API reports, reasoning included. A streaming host that does
+  not report them gets an estimate of 4 characters a token.</p>
 
 <h3 id="api-get_response_text"><code>get_response_text</code></h3>
 <p>Reads the text of an answer, whatever the provider.</p>
 <pre><code>get_response_text(response) -&gt; str</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
-<tr><td><code>response</code></td><td>from <code>LLMConnector.call</code></td><td>The answer.</td></tr>
+<tr><td><code>response</code></td><td>from <code>LLMConnector.call</code>, or <code>LLMConnector.response</code> after <code>stream</code></td><td>The answer.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> the answer as text.</p>
 
