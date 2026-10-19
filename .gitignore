@@ -1,23 +1,19 @@
 # Agent instructions, results and notes
 /AGENTS.md
-/software_agent.md
-/benchmark_agent.md
-/benchmark_results.md
-/analysis_results.md
-/analysis_plots/
+/benchmark_rules.md
 /literature_review.md
 /how-to-write-papers.md
-/notes.md
 
 # Agent config, skills and skill links
 /.claude/
+/.codex/
 /.agents/
 /.opencode/
-/skills/
 
-# Event logs and the analysis agent's run folders
+# Event logs, analysis and benchmark results
 /data/thesis
 /analyses/
+/benchmarks/
 
 # Local drafts and documents
 /thesis-de/

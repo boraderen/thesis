@@ -12,7 +12,7 @@ Figure~\ref{fig:approach:overview} shows the four steps with their inputs and ou
 	\item \emph{Drift signals} (Section~\ref{sec:approach:drift_signals}): For each signal window, we compare the distribution of the states of its rows with a reference, e.g., the previous signal window, using a divergence. The divergence is the drift score of the signal window, and the drift signal is the time series of the drift scores.
 \end{enumerate}
 
-The three perspectives pass through the steps separately. Thus, each perspective has its own states and its own drift signal. Each section of this chapter covers one step and contains one subsection per perspective. Section~\ref{sec:impl:ai} introduces the AI-assisted analysis. It is not a step of the pipeline, but interprets the results of the pipeline with an LLM.
+The three perspectives pass through the steps separately. Thus, each perspective has its own states and its own drift signal. Each section of this chapter covers one step and contains one subsection per perspective. Chapter~\ref{chap:impl} introduces the AI-assisted analysis. It is not a step of the pipeline, but interprets the results of the pipeline with an LLM.
 
 \begin{figure}[tb]
 	\centering

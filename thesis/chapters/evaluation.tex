@@ -1,36 +1,367 @@
 \chapter{Evaluation}
 \label{chap:eval}
 
-In this chapter, you present your evaluation.
-You should have extensively discussed with your supervisor what you are evaluating and why \dots
-
-Some typical sections that you need here:
-\section{Experimental Setup}
-Describe the setup of your experiments.
-If you apply a pipeline of different techniques, show the pipeline.
-Present the parameters of your experiments in a table, and, describe them.
-Typical Elements:
 \begin{itemize}
-    \item Input Data Set(s) Used
-    \item Algorithm(s) Used
-    \item Parameter(s) Used
-    \item \dots
+	\item Introduce the benchmarking framework.
+	\item Goal: show where the framework is strong and where it has limitations.
+	\item Interpret the results from the point of view of the states: what the states give us and what not.
+	\item Short notes in the sections and subsections, referenced later in Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
 \end{itemize}
 
-\section{Results}
-Show the results.
-Try to present your results as structured as you can.
-A good result (sub)section, follows the following structure:
+\section{Padella Benchmark}
+\label{sec:eval:padella}
 \begin{itemize}
-    \item Describe what results you are going to Show
-    \item Present an initial hypothesis about the results, e.g., We expect the quality metric M to behave like this, conditional to this parameter P.
-    \item Show the Results
-    \item Confirm the hypothesis.
-    \item If there are results that are not according to the hypothesis, you have to be able to explain why this is the case!!!
+	\item Introduce the Padella benchmark.
 \end{itemize}
 
-\section{Threats to Validity}
-Here you discuss any element of your experiments (usually depending on the setup), e.g., data sets used, parameters assessed, that might have implications for the validity of your results.
-For example, if you have not considered a specific range of parameter values, it is unclear how the algorithm will behave for these settings.
-If you have excluded certain data, this might have its implications for the generalizability of your results.
-In a way, this is the discussion section of your thesis.
+\begin{figure}[tb]
+	\centering
+	\begin{tikzpicture}[font=\small, >={Stealth},
+			box/.style={draw, rounded corners=2pt, fill=black!6, minimum width=2.4cm, minimum height=0.7cm}]
+		\node[box] (cf) at (0, 0) {\texttt{cf}};
+		\node[box] (fast) at (0, -1.0) {\texttt{time\_fast}};
+		\node[box] (slow) at (0, -2.0) {\texttt{time\_slow}};
+		\node[box] (intra) at (5, 0) {Intra-case};
+		\node[box] (resource) at (5, -1.0) {Resource};
+		\node[box] (inter) at (5, -2.0) {Inter-case};
+		\draw[->] (cf) -- (intra);
+		\draw (fast.east) -- (2.2, -1.0) -- (2.2, -2.0);
+		\draw (slow.east) -- (2.2, -2.0);
+		\draw[->] (2.2, -1.0) -- (resource.west);
+		\draw[->, dashed] (2.2, -2.0) -- (inter.west);
+	\end{tikzpicture}
+	\caption[Padella drift types and our perspectives]{%
+		Perspectives that capture the drift types of the Padella benchmark. Dashed: also responds.}
+	\label{fig:eval:padella:perspectives}
+\end{figure}
+
+\begin{itemize}
+	\item Global results over all logs of the benchmark first.
+	\item For three thresholds: confusion matrix (TP, FP, TN, FN), precision, recall and F1.
+	\item Then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+% mock data, to be replaced by the results
+\begin{figure}[tb]
+	\centering
+	\def\confmat#1#2#3#4{%
+		\begin{tikzpicture}[font=\footnotesize, cell/.style={draw, minimum width=1.2cm, minimum height=0.7cm}]
+			\node[cell, fill=black!15] at (0, 0) {#1};
+			\node[cell] at (1.2, 0) {#2};
+			\node[cell] at (0, -0.7) {#3};
+			\node[cell, fill=black!15] at (1.2, -0.7) {#4};
+			\node[font=\scriptsize] at (0, 0.55) {drift};
+			\node[font=\scriptsize] at (1.2, 0.55) {no drift};
+			\node[font=\scriptsize, anchor=east] at (-0.65, 0) {drift};
+			\node[font=\scriptsize, anchor=east] at (-0.65, -0.7) {no drift};
+		\end{tikzpicture}}
+	\begin{subfigure}[b]{0.32\textwidth}
+		\centering
+		\confmat{41}{4}{58}{897}
+		\caption{$\tau_1$}
+	\end{subfigure}
+	\hfill
+	\begin{subfigure}[b]{0.32\textwidth}
+		\centering
+		\confmat{36}{9}{21}{934}
+		\caption{$\tau_2$}
+	\end{subfigure}
+	\hfill
+	\begin{subfigure}[b]{0.32\textwidth}
+		\centering
+		\confmat{27}{18}{6}{949}
+		\caption{$\tau_3$}
+	\end{subfigure}
+	\caption[Confusion matrices on the Padella benchmark (mock data)]{%
+		Confusion matrices over all Padella logs for three thresholds $\tau_1 < \tau_2 < \tau_3$. Rows: actual, columns: detected (mock data).}
+	\label{fig:eval:padella:confusion}
+\end{figure}
+
+\begin{table}[tb]
+	\centering
+	\caption[Precision, recall and F1 on the Padella benchmark (mock data)]{%
+		Precision, recall and F1 over all Padella logs for the thresholds of Figure~\ref{fig:eval:padella:confusion} (mock data).}
+	\label{tab:eval:padella:metrics}
+	\small
+	\begin{tabular}{@{}l|r|r|r@{}}
+		\hline
+		Threshold & Precision & Recall & F1    \\
+		\hline
+		$\tau_1$  & 0.414     & 0.911  & 0.569 \\
+		\hline
+		$\tau_2$  & 0.632     & 0.800  & 0.706 \\
+		\hline
+		$\tau_3$  & 0.818     & 0.600  & 0.692 \\
+		\hline
+	\end{tabular}
+\end{table}
+
+\begin{figure}[tb]
+	\centering
+	\begin{tikzpicture}[x=4cm, y=4cm, font=\footnotesize, >={Stealth}]
+		\draw[->] (0, 0) -- (1.08, 0);
+		\draw[->] (0, 0) -- (0, 1.08);
+		\node at (0.5, -0.15) {false positive rate};
+		\node[rotate=90] at (-0.24, 0.5) {true positive rate};
+		\foreach \t in {0, 0.5, 1} {
+			\draw (\t, 0) -- (\t, -0.02) node[below] {\t};
+			\draw (0, \t) -- (-0.02, \t) node[left] {\t};
+		}
+		\draw[dashed, black!40] (0, 0) -- (1, 1);
+		\draw[thick] (0, 0) -- (0.006, 0.6) -- (0.022, 0.8) -- (0.061, 0.911) -- (0.2, 0.96) -- (0.5, 0.99) -- (1, 1);
+		\foreach \x/\y/\l in {0.006/0.6/3, 0.022/0.8/2, 0.061/0.911/1} {
+			\fill (\x, \y) circle (0.012);
+			\node[anchor=west] at (\x + 0.02, \y) {$\tau_\l$};
+		}
+		\node[anchor=south east] at (1, 0.05) {AUC $= 0.95$};
+	\end{tikzpicture}
+	\caption[ROC curve on the Padella benchmark (mock data)]{%
+		ROC curve over all Padella logs with the three thresholds of Figure~\ref{fig:eval:padella:confusion} (mock data).}
+	\label{fig:eval:padella:roc}
+\end{figure}
+
+\subsection{Control-Flow Drifts}
+\label{sec:eval:padella:cf}
+\begin{itemize}
+	\item Results of the logs with control-flow drifts (\texttt{cf}).
+	\item How well the framework detects this drift type.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+% mock data, to be replaced by the results
+\begin{figure}[tb]
+	\centering
+	\begin{tikzpicture}[x=4cm, y=4cm, font=\footnotesize, >={Stealth}]
+		\draw[->] (0, 0) -- (1.08, 0);
+		\draw[->] (0, 0) -- (0, 1.08);
+		\node at (0.5, -0.15) {false positive rate};
+		\node[rotate=90] at (-0.24, 0.5) {true positive rate};
+		\foreach \t in {0, 0.5, 1} {
+			\draw (\t, 0) -- (\t, -0.02) node[below] {\t};
+			\draw (0, \t) -- (-0.02, \t) node[left] {\t};
+		}
+		\draw[dashed, black!40] (0, 0) -- (1, 1);
+		\draw[thick] (0, 0) -- (0.01, 0.73) -- (0.04, 0.93) -- (0.15, 1) -- (1, 1);
+		\draw[thick, densely dashed] (0, 0) -- (0.03, 0.47) -- (0.09, 0.73) -- (0.3, 0.93) -- (1, 1);
+		\foreach \y/\style/\l in {0.3/solid/{sudden, AUC $= 0.98$}, 0.21/densely dashed/{gradual, AUC $= 0.92$}} {
+			\draw[thick, \style] (0.42, \y) -- (0.5, \y);
+			\node[anchor=west] at (0.51, \y) {\l};
+		}
+	\end{tikzpicture}
+	\caption[ROC curves for control-flow drifts (mock data)]{%
+		ROC curves of the Padella logs with control-flow drifts, per drift mode (mock data).}
+	\label{fig:eval:padella:cf_roc}
+\end{figure}
+
+\subsection{Fast Time Drifts}
+\label{sec:eval:padella:time_fast}
+\begin{itemize}
+	\item Results of the logs with fast time drifts (\texttt{time\_fast}).
+	\item How well the framework detects this drift type.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsection{Slow Time Drifts}
+\label{sec:eval:padella:time_slow}
+\begin{itemize}
+	\item Results of the logs with slow time drifts (\texttt{time\_slow}).
+	\item How well the framework detects this drift type.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsection{Sudden Drifts}
+\label{sec:eval:padella:sudden}
+\begin{itemize}
+	\item Results of the logs with sudden drifts, over all drift types.
+	\item How well the framework detects this drift mode.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsection{Gradual Drifts}
+\label{sec:eval:padella:gradual}
+\begin{itemize}
+	\item Results of the logs with gradual drifts, over all drift types.
+	\item How well the framework detects this drift mode.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\section{Rheon Benchmark}
+\label{sec:eval:rheon}
+\begin{itemize}
+	\item Three sets of Rheon logs: single-drift, multi-drift and mixed-drift logs.
+	\item In each set, the global results first, then the results per drift perspective and per drift mode.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsection{Single-Drift Logs}
+\label{sec:eval:rheon:single}
+\begin{itemize}
+	\item Logs with one drift each.
+	\item Global results over all single-drift logs first.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+% mock data, to be replaced by the results
+\begin{table}[tb]
+	\centering
+	\caption[Results on the single-drift Rheon logs (mock data)]{%
+		Precision, recall, F1 and AUC of the single-drift Rheon logs per drift perspective for the middle threshold $\tau_2$ (mock data).}
+	\label{tab:eval:rheon:single}
+	\small
+	\begin{tabular}{@{}l|r|r|r|r@{}}
+		\hline
+		Drift perspective & Precision & Recall & F1    & AUC  \\
+		\hline
+		Intra-case        & 0.880     & 0.917  & 0.898 & 0.97 \\
+		\hline
+		Resource          & 0.714     & 0.833  & 0.769 & 0.91 \\
+		\hline
+		Inter-case        & 0.650     & 0.722  & 0.684 & 0.86 \\
+		\hline
+	\end{tabular}
+\end{table}
+
+\subsubsection{Intra-Case Drifts}
+\label{sec:eval:rheon:single:intra}
+\begin{itemize}
+	\item Results of the single-drift logs with an intra-case drift (\texttt{control\_flow}).
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsubsection{Resource Drifts}
+\label{sec:eval:rheon:single:resource}
+\begin{itemize}
+	\item Results of the single-drift logs with a resource drift.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsubsection{Inter-Case Drifts}
+\label{sec:eval:rheon:single:inter}
+\begin{itemize}
+	\item Results of the single-drift logs with an inter-case drift.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsubsection{Sudden Drifts}
+\label{sec:eval:rheon:single:sudden}
+\begin{itemize}
+	\item Results of the single-drift logs with a sudden drift.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsubsection{Gradual Drifts}
+\label{sec:eval:rheon:single:gradual}
+\begin{itemize}
+	\item Results of the single-drift logs with a gradual drift.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsection{Multi-Drift Logs}
+\label{sec:eval:rheon:multi}
+\begin{itemize}
+	\item Logs with several drifts, all from the same perspective.
+	\item Global results over all multi-drift logs first.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsubsection{Intra-Case Drifts}
+\label{sec:eval:rheon:multi:intra}
+\begin{itemize}
+	\item Results of the intra-case drifts in the multi-drift logs.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsubsection{Resource Drifts}
+\label{sec:eval:rheon:multi:resource}
+\begin{itemize}
+	\item Results of the resource drifts in the multi-drift logs.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsubsection{Inter-Case Drifts}
+\label{sec:eval:rheon:multi:inter}
+\begin{itemize}
+	\item Results of the inter-case drifts in the multi-drift logs.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsubsection{Sudden Drifts}
+\label{sec:eval:rheon:multi:sudden}
+\begin{itemize}
+	\item Results of the sudden drifts in the multi-drift logs.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsubsection{Gradual Drifts}
+\label{sec:eval:rheon:multi:gradual}
+\begin{itemize}
+	\item Results of the gradual drifts in the multi-drift logs.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsection{Mixed-Drift Logs}
+\label{sec:eval:rheon:mixed}
+\begin{itemize}
+	\item Logs with several drifts from different perspectives.
+	\item Global results over all mixed-drift logs first.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsubsection{Intra-Case Drifts}
+\label{sec:eval:rheon:mixed:intra}
+\begin{itemize}
+	\item Results of the intra-case drifts in the mixed-drift logs.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsubsection{Resource Drifts}
+\label{sec:eval:rheon:mixed:resource}
+\begin{itemize}
+	\item Results of the resource drifts in the mixed-drift logs.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsubsection{Inter-Case Drifts}
+\label{sec:eval:rheon:mixed:inter}
+\begin{itemize}
+	\item Results of the inter-case drifts in the mixed-drift logs.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsubsection{Sudden Drifts}
+\label{sec:eval:rheon:mixed:sudden}
+\begin{itemize}
+	\item Results of the sudden drifts in the mixed-drift logs.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}
+
+\subsubsection{Gradual Drifts}
+\label{sec:eval:rheon:mixed:gradual}
+\begin{itemize}
+	\item Results of the gradual drifts in the mixed-drift logs.
+	\item For three thresholds: confusion matrix, precision, recall and F1, then the ROC curve with its AUC.
+	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+\end{itemize}

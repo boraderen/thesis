@@ -1,7 +1,14 @@
 \chapter{Implementation}
 \label{chap:impl}
 
-Placeholder.
+In this chapter we describe the implementation of our framework from Chapter~\ref{chap:approach}. Our implementation comprises a Python library kairo and a dashboard built on top of kairo. Both are placed in the public repository of this thesis\footnote{\url{https://github.com/boraderen/thesis}}. We introduce the structure of the code and design choices of the implementation.
+
+An LLM supports the analysis in two ways (Figure~\ref{fig:impl:ai}). It is not a further step of the pipeline and does not do any computations.
+\begin{itemize}
+	\item \emph{Analysis of results:} The Copilot of the dashboard is used to interpret the results of the pipelines. Its main purpose is to assist the user. The Copilot allows the user to chat with an LLM on the analysis by sharing the results of the computations of the pipelines, plots and textual abstractions (Section~\ref{sec:impl:dashboard:copilot}).
+	\item \emph{Agentic analysis:} An agent executes the pipeline itself by using kairo and tests different configurations (Section~\ref{sec:impl:kairo:agent}).
+\end{itemize}
+Thus, this chapter addresses the research goals~\ref{item:intro:rg_library} and~\ref{item:intro:rg_dashboard}.
 
 \begin{figure}[tb]
 	\centering
@@ -38,47 +45,45 @@ Placeholder.
 	\label{fig:impl:ai}
 \end{figure}
 
+Section~\ref{sec:impl:kairo} presents kairo and our skill \texttt{kairo-drift-analyst} for the agentic analysis.
+Section~\ref{sec:impl:dashboard} presents our dashboard and the Kairo Copilot.
+
 \section{Kairo}
 \label{sec:impl:kairo}
-Placeholder.
+kairo is a Python library that implements the four steps of the framework for all three perspectives. The documentation\footnote{\url{https://boraderen.github.io/thesis/}} describes the approach, gives a quickstart and explains all functions. The nine notebooks\footnote{\url{https://github.com/boraderen/thesis/tree/main/notebooks/kairo_examples}} introduce the pipelines for each combination of perspectives and clustering algorithms. In the repository root, \texttt{uv sync} installs kairo with dependencies.
 
 \subsection{Running the Pipeline in Python}
 \label{sec:impl:kairo:pipeline}
-Placeholder.
+Our implementation follows three main design principles:
+
+\begin{itemize}
+	\item \emph{Modular function structure:} Each step is a function, e.g., \texttt{compute\_features\_inter}, \texttt{standardize}, \texttt{compute\_kmeans} and \texttt{compute\_drift\_signal}. Their parameters are the parameters of Chapter~\ref{chap:approach}, e.g., the feature groups, the feature window or the divergence.
+	\item \emph{DataFrames:} The log, the feature matrices, the states and the drift signal are pandas DataFrames (Figure~\ref{fig:impl:workflow}). The meta columns \texttt{case:concept:name} and \texttt{time:timestamp} travel along through all steps, but do not enter the computations. Thus, steps such as scaling and PCA can be skipped, and own features can replace the feature groups of kairo.
+	\item \emph{Results as plot and text abstractions}: For the results of each step, the functions \texttt{plot\_*} create plots, and the functions \texttt{abstract\_*} summarize them as text for an LLM (Section~\ref{sec:impl:kairo:agent}).
+\end{itemize}
+
+These design choices have two advantages and two disadvantages:
+\begin{itemize}
+	\item \emph{Flexibility:} Steps can be skipped or exchanged, e.g., by own features or by an own clustering whose states enter the drift signal like the states of kairo.
+	\item \emph{Traceability:} Each intermediate result is a DataFrame with a plot and a text abstraction, so the user can check each step.
+	\item \emph{Large hyperparameter space:} The user chooses the features, the windows, the scaling, the PCA cut, the clustering algorithm with its parameters and the drift signal. This hyperparameter space is too large to test all configurations, and an unsuitable configuration can produce misleading drift signals. The Copilot and the analysis agent help the user to find a suitable configuration.
+	\item \emph{Computational effort:} kairo keeps the log and the feature matrices in memory. For large logs, single steps become slow, e.g., the k-distances for DBSCAN on the intra-case features, which have one row per event.
+\end{itemize}
+
 
 \begin{figure}[tbp]
 	\centering
 	\input{figures/tikz/kairo_workflow}
 	\caption[Workflow of kairo]{%
-		Workflow of kairo for one perspective. Each arrow is a function of kairo that takes the output above it and returns the output below it. Gray text gives the type of each output: except for the event log, every output is a pandas DataFrame, and fitting PCA or a clustering returns the fitted model, which the next function applies. The gray first column of the matrices stands for the meta columns, e.g., \texttt{time:timestamp}, which travel along but do not enter the computations. Scaling and PCA can be skipped.}
+		Workflow of kairo for one perspective. Each arrow is a function of kairo that takes the output above it and returns the output below it. Gray text gives the type of each output: except for the event log, every output is a pandas DataFrame, and fitting PCA or a clustering returns the fitted model, which the next function applies. The gray first column of the matrices stands for the meta columns, which travel along but do not enter the computations.}
 	\label{fig:impl:workflow}
-\end{figure}
-
-\begin{figure}[tb]
-	\centering
-	\begin{subfigure}[b]{0.6\textwidth}
-		\centering
-		\includegraphics[width=\textwidth]{figures/kairo/resource_log_trajectory.pdf}
-		\caption{}
-		\label{fig:impl:plots_trajectory}
-	\end{subfigure}
-	\hfill
-	\begin{subfigure}[b]{0.38\textwidth}
-		\centering
-		\includegraphics[width=\textwidth]{figures/kairo/intra_som_heatmap.pdf}
-		\caption{}
-		\label{fig:impl:plots_heatmap}
-	\end{subfigure}
-	\caption[Two plots of kairo]{%
-		Two plots of kairo for the running example $L_3$ with the configuration of Table~\ref{tab:approach:running_config}.
-		\subref{fig:impl:plots_trajectory}~The log trajectory of the resource states: the log stays in one state until the reassignment drift in July and in the other state afterwards. Each color is a state.
-		\subref{fig:impl:plots_heatmap}~The number of events per cell $(i, j)$ of the $3 \times 3$ SOM of the intra-case states, counted from 0.}
-	\label{fig:impl:plots}
 \end{figure}
 
 \subsection{Agentic Analysis}
 \label{sec:impl:kairo:agent}
-Placeholder.
+Since kairo consists of small, documented functions with DataFrames as input and output, an analysis agent can run the pipeline itself (Figure~\ref{fig:impl:ai}). By an analysis agent, we mean an LLM with tools to read files and to run code. The agent calls the functions of kairo, combines them, tests configurations and computes own features if needed.
+
+The agent reads the results as text abstractions. According to \textcite{berti2024abstractions}, a complete event log cannot be given to an LLM as a prompt due to its size. Therefore, they implement textual abstractions of process mining artifacts, e.g., of event logs and process models, in PM4Py. Similarly, each function \texttt{abstract\_*} of kairo summarizes one result as text. An abstraction only names what matters for the interpretation, e.g., the signal windows with the highest drift scores. Figure~\ref{fig:impl:abstraction} shows an example of an abstraction.
 
 \begin{figure}[tb]
 	\centering
@@ -87,64 +92,67 @@ Placeholder.
 		\input{figures/tikz/abstraction_drift_signal_inter}
 	\end{minipage}
 	\caption[Text abstraction of a drift signal]{%
-		Text abstraction of the inter-case drift signal of the running example $L_3$ with signal windows of one week and the previous signal window as reference, as the LLM reads it (Example~\ref{ex:impl:abstraction}). Long lines are wrapped. The abstraction names the divergence and the reference, summarizes the 54 drift scores and lists the five signal windows with the highest drift scores.}
+		Text abstraction of the inter-case drift signal of the running example $L_3$ with signal windows of one week and the previous signal window as reference, as the LLM reads it. Long lines are wrapped. The abstraction names the divergence and the reference, summarizes the 54 drift scores and lists the five signal windows with the highest drift scores.}
 	\label{fig:impl:abstraction}
 \end{figure}
 
-\begin{example}
-	\label{ex:impl:abstraction}
-	Placeholder.
-\end{example}
+Our skill \texttt{kairo-drift-analyst}\footnote{\url{https://github.com/boraderen/thesis/tree/main/skills/kairo-drift-analyst}} gives an agent the instructions for such an analysis. The prompt names the event log and the task, e.g., to find the drift points and their perspectives. The agent reads the thesis and the documentation of kairo, runs and compares configurations on its own and reports the drifts with their perspectives, modes and what changed. For each perspective, it reports a configuration with a threshold on the drift scores.
 
 \section{Dashboard}
 \label{sec:impl:dashboard}
-Placeholder.
+Our dashboard\footnote{\url{https://thesis-kairo-dashboard.streamlit.app/}} is a Streamlit app built on top of kairo. In the repository root, \texttt{uv run streamlit run dashboard/app.py} starts the dashboard locally. The sidebar lists its pages: the upload page, four pages for each perspective and the Copilot.
 
-\subsection{Running the Pipeline in the Browser}
+\subsection{Running the Pipeline in the Dashboard}
 \label{sec:impl:dashboard:pipeline}
-Placeholder.
+On the upload page, the user uploads an event log as an XES or CSV file of up to 1~GB. By clicking on the column headers, the user assigns the columns to their roles, e.g., the case identifier, the activity and the timestamp. Then, the user picks the case attributes for the inter-case features and states whether each one is numerical or categorical.
 
-\begin{figure}[tb]
+Each perspective has four pages, one for each step: Features, PCA, States \& Trajectories and Drift Signal. In the sidebar, the user chooses the parameters of a step, e.g., the clustering algorithm and its parameters in Figure~\ref{fig:impl:dashboard_states}. Each page shows the results with the plots and tables of kairo:
+\begin{itemize}
+	\item \emph{States:} The page shows the clustering measures of Section~\ref{sec:prelim:cluster_eval} as well as the colors of the states and the distances between them (Figure~\ref{fig:impl:dashboard_states}). It also compares the state frequencies of two date ranges, e.g., before and after a suspected drift.
+	\item \emph{Trajectories:} In the intra-case perspective, the page shows the trajectory of a single case and the trajectories of all cases in a date range. In the resource and inter-case perspectives, it shows the trajectory of the log with a table of its visits (Figure~\ref{fig:impl:dashboard_trajectory}).
+	\item \emph{Drift signal:} The page shows the drift signal and the state distribution of each signal window (Figure~\ref{fig:impl:dashboard_drift}).
+\end{itemize}
+
+The user tries out configurations step by step and computes the perspectives one after another. This follows the human-in-the-loop process of \textcite{barbonjunior2018framework}, in which a human observes the emergence of drifts over time and adjusts the hyperparameters.
+
+\begin{figure}[tbp]
 	\centering
-	\includegraphics[width=\textwidth]{figures/dashboard/resource_drift_signal.png}
+	\includegraphics[width=\textwidth]{figures/dashboard/states}
+	\caption[States page of the dashboard]{%
+		Upper part of the States \& Trajectories page of the dashboard for the resource perspective of the running example $L_3$. The 366 feature windows of one day have the feature groups \texttt{res\_events}, \texttt{res\_cases} and \texttt{act\_res\_shares}. They are min-max scaled and reduced to 10 principal components, which explain 95.2\% of the variance. In the sidebar, the user chooses a $3 \times 3$ SOM. The page shows the clustering measures, the color of each cell with its number of feature windows and the U-matrix. Cells are counted from 0. The cells $(2, 0)$ to $(2, 2)$ hold the 182 days before the reassignment drift, and the cells $(0, 0)$ to $(0, 2)$ the 183 days after it. Since each process version spreads over three close cells, the silhouette is only 0.113.}
+	\label{fig:impl:dashboard_states}
+\end{figure}
+
+\begin{figure}[tbp]
+	\centering
+	\includegraphics[width=\textwidth]{figures/dashboard/trajectory}
+	\caption[Trajectory of the log in the dashboard]{%
+		Lower part of the States \& Trajectories page of Figure~\ref{fig:impl:dashboard_states}. Without dates, the user plots the trajectory of the whole log. Each stripe is a feature window in the color of its state. At the reassignment drift on July~1, 2020, the colors change from yellow and orange to blue and purple. The table lists each visit of a state with its start, end, duration and number of feature windows.}
+	\label{fig:impl:dashboard_trajectory}
+\end{figure}
+
+\begin{figure}[tbp]
+	\centering
+	\includegraphics[width=\textwidth]{figures/dashboard/drift_signal}
 	\caption[Drift signal page of the dashboard]{%
-		Drift signal page of the dashboard for the resource perspective of the running example $L_3$. In the sidebar, the user chooses the signal window, the divergence and the reference. The page shows the drift signal with its spike at the reassignment drift in July.}
-	\label{fig:impl:dashboard}
+		Drift Signal page of the dashboard for the resource states of Figure~\ref{fig:impl:dashboard_states}. In the sidebar, the user chooses signal windows of three days, the KL divergence and the mean of the six previous signal windows as reference. The drift signal reaches its highest drift score of 19.62 in the signal window from July~1, 2020, which contains the reassignment drift. The smaller spike of 6.54 in the signal window from May~5 comes from state $(2, 2)$, which does not occur in the six previous signal windows. Below, the state distributions of the 123 signal windows show the change from the cells of row~2 to the cells of row~0.}
+	\label{fig:impl:dashboard_drift}
 \end{figure}
 
 \subsection{Kairo Copilot}
 \label{sec:impl:dashboard:copilot}
-Placeholder.
+Kairo Copilot is the page of the dashboard on which an LLM analyzes the results together with the user (Figure~\ref{fig:impl:ai}). We see the Copilot as an extension of our framework and not as a step of the pipeline. It computes neither states nor drift signals, but interprets the results of the pipeline. The user picks the abstractions and plots of all steps computed so far, which the LLM receives, and asks questions (Figure~\ref{fig:impl:copilot}). The analysis is interactive: the user asks follow-up questions and requests further steps. In this way, the LLM supports the characterization of a drift (\ref{item:intro:rq_characterization}).
+\begin{itemize}
+	\item \emph{LLM connector:} The class \texttt{LLMConnector} of kairo has connectors for Claude and for OpenAI-compatible APIs and supports custom providers. The function \texttt{create\_messages} brings the abstractions and the plots, which are attached as images, into the message format of the provider.
+	\item \emph{System prompt:} The default system prompt of kairo explains the method, the feature groups and the strengths and limits of each perspective to the LLM. It instructs the LLM to only use the shared results and never to invent numbers. Further, it tells the LLM to judge the configuration before the drift signal and to stay skeptical of drift signals that contradict each other.
+	\item \emph{Chat history:} The Copilot keeps the chat history and sends it with each question, so the LLM remembers earlier questions and the results that the user shared.
+\end{itemize}
+In Figure~\ref{fig:impl:copilot}, the model Qwen3-VL-30B-A3B-Thinking runs as a custom provider on the GPU cluster of the Chair of Process and Data Science (PADS). With the abstractions and plots of the resource perspective of Figures~\ref{fig:impl:dashboard_states} to~\ref{fig:impl:dashboard_drift}, it names the reassignment drift in the signal window from July~1, 2020. However, an LLM can hallucinate and interpret results in a misleading way. Therefore, we suggest using it as an assistant in a human-in-the-loop analysis and staying skeptical of its claims (Chapter~\ref{chap:discussion}).
 
-\begin{figure}[tb]
+\begin{figure}[tbp]
 	\centering
-	\includegraphics[width=\textwidth]{figures/dashboard/copilot.png}
+	\includegraphics[width=\textwidth]{figures/dashboard/copilot}
 	\caption[Copilot page of the dashboard]{%
-		Copilot page of the dashboard for the running example $L_3$. The user picks the abstractions and plots to share, here the log statistics and the states and drift signal of the resource perspective, and asks a suggested question. The sidebar holds the provider, the host, the model and the maximum number of output tokens.}
+		Copilot page of the dashboard for the resource perspective of the running example $L_3$. The user shares the log statistics as well as the abstractions and plots of all steps of the resource perspective of Figures~\ref{fig:impl:dashboard_states} to~\ref{fig:impl:dashboard_drift} and asks whether there is a drift in the resource perspective and when. The model Qwen3-VL-30B-A3B-Thinking, a custom provider in the sidebar, answers with its reasoning, which ends with \texttt{</think>}, and then names a sudden drift in the signal window from July~1, 2020.}
 	\label{fig:impl:copilot}
 \end{figure}
-
-\section{Copilot and Analyst Skill}
-\label{sec:impl:ai}
-Our framework has a very flexible design in the pipelines, there are lots of configurations possible due to the choice of hyperparameters, algorithm choices. The large hyperparameter space has the effect that the framework can be very strong as well as very misleading in detecting concept drifts. A main challenge is to deal with this flexibility and the quality of results mostly depend on the chosen configuration. Another challenge is to interprete the results, anaylze their meaning e.g., how the detected states should be read, what do the noise states from DBSCAN mean etc. At this point, the usage of AI systems and LLMs might be beneficial for the users to deal with that complexity and help them in the analysis process. Therefore, in this chapter we introduce an AI extension to our framwork. This extension should not be seen as a further step of the pipeline, rather as an assitant to use the framework, find appropriate configuration based on the current data, analyze and interprete the results.
-
-We use LLMs in two main ways:
-
-\begin{itemize}
-	\item \emph{Analyze the results:} An LLM helps the user to interprete the results of pipelines e.g., in which perspective and when a drift in detected and what changed. Besides, it suggests new configurations, hyperparameters or what to examine next.
-	\item \emph{Analysis agent:} An agent runs the pipelines itself using our library kairo~\ref{sec:impl:kairo} and tests various configurations. That is why we designed our implementation as a flexible library built around \mbox{DataFrames} with a dashboard tool based on it.
-\end{itemize}
-Section~\ref{sec:impl:ai} descbribes both use cases more in detail.
-
-The results of each step including the plots are abstracted into text when sending to an LLM.
-According to \textcite{berti2024abstractions}, it is infeasible to send a complete event log to an LLM due to its size. Therefore, they implement abstractions of process mining artefacts
-
-Placeholder.
-\begin{itemize}
-	\item To be explained: the implementation of the two uses of an LLM from Section~\ref{sec:impl:ai} (Figure~\ref{fig:impl:ai}).
-	\item Copilot: the page of the dashboard on which the user picks the text abstractions (Section~\ref{sec:impl:ai}) and plots of all perspectives to share, asks a question or picks a suggested one, and chats with the LLM. The chat keeps its history, so shared results need not be shared again, and the page estimates the input tokens before sending.
-	\item Providers and connectors: \texttt{LLMConnector} of kairo connects to Anthropic, OpenAI, Google or a custom OpenAI-compatible host, e.g., LM Studio or vLLM for local models. The chat starts with the default system prompt of kairo.
-	\item Analyst skill: the instructions for an analysis agent that runs kairo itself, i.e., which functions to call in which order, how to choose and compare configurations, how to read the abstractions and plots, and how to report a drift with its perspective, mode and what changed.
-	\item Why a library: kairo consists of small functions with DataFrames as input and output, which an agent can call, combine and extend.
-	\item Link to research goals \ref{item:intro:rg_library} and \ref{item:intro:rg_dashboard}, and to the risks in Chapter~\ref{chap:discussion} (\ref{item:intro:rg_limitations}).
-\end{itemize}

@@ -1,0 +1,39 @@
+{
+  "_notes": "One pipeline of one perspective. Copy this file, fill the log path and the column mapping, and remove keys you do not need. Missing keys take kairo's defaults. Keys starting with _ are ignored by the helper script.",
+  "log": {
+    "path": "<path to the event log, .xes or .csv>",
+    "read_log": {
+      "case_id": "case:concept:name",
+      "activity": "concept:name",
+      "timestamp": "time:timestamp",
+      "resource": "org:resource",
+      "event_duration": "event:duration_min"
+    },
+    "_event_duration_from_timestamps": "true for a log without a duration column, e.g. a Padella log: map start_timestamp (\"start:timestamp\"), leave event_duration out, and the helper computes it in minutes",
+    "event_duration_from_timestamps": false
+  },
+  "perspective": "resource",
+  "features": {
+    "_perspective_specific": "intra: groups, sliding_window_size | resource: groups, feature_window, resources | inter: groups, feature_window, case_attributes, stall_threshold",
+    "groups": ["res_events", "act_res_shares"],
+    "feature_window": "1D",
+    "resources": null
+  },
+  "scaling": {
+    "method": "zscore",
+    "exclude": ["current_act", "past_acts", "act_set"]
+  },
+  "pca": {
+    "num_components": null,
+    "cut": "elbow"
+  },
+  "clustering": {
+    "_options": "{method: som, size: [r, c], learning_rate, distance} | {method: kmeans, k} | {method: dbscan, eps, min_samples, distance}",
+    "method": "kmeans",
+    "k": 2
+  },
+  "drift": [
+    {"signal_window": "7D", "divergence": "kl", "reference": "previous"},
+    {"signal_window": "30D", "divergence": "js", "reference": "recent", "lookback": 3}
+  ]
+}
