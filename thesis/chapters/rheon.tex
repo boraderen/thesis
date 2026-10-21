@@ -1,9 +1,9 @@
-\chapter{Rheon}
+\chapter{Implementation (Log Drift Generator)}
 \label{chap:rheon}
 
 To evaluate whether a detector detects a drift, we need event logs with known drifts. Public event logs with known drifts are hard to find and mostly contain drifts in the control-flow perspective or timing attributes. The Concept Drift Log Generator (CDLG) developed by \textcite{grimm2022cdlg} generates synthetic event logs with control-flow drifts and the authors mention multi-perspective drifts as future work.
 
-We introduce Rheon in this chapter in order to fill this gap. Rheon is a Python library developed in this thesis that generates synthetic event logs with injected concept drifts. Its source code\footnote{\url{https://github.com/boraderen/rheon}} and documentation\footnote{\url{https://boraderen.github.io/rheon/}} are publicly available. It allows users to configure the generation parameters comprehensively and to inject concept drifts from intra-case, resource and inter-case perspectives. The input comprises parameters of a base process model and a list of drifts. The output is an event log with activities, timestamps, resources, two case attributes and a metadata file that comprehensively describes the base process parameters as well as the injected drifts together with their drift types. Rheon supports nine drift types from the three perspectives and the two drift modes sudden and gradual. We will use Rheon logs in Chapter~\ref{chap:eval} to evaluate our state-based framework on known drifts.
+We introduce Rheon in this chapter in order to fill this gap. Rheon is a Python library developed in this thesis that generates synthetic event logs with injected concept drifts. Rheon is named after the Greek word for \emph{flowing} coming from \emph{panta rhei} (\emph{everything flows}). Its source code\footnote{\url{https://github.com/boraderen/rheon}} and documentation\footnote{\url{https://boraderen.github.io/rheon/}} are publicly available. It allows users to configure the generation parameters comprehensively and to inject concept drifts from intra-case, resource and inter-case perspectives. The input comprises parameters of a base process model and a list of drifts. The output is an event log with activities, timestamps, resources, two case attributes and a metadata file that comprehensively describes the base process parameters as well as the injected drifts together with their drift types. Rheon supports nine drift types from the three perspectives and the two drift modes sudden and gradual. We will use Rheon logs in Chapter~\ref{chap:eval} to evaluate our state-based framework on known drifts.
 
 Section~\ref{sec:rheon:schema} introduces the log schema of Rheon-generated logs and gives an example. Section~\ref{sec:rheon:generation} gives an overview of the generation of an event log using Rheon. Section~\ref{sec:rheon:drifts} introduces the nine drift types supported by Rheon. In Section~\ref{sec:rheon:examples} we give examples of generated logs and figures showing the drifts visually. Section~\ref{sec:rheon:limitations} discusses the limitations and future work of Rheon.
 
@@ -40,7 +40,7 @@ Rheon generates and writes an event log according to Definition~\ref{def:prelim:
 		The first six rows of the example log with a control-flow drift from Section~\ref{sec:rheon:examples}. Identifiers are abbreviated, and timestamps are shown without year and seconds.}
 	\label{tab:rheon:excerpt}
 	\small
-	\setlength{\tabcolsep}{2pt}
+	\setlength{\tabcolsep}{1.8pt}
 	\begin{tabular}{@{}lllllrlrl@{}}
 		\toprule
 		\shortstack[l]{\texttt{event:}\\\texttt{id}} & \shortstack[l]{\texttt{case:}\\\texttt{concept:}\\\texttt{name}} & \shortstack[l]{\texttt{concept:}\\\texttt{name}} & \shortstack[l]{\texttt{start\_}\\\texttt{timestamp}} & \shortstack[l]{\texttt{time:}\\\texttt{timestamp}} & \shortstack[l]{\texttt{event:}\\\texttt{duration\_}\\\texttt{min}} & \shortstack[l]{\texttt{org:}\\\texttt{resource}} & \shortstack[l]{\texttt{case:}\\\texttt{amount}} & \shortstack[l]{\texttt{case:}\\\texttt{region}} \\
@@ -262,8 +262,8 @@ We illustrate one drift per perspective with three example logs (Table~\ref{tab:
 	\end{subfigure}
 	\caption[Process trees of the example log with a control-flow drift]{%
 		The process trees of the example log with a sudden control-flow drift on July 1, 2020.
-		\subref{fig:rheon:example_cf_tree_base}~The base process tree ${\rightarrow}({\rightarrow}(a, {\rightarrow}(b, c)), {\rightarrow}(d, e))$ produces only the trace $\seq{a, b, c, d, e}$.
-		\subref{fig:rheon:example_cf_tree_new}~The process tree ${\rightarrow}(a, {\times}({\rightarrow}(b, c), {\rightarrow}(d, e)))$ produces the traces $\seq{a, b, c}$ and $\seq{a, d, e}$.}
+		\subref{fig:rheon:example_cf_tree_base}~The base process tree ${\rightarrow}({\rightarrow}(a, {\rightarrow}(b, c)),\allowbreak {\rightarrow}(d, e))$ produces only the trace $\seq{a, b, c, d, e}$.
+		\subref{fig:rheon:example_cf_tree_new}~The process tree ${\rightarrow}(a,\allowbreak {\times}({\rightarrow}(b, c),\allowbreak {\rightarrow}(d, e)))$ produces the traces $\seq{a, b, c}$ and $\seq{a, d, e}$.}
 	\label{fig:rheon:example_cf_trees}
 \end{figure}
 

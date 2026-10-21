@@ -14,8 +14,7 @@ An event log captures how a process was executed. In the traditional case-centri
 % beginpenalty keeps each label on the same page as its first item
 \noindent\emph{Sets:}
 \begin{itemize}[beginpenalty=10000]
-	\item A finite set $X = \{a_1, a_2, ..., a_n\}$ is a finite collection of objects.
-	\item The power set $\mathcal{P}(X)$ of $X$ denotes the set of all subsets of $X$.
+	\item A finite set $X = \Set{a_1, \dots, a_n}$ is a finite collection of distinct objects, and $\abs{X} = n$ is its number of elements.
 	\item $\N$ is the set of natural numbers, $\Z$ is the set of integers, $\R$ the set of real numbers and $\N_0 = \N \cup \Set{0}$ is the set of natural numbers including $0$.
 \end{itemize}
 
@@ -33,18 +32,35 @@ An event log captures how a process was executed. In the traditional case-centri
 	\item $\mathcal{B}(A) = A \to \N_0$ is the set of all multisets over a set $A$.
 	\item For $X \in \mathcal{B}(A)$ and $a \in A$, $X(a)$ is the multiplicity of $a$ in $X$.
 	\item We write multisets as $X = [x^3, y^2, z]$, meaning $X(x) = 3$, $X(y) = 2$ and $X(z) = 1$.
-	\item $[\,]$ is the empty multiset, and $\abs{X} = \sum_{a \in A} X(a)$ is the size of a finite multiset $X$.
+	\item $[\,]$ is the empty multiset, and $\abs{X} = \sum_{a \in A} X(a)$ is the size of a finite multiset $X$, i.e., its number of elements counted with their multiplicities.
+\end{itemize}
+
+\noindent\emph{Statistics:}
+\begin{itemize}[beginpenalty=10000]
+	\item For a finite multiset $M = [x_1, \dots, x_k]$ of real numbers with $k = \abs{M}$, the mean and the sample standard deviation are
+	      \[
+		      \mathit{mean}(M) = \frac{1}{k} \sum_{i=1}^{k} x_i \quad\text{and}\quad \mathit{std}(M) = \sqrt{\frac{1}{k - 1} \sum_{i=1}^{k} (x_i - \mathit{mean}(M))^2}.
+	      \]
+	      We set $\mathit{mean}([\,]) = 0$, and $\mathit{std}(M) = 0$ for $k < 2$.
+	\item For $p, q \in \N_0$, $\mathit{ratio}(p, q) = p / q$ for $q > 0$ and $\mathit{ratio}(p, 0) = 0$.
 \end{itemize}
 
 \noindent\emph{Sequences:}
 \begin{itemize}[beginpenalty=10000]
 	\item A sequence is an ordered collection of objects in which an object can occur multiple times.
-	\item $X^*$ is the set of all finite sequences over a set $X$, and $\seq{}$ is the empty sequence.
-	\item A sequence $\sigma = \seq{a_1, \dots, a_n} \in X^*$ has the length $\abs{\sigma} = n$, and $\sigma(i) = a_i$ is its $i$-th element for $1 \le i \le n$.
-	\item For $0 \le k \le n$, $\mathit{prefix}_k(\sigma) = \seq{a_1, \dots, a_k}$ is the prefix of length~$k$.
+	\item $X^*$ is the set of all finite sequences over a set $X$.
+	\item For a sequence $\sigma = \seq{a_1, \dots, a_n} \in X^*$, $\sigma(i) = a_i$ is its $i$-th element for $1 \le i \le n$.
+	\item For $1 \le k \le n$, $\mathit{prefix}_k(\sigma) = \seq{a_1, \dots, a_k}$ is the prefix of length~$k$.
 	\item $\partial_{\mathit{set}}(\sigma) = \Set{a_1, \dots, a_n}$ turns $\sigma$ into a set.
 	\item $\partial_{\mathit{multiset}}(\sigma) = [a_1, \dots, a_n]$ turns $\sigma$ into a multiset, e.g., $\partial_{\mathit{multiset}}(\seq{a, b, b}) = [a, b^2]$.
 	\item $\mathit{df}(\sigma) = \MultiSet{(a_i, a_{i+1}) \given 1 \le i < n} \in \mathcal{B}(X \times X)$ is the multiset of directly-follows pairs of $\sigma$, e.g., $\mathit{df}(\seq{a, b, b, c}) = [(a, b), (b, b), (b, c)]$.
+\end{itemize}
+
+\noindent\emph{Vectors:}
+\begin{itemize}[beginpenalty=10000]
+	\item We write a vector $\mathbf{x} \in \R^n$ as $\mathbf{x} = (x_1, \dots, x_n)$ and treat it as a column vector, so $\mathbf{x}^\top$ is a row vector.
+	\item $\mathbf{0}$ is the zero vector, and for $1 \le i \le p$, $\mathit{onehot}_p(i) \in \R^p$ has a 1 at position $i$ and 0 elsewhere, e.g., $\mathit{onehot}_3(2) = (0, 1, 0)$.
+	\item For $\mathbf{x} \in \R^p$ and $\mathbf{y} \in \R^q$, the concatenation $(\mathbf{x}, \mathbf{y}) \in \R^{p+q}$ appends $\mathbf{y}$ to $\mathbf{x}$, e.g., $((1, 2), (3)) = (1, 2, 3)$.
 \end{itemize}
 
 
@@ -181,7 +197,7 @@ Figure~\ref{fig:prelim:process_tree} shows a nested process tree. It produces e.
 
 \subsection{Calendar Windows}
 \label{sec:prelim:windows}
-We use calendar windows, i.e., time intervals of fixed length that start at calendar boundaries such as midnight. Thus, the window boundaries only depend on the origin and the window length, and not on the first event of the event log. To compute with timestamps, we treat them as real numbers, e.g., the seconds since a fixed point in time. Chapter~\ref{chap:approach} uses calendar windows in two roles, as feature windows and as signal windows.
+We use calendar windows, i.e., time intervals of fixed length that start at calendar boundaries such as midnight. Thus, the window boundaries only depend on the origin and the window length, and not on the first event of the event log. To compute with timestamps, we treat them as real numbers, i.e., the minutes since a fixed point in time. Thus, time differences are in minutes. Chapter~\ref{chap:approach} uses calendar windows in two roles, as feature windows and as signal windows.
 
 \begin{definition}[Calendar Window]
 	\label{def:prelim:windows}
@@ -379,7 +395,7 @@ Each event or calendar window is described by numerical features, which we write
 \medskip
 \noindent\emph{Feature vectors:}
 \begin{itemize}[beginpenalty=10000]
-	\item $\mathbf{x} = (x_1, \dots, x_n)^\top \in \R^n$ is the feature vector of an event or a calendar window with its features $x_1, \dots, x_n$.
+	\item $\mathbf{x} = (x_1, \dots, x_n) \in \R^n$ is the feature vector of an event or a calendar window with its features $x_1, \dots, x_n$.
 	\item A feature matrix $X \in \R^{m \times n}$ contains $m$ feature vectors $\mathbf{x}_1, \dots, \mathbf{x}_m$ as its rows $\mathbf{x}_1^\top, \dots, \mathbf{x}_m^\top$, and $x_{j,i}$ is the value of the $i$-th feature in the $j$-th vector.
 	\item $\norm{\mathbf{x}} = \sqrt{\sum_{i=1}^{n} x_i^2}$ is the Euclidean norm of $\mathbf{x}$, and $\norm{\mathbf{x} - \mathbf{y}}$ is the Euclidean distance of two vectors $\mathbf{x}, \mathbf{y} \in \R^n$.
 	\item Further distances of $\mathbf{x}$ and $\mathbf{y}$ are the Manhattan distance $\sum_{i=1}^{n} \abs{x_i - y_i}$, the Chebyshev distance $\max_{1 \le i \le n} \abs{x_i - y_i}$ and, for $\mathbf{x}, \mathbf{y} \neq \mathbf{0}$, the cosine distance $1 - \mathbf{x}^\top \mathbf{y} / (\norm{\mathbf{x}} \norm{\mathbf{y}})$.
@@ -389,10 +405,10 @@ Features may have different units and ranges, e.g., binary, one-hot, minutes, co
 
 \begin{definition}[Scaling]
 	\label{def:prelim:scaling}
-	Let $X \in \R^{m \times n}$ be a feature matrix with $m \ge 2$. For the $i$-th feature, let
+	Let $X \in \R^{m \times n}$ be a feature matrix with $m \ge 2$. For the $i$-th feature with the values $M_i = [x_{1,i}, \dots, x_{m,i}]$, let
 	\begin{itemize}
-		\item $\mu_i = \frac{1}{m} \sum_{j=1}^{m} x_{j,i}$ be its mean,
-		\item $s_i = \sqrt{\frac{1}{m-1} \sum_{j=1}^{m} (x_{j,i} - \mu_i)^2}$ its standard deviation and
+		\item $\mu_i = \mathit{mean}(M_i)$ be its mean,
+		\item $s_i = \mathit{std}(M_i)$ its sample standard deviation and
 		\item $\underline{x}_i = \min_{1 \le j \le m} x_{j,i}$ and $\overline{x}_i = \max_{1 \le j \le m} x_{j,i}$ its smallest and largest value.
 	\end{itemize}
 	The scaled matrix $X' \in \R^{m \times n}$ has the entries
@@ -462,7 +478,7 @@ PCA projects vectors onto a few directions in which they spread the most. It thu
 		\node[right] at (7.35, 10) {$\hat{\mathbf{x}}_3 = \hat{\mathbf{x}}_4$};
 	\end{tikzpicture}
 	\caption[PCA for two correlated features]{%
-		PCA for the four feature vectors of Example~\ref{ex:prelim:pca}. The gray lines are the principal components through the mean $\boldsymbol{\mu}$ (cross). The variance along $\mathbf{v}_1$ is $\lambda_1 = 9$, along $\mathbf{v}_2$ only $\lambda_2 = 1$. Thus, the projection onto $\mathbf{v}_1$ keeps 90\% of the variance. The reconstructions of $\mathbf{x}_1$ and $\mathbf{x}_2$ are exact. $\mathbf{x}_3$ and $\mathbf{x}_4$ are both reconstructed as $(7, 10)^\top$ (empty circle), and the dashed lines are their reconstruction errors.}
+		PCA for the four feature vectors of Example~\ref{ex:prelim:pca}. The gray lines are the principal components through the mean $\boldsymbol{\mu}$ (cross). The variance along $\mathbf{v}_1$ is $\lambda_1 = 9$, along $\mathbf{v}_2$ only $\lambda_2 = 1$. Thus, the projection onto $\mathbf{v}_1$ keeps 90\% of the variance. The reconstructions of $\mathbf{x}_1$ and $\mathbf{x}_2$ are exact. $\mathbf{x}_3$ and $\mathbf{x}_4$ are both reconstructed as $(7, 10)$ (empty circle), and the dashed lines are their reconstruction errors.}
 	\label{fig:prelim:pca}
 \end{figure}
 
@@ -470,7 +486,7 @@ PCA projects vectors onto a few directions in which they spread the most. It thu
 	\label{ex:prelim:pca}
 	Four calendar windows are described by their number of arrivals and their number of active cases.
 	\begin{itemize}
-		\item The feature vectors $\mathbf{x}_1 = (2, 5)^\top$, $\mathbf{x}_2 = (4, 7)^\top$, $\mathbf{x}_3 = (6, 11)^\top$ and $\mathbf{x}_4 = (8, 9)^\top$ have the mean vector and the covariance matrix
+		\item The feature vectors $\mathbf{x}_1 = (2, 5)$, $\mathbf{x}_2 = (4, 7)$, $\mathbf{x}_3 = (6, 11)$ and $\mathbf{x}_4 = (8, 9)$ have the mean vector and the covariance matrix
 		      \[
 			      \boldsymbol{\mu} = \begin{pmatrix} 5 \\ 8 \end{pmatrix}
 			      \quad\text{and}\quad
@@ -479,13 +495,13 @@ PCA projects vectors onto a few directions in which they spread the most. It thu
 
 		\item Both features have the same variance, so scaling does not change the principal components.
 
-		\item $\Sigma$ has the eigenvalues $\lambda_1 = 9$ and $\lambda_2 = 1$ with the eigenvectors $\mathbf{v}_1 = (1, 1)^\top / \sqrt{2}$ and $\mathbf{v}_2 = (-1, 1)^\top / \sqrt{2}$.
+		\item $\Sigma$ has the eigenvalues $\lambda_1 = 9$ and $\lambda_2 = 1$ with the eigenvectors $\mathbf{v}_1 = (1, 1) / \sqrt{2}$ and $\mathbf{v}_2 = (-1, 1) / \sqrt{2}$.
 
 		\item The first principal component explains $\mathit{evr}_X(1) = 9/10$ of the variance, since windows with many arrivals also have many active cases.
 
 		\item The projections onto $\mathbf{v}_1$ are $-3\sqrt{2}$, $-\sqrt{2}$, $2\sqrt{2}$ and $2\sqrt{2}$.
 
-		\item The reconstructions of $\mathbf{x}_1$ and $\mathbf{x}_2$ are exact. $\mathbf{x}_3$ and $\mathbf{x}_4$ are both reconstructed as $(7, 10)^\top$ with the squared error 2, so $\mathit{err}_X(1) = (0 + 0 + 2 + 2) / 4 = 1 = \lambda_2$ (Figure~\ref{fig:prelim:pca}).
+		\item The reconstructions of $\mathbf{x}_1$ and $\mathbf{x}_2$ are exact. $\mathbf{x}_3$ and $\mathbf{x}_4$ are both reconstructed as $(7, 10)$ with the squared error 2, so $\mathit{err}_X(1) = (0 + 0 + 2 + 2) / 4 = 1 = \lambda_2$ (Figure~\ref{fig:prelim:pca}).
 	\end{itemize}
 \end{example}
 
@@ -854,7 +870,7 @@ A divergence measures how much two probability distributions over the same finit
 \begin{table}[tb]
 	\centering
 	\caption[Divergences of the example distributions]{%
-		The four divergences of the distributions $p = (0.5, 0.5, 0)$ and $q = (0.25, 0.25, 0.5)$ over $K = \Set{1, 2, 3}$ of Example~\ref{ex:prelim:divergences} in both directions. Since $p(3) = 0 < q(3)$, only $D_{\mathrm{KL}}(q, p)$ is infinite.}
+		The four divergences in both directions for the distributions $p = (0.5, 0.5, 0)$ and $q = (0.25, 0.25, 0.5)$ over $K = \Set{1, 2, 3}$ of Example~\ref{ex:prelim:divergences}. Since $p(3) = 0 < q(3)$, only $D_{\mathrm{KL}}(q, p)$ is infinite.}
 	\label{tab:prelim:divergences}
 	\begin{tabular}{@{}lrr@{}}
 		\toprule

@@ -1,4 +1,4 @@
-\chapter{Implementation}
+\chapter{Implementation (Drift Detector)}
 \label{chap:impl}
 
 In this chapter we describe the implementation of our framework from Chapter~\ref{chap:approach}. Our implementation comprises a Python library kairo and a dashboard built on top of kairo. Both are placed in the public repository of this thesis\footnote{\url{https://github.com/boraderen/thesis}}. We introduce the structure of the code and design choices of the implementation.
@@ -50,14 +50,14 @@ Section~\ref{sec:impl:dashboard} presents our dashboard and the Kairo Copilot.
 
 \section{Kairo}
 \label{sec:impl:kairo}
-kairo is a Python library that implements the four steps of the framework for all three perspectives. The documentation\footnote{\url{https://boraderen.github.io/thesis/}} describes the approach, gives a quickstart and explains all functions. The nine notebooks\footnote{\url{https://github.com/boraderen/thesis/tree/main/notebooks/kairo_examples}} introduce the pipelines for each combination of perspectives and clustering algorithms. In the repository root, \texttt{uv sync} installs kairo with dependencies.
+kairo is a Python library that implements the four steps of the framework for all three perspectives. Its name comes from the Greek \emph{kairos}, the turning point. The documentation\footnote{\url{https://boraderen.github.io/thesis/}} describes the approach, gives a quickstart and explains all functions. The nine notebooks\footnote{\url{https://github.com/boraderen/thesis/tree/main/notebooks/kairo_examples}} introduce the pipelines for each combination of perspectives and clustering algorithms. In the repository root, \texttt{uv sync} installs kairo with dependencies.
 
 \subsection{Running the Pipeline in Python}
 \label{sec:impl:kairo:pipeline}
 Our implementation follows three main design principles:
 
 \begin{itemize}
-	\item \emph{Modular function structure:} Each step is a function, e.g., \texttt{compute\_features\_inter}, \texttt{standardize}, \texttt{compute\_kmeans} and \texttt{compute\_drift\_signal}. Their parameters are the parameters of Chapter~\ref{chap:approach}, e.g., the feature groups, the feature window or the divergence.
+	\item \emph{Modular function structure:} Each step is a function, e.g., \texttt{compute\_features\_inter}, \texttt{standardize}, \texttt{compute\_kmeans} and \texttt{compute\_drift\_signal}. Their parameters are the hyperparameters of Chapter~\ref{chap:approach}, e.g., the feature groups, the feature window or the divergence.
 	\item \emph{DataFrames:} The log, the feature matrices, the states and the drift signal are pandas DataFrames (Figure~\ref{fig:impl:workflow}). The meta columns \texttt{case:concept:name} and \texttt{time:timestamp} travel along through all steps, but do not enter the computations. Thus, steps such as scaling and PCA can be skipped, and own features can replace the feature groups of kairo.
 	\item \emph{Results as plot and text abstractions}: For the results of each step, the functions \texttt{plot\_*} create plots, and the functions \texttt{abstract\_*} summarize them as text for an LLM (Section~\ref{sec:impl:kairo:agent}).
 \end{itemize}
@@ -66,7 +66,7 @@ These design choices have two advantages and two disadvantages:
 \begin{itemize}
 	\item \emph{Flexibility:} Steps can be skipped or exchanged, e.g., by own features or by an own clustering whose states enter the drift signal like the states of kairo.
 	\item \emph{Traceability:} Each intermediate result is a DataFrame with a plot and a text abstraction, so the user can check each step.
-	\item \emph{Large hyperparameter space:} The user chooses the features, the windows, the scaling, the PCA cut, the clustering algorithm with its parameters and the drift signal. This hyperparameter space is too large to test all configurations, and an unsuitable configuration can produce misleading drift signals. The Copilot and the analysis agent help the user to find a suitable configuration.
+	\item \emph{Large hyperparameter space:} The user chooses the features, the windows, the scaling, the PCA cut, the clustering algorithm with its hyperparameters and the drift signal. This hyperparameter space is too large to test all configurations, and an unsuitable configuration can produce misleading drift signals. The Copilot and the analysis agent help the user to find a suitable configuration.
 	\item \emph{Computational effort:} kairo keeps the log and the feature matrices in memory. For large logs, single steps become slow, e.g., the k-distances for DBSCAN on the intra-case features, which have one row per event.
 \end{itemize}
 
@@ -106,7 +106,7 @@ Our dashboard\footnote{\url{https://thesis-kairo-dashboard.streamlit.app/}} is a
 \label{sec:impl:dashboard:pipeline}
 On the upload page, the user uploads an event log as an XES or CSV file of up to 1~GB. By clicking on the column headers, the user assigns the columns to their roles, e.g., the case identifier, the activity and the timestamp. Then, the user picks the case attributes for the inter-case features and states whether each one is numerical or categorical.
 
-Each perspective has four pages, one for each step: Features, PCA, States \& Trajectories and Drift Signal. In the sidebar, the user chooses the parameters of a step, e.g., the clustering algorithm and its parameters in Figure~\ref{fig:impl:dashboard_states}. Each page shows the results with the plots and tables of kairo:
+Each perspective has four pages, one for each step: Features, PCA, States \& Trajectories and Drift Signal. In the sidebar, the user chooses the hyperparameters of a step, e.g., the clustering algorithm and its hyperparameters in Figure~\ref{fig:impl:dashboard_states}. Each page shows the results with the plots and tables of kairo:
 \begin{itemize}
 	\item \emph{States:} The page shows the clustering measures of Section~\ref{sec:prelim:cluster_eval} as well as the colors of the states and the distances between them (Figure~\ref{fig:impl:dashboard_states}). It also compares the state frequencies of two date ranges, e.g., before and after a suspected drift.
 	\item \emph{Trajectories:} In the intra-case perspective, the page shows the trajectory of a single case and the trajectories of all cases in a date range. In the resource and inter-case perspectives, it shows the trajectory of the log with a table of its visits (Figure~\ref{fig:impl:dashboard_trajectory}).

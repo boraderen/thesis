@@ -3,10 +3,12 @@
 Agent skill for blind concept-drift analysis of one event log with kairo. The agent works in its
 own run folder in `analyses/` and puts its result into a new numbered result folder of the log,
 e.g., `analyses/padella/log_07/1/`, `2/`, … with `results.md`, `plots/` and `drift_signals/`. It
-reports at most one configuration and threshold per perspective. Agents start from
+reports exactly one configuration and threshold per required perspective: two (intra-case and
+resource) for a Padella log, three (intra-case, resource and inter-case) for every other log.
+Agents start from
 `SKILL.md`; this file is for humans.
 
-Benchmark notebooks specify a result run and use its single configuration and threshold per
+Benchmark notebooks specify a result run and use its configuration and threshold per
 perspective directly from `results.md`, without selecting configurations by benchmark score.
 
 ## Install

@@ -48,14 +48,19 @@ given.
 9. **Traceable.** Every reported result comes from a run of this analysis, and the configuration
    table of the entry describes that run.
 10. **One brief entry per task** in the `results.md` of your own new result folder; earlier result
-    folders stay untouched. Report **at most one configuration and one threshold per
-    perspective**, each with its drift signal: the one that shows the drifts of the perspective
-    most clearly. Other configurations that confirm it go into the *Analysis* bullets only.
-    Select it without ground truth or benchmark scores; later benchmarks evaluate this exact
-    configuration and threshold from the specified result folder.
-11. **Padella logs: intra-case and resource only.** For a log in
-    `data/thesis/eval/padella/`, produce configurations, table rows, plots and CSVs
-    only for the intra-case and resource perspectives, never for inter-case.
+    folders stay untouched. Report **exactly one configuration and one threshold for each
+    required perspective** (rule 11), each with its drift signal: the one that shows the drifts
+    of the perspective most clearly. Other configurations that confirm it go into the *Analysis*
+    bullets only. Select it without ground truth or benchmark scores; later benchmarks evaluate
+    this exact configuration and threshold from the specified result folder.
+11. **Required perspectives.** For a Padella log (`data/thesis/eval/padella/`), exactly two:
+    intra-case and resource, never inter-case. For every other log, exactly three: intra-case,
+    resource and inter-case. So the configuration table, the plots and the CSVs have exactly two
+    or exactly three entries. The required perspectives do not depend on the task or the
+    findings: report each of them also if the task asks about one perspective only or if a
+    perspective shows no drift. For a perspective without a drift, report its most meaningful
+    configuration with a threshold that no scored signal window reaches (guide, *Thresholds*),
+    and say so in the results.
 
 The hard rules (`skills/kairo-drift-analyst/references/hard-rules.md`) always apply as well:
 Python only through `uv`, no installs, logs only through kairo, one run folder in `analyses/`
@@ -119,8 +124,8 @@ folder holds the outcome of exactly one analysis:
 | Path | Content |
 |---|---|
 | `results.md` | the entry of this analysis |
-| `plots/` | the drift signal plots, one PNG per row of the configuration table |
-| `drift_signals/` | the drift signals, one CSV per row of the configuration table |
+| `plots/` | the drift signal plots, one PNG per row of the configuration table: two for a Padella log, three for any other log |
+| `drift_signals/` | the drift signals, one CSV per row of the configuration table: two for a Padella log, three for any other log |
 
 Create your result folder only when you write the entry (*Workflow*, step 6), with the next number
 after the highest one in the folder of the log. Claim it with a plain `mkdir` (no `-p`), which
@@ -155,7 +160,7 @@ write them.
    `log["event_duration"] = (log["time:timestamp"] - log["start_timestamp"]).dt.total_seconds() / 60`.
    This is log preparation, not a custom feature. With the helper, set
    `"event_duration_from_timestamps": true` in the `log` part of the config.
-3. **Initial runs.** One configuration per perspective the task needs, derived from the log
+3. **Initial runs.** One configuration for each required perspective (rule 11), derived from the log
    statistics (`skills/kairo-drift-analyst/references/analysis-guide.md`, *Starting points*).
    Keep the run log in `progress.md`: the configuration, what changed, why, what you expected,
    what you saw.
@@ -164,8 +169,9 @@ write them.
    parameters, divergence, reference, lookback, date range), use the clustering scores and earlier
    runs to set parameters, and find which states and features change.
 5. **Verify** with the checklist in the guide.
-6. **Write the entry** with `skills/kairo-drift-analyst/references/report-template.md`: pick at
-   most one configuration per perspective and choose its threshold (guide, *Thresholds*), claim
+6. **Write the entry** with `skills/kairo-drift-analyst/references/report-template.md`: pick
+   exactly one configuration for each required perspective (rule 11) and choose its threshold
+   (guide, *Thresholds*), claim
    your result folder (*Results files*), save the drift signal plots and CSVs into it (guide,
    *Drift signal files*), then write the entry to its `results.md`.
 7. **Clean up.** Delete your run folder (`rm -r analyses/<your run folder>`) and nothing else.

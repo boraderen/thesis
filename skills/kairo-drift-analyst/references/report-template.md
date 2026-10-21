@@ -14,11 +14,13 @@ Style:
   scores with three decimals.
 - No config ids or hashes and no clustering scores (silhouette, Calinski–Harabasz, DBCV,
   quantization error, occupancy entropy) anywhere in the entry.
-- Configuration table: at most one configuration per perspective, one row each with exactly one
-  drift signal and one threshold. If several configurations show the drifts of a perspective,
-  take the one whose threshold separates the drift windows most clearly and name the others in the
-  *Analysis* bullets. Plain text in the cells, each wrapped in `<small>…</small>` to keep the
-  table small. For a Padella log, only intra-case and resource rows.
+- Configuration table: exactly one row for each required perspective (`SKILL.md`, rule 11), each
+  with exactly one drift signal and one threshold: two rows (intra-case, resource) for a Padella
+  log, three rows (intra-case, resource, inter-case) for every other log, in this order. A
+  perspective without a drift keeps its row with a threshold that no scored signal window
+  reaches. If several configurations show the drifts of a perspective, take the one whose
+  threshold separates the drift windows most clearly and name the others in the *Analysis*
+  bullets. Plain text in the cells, each wrapped in `<small>…</small>` to keep the table small.
 - Distance: the distance measure of the clustering (`euclidean`, `cosine`, `manhattan` or
   `chebyshev`); k-means always uses `euclidean`.
 - Threshold: for each configuration, the drift score above which a signal window counts as a
@@ -43,16 +45,21 @@ Style:
 
 ### Configurations
 
+<!-- Exactly one row per required perspective: intra-case and resource for a Padella log, intra-case, resource and inter-case for every other log. -->
+
 | <small>Perspective</small> | <small>Features</small> | <small>Scaling, PCA</small> | <small>States</small> | <small>Distance</small> | <small>Signal</small> | <small>Threshold</small> |
 |---|---|---|---|---|---|---|
 | <small>intra-case</small> | <small>act_freqs, df_counts, current_act</small> | <small>min-max, d=8</small> | <small>SOM 3×3, lr 0.5</small> | <small>cosine</small> | <small>28D, JS, recent (lookback 3)</small> | <small>JS ≥ 0.15</small> |
 | <small>resource</small> | <small>res_events, act_res_shares, Δf 1D</small> | <small>z-score, d=1</small> | <small>k-means, k=2</small> | <small>euclidean</small> | <small>7D, KL, previous</small> | <small>KL ≥ 2.0</small> |
+| <small>inter-case</small> | <small>active_cases, new_arrivals, mean_delta_t, attr_means, Δf 12h</small> | <small>z-score, no PCA</small> | <small>k-means, k=3</small> | <small>euclidean</small> | <small>7D, JS, recent (lookback 4)</small> | <small>JS ≥ 0.25</small> |
 
 ### Drift signals
 
 ![intra-case drift signal, 28D JS recent](plots/<log name>_intra.png)
 
 ![resource drift signal, 7D KL previous](plots/<log name>_resource.png)
+
+![inter-case drift signal, 7D JS recent](plots/<log name>_inter.png)
 
 ### Results
 

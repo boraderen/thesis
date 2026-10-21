@@ -115,18 +115,7 @@ Table~\ref{tab:approach:running_log} shows one case before and one case after al
 \label{sec:approach:features}
 Feature extraction translates an event log into numbers. It is the only step that reads the event log, so a drift that no feature captures stays invisible in all following steps. In the intra-case perspective, a row of the feature matrix describes an event by the prefix of its case. In the other two perspectives, it describes a feature window by the events that lie in it.
 
-\medskip
-\noindent\emph{Notation:}
-\begin{itemize}[beginpenalty=10000]
-	\item \emph{One-hot vector:} For $1 \le i \le p$, $\mathit{onehot}_p(i) \in \R^p$ has a 1 at position $i$ and 0 elsewhere, e.g., $\mathit{onehot}_3(2) = (0, 1, 0)$. $\mathbf{0}$ is the zero vector.
-	\item \emph{Concatenation:} $(\mathbf{x}, \mathbf{y})$ appends the vector $\mathbf{y}$ to the vector $\mathbf{x}$, e.g., $((1, 2), (3)) = (1, 2, 3)$.
-	\item \emph{Statistics:} For a finite multiset $M = [x_1, \dots, x_k]$ of numbers, the mean and the sample standard deviation are
-	      \[
-		      \mathit{mean}(M) = \frac{1}{k} \sum_{i=1}^{k} x_i \quad\text{and}\quad \mathit{std}(M) = \sqrt{\frac{1}{k - 1} \sum_{i=1}^{k} (x_i - \mathit{mean}(M))^2}.
-	      \]
-	      We set $\mathit{mean}([\,]) = 0$, and $\mathit{std}(M) = 0$ for $k < 2$. For $p, q \in \N_0$, $\mathit{ratio}(p, q) = p / q$ for $q > 0$ and $\mathit{ratio}(p, 0) = 0$.
-	\item \emph{Time:} As in Section~\ref{sec:prelim:windows}, we treat timestamps as real numbers and give time differences in minutes.
-\end{itemize}
+The feature groups use the notation for vectors and statistics of Section~\ref{sec:prelim:maths}, and time differences are in minutes (Section~\ref{sec:prelim:windows}).
 
 \begin{definition}[Feature and Signal Windows]
 	\label{def:approach:window_roles}
@@ -236,7 +225,7 @@ The intra-case features describe each event $e$ by the prefix of its case, i.e.,
 \begin{table}[tb]
 	\centering
 	\caption[Intra-case feature vectors of the running example]{%
-		Two rows of the intra-case feature matrix of $L_3$ with three feature groups: the third events of case~1 before and of case~3711 after the control-flow drift (Table~\ref{tab:approach:running_log}). The activity columns are in the order $a$ to $e$, the directly-follows columns in the order $a \to b$, $a \to c$, $b \to c$, $b \to d$, $b \to e$, $c \to b$, $c \to d$, $c \to e$, $d \to e$ and $e \to d$. Bold vectors differ between the two events.}
+		Two rows of the intra-case feature matrix of $L_3$ with three feature groups: the third events of case~1 before and of case~3711 after the control-flow drift (Table~\ref{tab:approach:running_log}). The activity columns are in the order $a$ to $e$, the directly-follows columns in the order $a \to b$, $a \to c$, $b \to c$, $b \to d$, $b \to e$, $c \to b$, $c \to d$, $c \to e$, $d \to e$ and $e \to d$. Only the directly-follows counts and the current activity differ between the two events.}
 	\label{tab:approach:features_intra}
 	\small
 	\begin{tabular}{@{}lll@{}}
@@ -244,8 +233,8 @@ The intra-case features describe each event $e$ by the prefix of its case, i.e.,
 		Feature group           & Case 1, prefix $\seq{a, b, c}$            & Case 3711, prefix $\seq{a, c, b}$         \\
 		\midrule
 		Activity frequencies    & $(1/3, 1/3, 1/3, 0, 0)$                   & $(1/3, 1/3, 1/3, 0, 0)$                   \\
-		Directly-follows counts & $\mathbf{(1, 0, 1, 0, 0, 0, 0, 0, 0, 0)}$ & $\mathbf{(0, 1, 0, 0, 0, 1, 0, 0, 0, 0)}$ \\
-		Current activity        & $\mathbf{(0, 0, 1, 0, 0)}$                & $\mathbf{(0, 1, 0, 0, 0)}$                \\
+		Directly-follows counts & $(1, 0, 1, 0, 0, 0, 0, 0, 0, 0)$ & $(0, 1, 0, 0, 0, 1, 0, 0, 0, 0)$ \\
+		Current activity        & $(0, 0, 1, 0, 0)$                & $(0, 1, 0, 0, 0)$                \\
 		\bottomrule
 	\end{tabular}
 \end{table}
@@ -701,9 +690,9 @@ The three examples show that the explained variance alone does not decide the cu
 
 \section{Clustering into States}
 \label{sec:approach:clustering}
-A clustering groups the rows (feature windows or events) of the reduced matrix such that rows that describe similar behavior end up in the same cluster. We treat each cluster as a state. We use the three clustering algorithms k-means, SOM and DBSCAN (Section~\ref{sec:prelim:clustering}). Similar to the previous steps, our framework is flexible and can easily be extended with further clustering algorithms such as k-medoids or hierarchical clustering. For each perspective, users choose the algorithm and its parameters depending on the event log, e.g., in the dashboard (Section~\ref{sec:impl:dashboard}).
+A clustering groups the rows (feature windows or events) of the reduced matrix such that rows that describe similar behavior end up in the same cluster. We treat each cluster as a state. We use the three clustering algorithms k-means, SOM and DBSCAN (Section~\ref{sec:prelim:clustering}). Similar to the previous steps, our framework is flexible and can easily be extended with further clustering algorithms such as k-medoids or hierarchical clustering. For each perspective, users choose the algorithm and its hyperparameters depending on the event log, e.g., in the dashboard (Section~\ref{sec:impl:dashboard}).
 
-The algorithms also help to choose each other's parameters. For example, a SOM with a large grid shows how many groups of frequently used cells lie far apart from each other, which suggests the number $k$ of clusters for k-means. The evaluation measures of Section~\ref{sec:prelim:cluster_eval} additionally show how good a clustering is and support the choice of the grid size, $k$, $\varepsilon$ and $\mathit{minPts}$.
+The algorithms also help to choose each other's hyperparameters. For example, a SOM with a large grid shows how many groups of frequently used cells lie far apart from each other, which suggests the number $k$ of clusters for k-means. The evaluation measures of Section~\ref{sec:prelim:cluster_eval} additionally show how good a clustering is and support the choice of the grid size, $k$, $\varepsilon$ and $\mathit{minPts}$.
 
 Our framework supports various distances for the clustering. Besides the Euclidean distance, the SOM and DBSCAN also work with the Manhattan, Chebyshev and cosine distances (Section~\ref{sec:prelim:pca}). k-means only uses the Euclidean distance, since each of its centers is the mean of its vectors (Definition~\ref{def:prelim:kmeans}). In the running example, all three algorithms use the Euclidean distance.
 

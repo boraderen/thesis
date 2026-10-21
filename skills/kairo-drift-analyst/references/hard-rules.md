@@ -26,7 +26,9 @@ These rules hold whenever you work with the kairo-drift-analyst skill
   results instead of computing them.
 - Report only results of runs that finished. If no run finished, say so; never claim drifts, or
   that there are none, without a drift signal you computed.
-- Report at most one configuration and one threshold per perspective.
+- Report exactly one configuration and one threshold for each required perspective: two
+  (intra-case and resource) for a Padella log in `data/thesis/eval/padella/`, three (intra-case,
+  resource and inter-case) for every other log, also for a perspective without a drift.
 - Finish in this order: claim your result folder with the next free number (`kp.new_result_folder`
   or the `mkdir` loop in `SKILL.md`, *Results files*), save the drift signal plots and CSVs into
   it, write your entry to its `results.md` with

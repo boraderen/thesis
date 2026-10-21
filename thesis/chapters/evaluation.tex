@@ -1,21 +1,25 @@
 \chapter{Evaluation}
 \label{chap:eval}
+The main handicap of our framework is its flexibility and large hyperparameter space. That has the consequence that for the same with the same drifts two different configurations of a perspective might have a very different performance in catchting the drifts or not catching the non-drifts.
+
+In this chapter we will evaluate our framework from Chapter~\ref{chap:approach}. The goal is to show where is framework is strong and where it has limitations. In our evaluation we use the logs of the Padella benchmark~\ref{sec:eval:padella} and three sets of synthetic Rheon logs~\ref{sec:eval:rheon}. 
+
+Since the output for a log of our framework is a drift signal over signal windows per perspective, we need to align it with log and real drifts points. In order to do our evaluation, we first formalize it and introduce an evaluation framework. Figure~\ref{fig:eval:example} shows an example of our evaluation framework and how it compares a drift signal and a log with drifts.
 
 \begin{itemize}
-	\item Goal: show where the framework is strong and where it has limitations.
-	\item Interpret the results from the point of view of the states: what the states give us and what not.
-	\item Short notes in the sections and subsections, referenced later in Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+	\item \emph{Runs:} A run describes for each log and evaluated perspective a configuration and a threshold $\tau$ for its drift scores of the signal windows.
+	\item \emph{Signal windows:} The signal windows of a drift signal (Definition~\ref{def:approach:drift_signal}) are the unit of our evaluation. We only evaluate scored signal windows. A signal window is not scored if it has no reference, if it is the first or the last signal window and the log covers it only partially, or if it is thin, i.e., it has less than a quarter of the median number of rows.
+	\item \emph{Detections:} A detection is a sequence $v_i, \dots, v_j$ of consecutive scored signal windows with $\mathit{score}_l \ge \tau$ for $i \le l \le j$ that cannot be extended. The detection lies in its first signal window $v_i$. Thus, a drift that keeps the drift scores high over several signal windows gives only one detection.
+	\item \emph{Truth events and zones:} Each injected drift is a truth event of the perspective that is expected to catch it. If the drift point of a sudden drift lies in $v_k$, its zone is $v_{k-1}, v_k, v_{k+1}$. If a gradual drift starts in $v_s$ and ends in $v_e$, its zone is $v_{s-1}, \dots, v_{e+1}$.
+	\item \emph{Counts:} A truth event is a True Positive (TP) if its zone contains a detection, otherwise it is a False Negative (FN). Every detection outside of the zones is a False Positive (FP), and we ignore further detections in a zone. Every scored signal window outside of the zones without a detection is a True Negative (TN). A perspective without truth events has no zones, so each of its detections is an FP.
+	\item \emph{Metrics:} We sum up the counts of all logs of a run, also separately for each drift type and drift mode, and compute
+	      \[
+		      \mathit{Precision} = \frac{\mathit{TP}}{\mathit{TP} + \mathit{FP}}, \quad \mathit{Recall} = \frac{\mathit{TP}}{\mathit{TP} + \mathit{FN}} \quad\text{and}\quad \mathit{F1} = \frac{2 \cdot \mathit{Precision} \cdot \mathit{Recall}}{\mathit{Precision} + \mathit{Recall}}.
+	      \]
 \end{itemize}
+TP and FN count drifts, FP counts detections and TN counts signal windows. The zone allows a detection one signal window before or after the drift (Section~\ref{sec:approach:drift_signals}). We compare two runs on the Padella benchmark and one run on each set of Rheon logs.
 
-Evaluation framework (Figure~\ref{fig:eval:example}):
-\begin{itemize}
-	\item \emph{Runs:} A run reports for each log and each evaluated perspective one configuration and one threshold $\tau$ on its drift scores. We evaluate two runs separately and compare their results.
-	\item \emph{Signal windows:} The signal window is the unit of the evaluation. Signal windows without a reference, the partial first and last signal windows and thin signal windows with less than a quarter of the median number of rows are not scored.
-	\item \emph{Detection:} A sequence of consecutive signal windows with a drift score of at least $\tau$. It is located at its first signal window.
-	\item \emph{Truth event and zone:} An injected drift is a truth event of the perspective that is expected to catch it. Its zone is the signal window of the drift point $\pm 1$ signal window for a sudden drift and the signal windows from its start to its end $\pm 1$ signal window for a gradual drift.
-	\item \emph{Counts:} A truth event is a TP if its zone contains at least one detection, otherwise an FN. Each detection outside a zone is an FP, and further detections in a zone are ignored. Each scored signal window outside the zones without a detection is a TN. A perspective without a truth event has no zone, so each of its detections is an FP.
-	\item \emph{Metrics:} We sum the counts of all logs of a run and compute precision, recall and F1.
-\end{itemize}
+The logs and the configurations and thresholds of all runs are available on Google Drive\footnote{\url{https://drive.google.com/drive/folders/1sie4iFTUNmHuyvMVoW8tktyvtoUzbmEp}}.
 
 \begin{figure}[tb]
 	\centering
@@ -62,14 +66,32 @@ Evaluation framework (Figure~\ref{fig:eval:example}):
 
 \section{Padella Benchmark}
 \label{sec:eval:padella}
+The Padella benchmark~\autocite{padella2026everything} consists of five real base logs (Table~\ref{tab:eval:padella:logs}), their five baselines without a drift and 29 logs with one injected drift each. Each injected drift changes one activity in 35 to 70\% of the cases. The benchmark has 15 sudden and 14 gradual drifts of three drift types:
 \begin{itemize}
-	\item Introduce the Padella benchmark~\autocite{padella2026everything}: five real base logs, their five baselines without drift and 29 logs with one injected drift each.
-	\item Drift types \texttt{cf}, \texttt{time\_fast} and \texttt{time\_slow}, each sudden and gradual. The baselines are not stationary, so FPs are possible.
-	\item Expected perspective of each drift type (Figure~\ref{fig:eval:padella:perspectives}). We evaluate only the intra-case and the resource perspectives.
-	\item Global results of both runs first (Figure~\ref{fig:eval:padella:confusion} and Table~\ref{tab:eval:padella:metrics}), then the results per drift type and per drift mode.
-	\item The two runs show how much the results of a log depend on its configuration and hyperparameters.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+	\item \emph{Control-flow (\texttt{cf}):} Nine drifts delete, replace or insert an activity.
+	\item \emph{Fast time (\texttt{time\_fast}):} Ten drifts multiply the duration of an activity by 0.1 to 0.5.
+	\item \emph{Slow time (\texttt{time\_slow}):} Ten drifts multiply the duration of an activity by 2 to 6.
 \end{itemize}
+The time drifts only change the durations and not the waiting times. Figure~\ref{fig:eval:padella:perspectives} shows which perspective is expected to catch which drift type. The \texttt{cf} drifts are truth events of the intra-case perspective and the time drifts of the resource perspective. We only evaluate these two perspectives. We first present the results of both runs over all logs. Then, Sections~\ref{sec:eval:padella:cf} to~\ref{sec:eval:padella:time_slow} present the results per drift type and Sections~\ref{sec:eval:padella:sudden} and~\ref{sec:eval:padella:gradual} per drift mode.
+
+\begin{table}[tb]
+	\centering
+	\caption[Padella base logs]{%
+		The baselines of the five Padella base logs with their number of cases and events, size, number of activities (Act.), resources (Res.) and trace variants (Var.), time span in days and average throughput time (TPT) in days of a case from the start of its first to the completion of its last event. The drifted versions of a base log have the same cases. Their \texttt{cf} drifts change the events and trace variants, and their time drifts the throughput times, which range from 7.9 to 21.2~days over all 34 logs. \texttt{time\_slow} drifts extend the time span of a log up to 4.5~years.}
+	\label{tab:eval:padella:logs}
+	\small
+	\begin{tabular}{@{}l|r|r|r|r|r|r|r|r@{}}
+		\hline
+		Base log                & Cases  & Events  & MB    & Act. & Res. & Var.  & Days & TPT  \\
+		\hline
+		Bank account closure    & 32,429 & 212,721 & 108.3 & 15   & 654  & 182   & 646  & 15.5 \\
+		Domestic declarations   & 10,500 & 56,437  & 27.7  & 17   & 2    & 99    & 889  & 11.5 \\
+		Loan application        & 8,049  & 51,059  & 20.2  & 6    & 58   & 1,829 & 165  & 7.9  \\
+		Purchase order handling & 8,000  & 35,738  & 22.4  & 33   & 292  & 433   & 53   & 15.2 \\
+		Request for payment     & 6,886  & 36,796  & 19.8  & 19   & 2    & 89    & 941  & 12.0 \\
+		\hline
+	\end{tabular}
+\end{table}
 
 \begin{figure}[tb]
 	\centering
@@ -92,7 +114,124 @@ Evaluation framework (Figure~\ref{fig:eval:example}):
 	\label{fig:eval:padella:perspectives}
 \end{figure}
 
-% mock data, to be replaced by the results
+The two runs only differ in their configurations and thresholds. Agents with our skill \texttt{kairo-drift-analyst} created those of Run~1 (Section~\ref{sec:impl:kairo:agent}), and we tuned them by hand for Run~2. Run~1 detects 19 of the 29 drifts, but has 75 FPs and only reaches an F1-score of 0.309. Run~2 detects 28 of the 29 drifts with 8 FPs and reaches an F1-score of 0.862 (Figure~\ref{fig:eval:padella:confusion} and Table~\ref{tab:eval:padella:metrics}). This shows the main handicap of our framework: on the same logs, two configurations of a perspective perform very differently.
+
+Most of the FPs of Run~1 are not mistakes of the states. Real processes are not static even without an injected drift (first-order dynamics), and the baselines alone already get 13 FPs in Run~1. In the logs of Domestic declarations and Request for payment, the pre-approver also stops approving after December~21, 2017, and from January 2018 the administration and the budget owner approve instead. Run~1 detects this real change, but the benchmark does not know it, so each detection counts as an FP. 24 of the 30 FPs of Run~1 in these 14 logs lie at this turn of the year, whereas Run~2 has only one there (Figure~\ref{fig:eval:padella:timeline}). Thus, with suitable configurations, the states separate the injected drifts almost completely from the natural behavior of the real logs, but the results strongly depend on the configuration and the threshold.
+
+\begin{figure}[tb]
+	\centering
+	\definecolor{fp}{RGB}{213,94,0}
+	\definecolor{inzone}{RGB}{0,114,178}
+	\definecolor{zoneFill}{RGB}{86,180,233}
+	% intra-case detections are open circles, resource detections filled triangles, #1 is the color
+	\newcommand*{\intramark}[3]{\draw[#1, line width=0.9pt] (#2, #3) circle (2.6pt);}
+	\newcommand*{\resmark}[3]{\fill[#1] (#2, #3) ++(0, 2.5pt) -- ++(-2.2pt, -3.9pt) -- ++(4.4pt, 0) -- cycle;}
+	\begin{tikzpicture}[font=\small, gradual/.style={fill=zoneFill!35}]
+		% one x unit is one cm, i.e., about 47 days from November 1, 2017
+		\fill[black!14] (1.074, -6.65) rectangle (1.461, 0.15);
+		\node[anchor=south, inner sep=1pt] at (1.2675, 0.15) {natural change};
+		\node[anchor=west, font=\small\itshape] at (-3.3, -0.4) {Domestic declarations};
+		\node[anchor=east] at (-0.15, -0.8) {baseline};
+		\draw[black!25] (0, -0.8) -- (10.4, -0.8);
+		\intramark{fp}{1.225}{-0.71}
+		\resmark{fp}{1.225}{-0.71}
+		\node[anchor=east] at (-0.15, -1.2000000000000002) {\texttt{cf}, sudden};
+		\draw[black!25] (0, -1.2000000000000002) -- (10.4, -1.2000000000000002);
+		\draw[dashed, thick] (5.071, -1.37) -- (5.071, -1.03);
+		\intramark{fp}{1.225}{-1.11}
+		\intramark{inzone}{5.436}{-1.11}
+		\resmark{fp}{1.225}{-1.11}
+		\intramark{inzone}{5.136}{-1.29}
+		\node[anchor=east] at (-0.15, -1.6) {\texttt{cf}, gradual};
+		\draw[black!25] (0, -1.6) -- (10.4, -1.6);
+		\fill[gradual] (4.276, -1.77) rectangle (6.425, -1.43);
+		\intramark{fp}{1.053}{-1.51}
+		\resmark{fp}{1.225}{-1.51}
+		\resmark{fp}{9.046}{-1.51}
+		\intramark{inzone}{6.038}{-1.69}
+		\node[anchor=east] at (-0.15, -2.0) {\texttt{time\_fast}, sudden};
+		\draw[black!25] (0, -2.0) -- (10.4, -2.0);
+		\draw[dashed, thick] (5.071, -2.17) -- (5.071, -1.83);
+		\intramark{fp}{1.225}{-1.91}
+		\resmark{fp}{6.64}{-1.91}
+		\resmark{inzone}{5.436}{-2.09}
+		\node[anchor=east] at (-0.15, -2.4) {\texttt{time\_fast}, gradual};
+		\draw[black!25] (0, -2.4) -- (10.4, -2.4);
+		\fill[gradual] (4.276, -2.57) rectangle (6.425, -2.23);
+		\intramark{fp}{1.375}{-2.31}
+		\resmark{fp}{1.375}{-2.31}
+		\resmark{fp}{9.046}{-2.31}
+		\intramark{fp}{1.375}{-2.49}
+		\resmark{inzone}{6.339}{-2.49}
+		\node[anchor=east] at (-0.15, -2.8) {\texttt{time\_slow}, sudden};
+		\draw[black!25] (0, -2.8) -- (10.4, -2.8);
+		\draw[dashed, thick] (5.071, -2.97) -- (5.071, -2.63);
+		\intramark{fp}{1.225}{-2.71}
+		\resmark{inzone}{5.436}{-2.71}
+		\node[anchor=east] at (-0.15, -3.1999999999999997) {\texttt{time\_slow}, gradual};
+		\draw[black!25] (0, -3.1999999999999997) -- (10.4, -3.1999999999999997);
+		\fill[gradual] (4.276, -3.37) rectangle (6.425, -3.03);
+		\intramark{fp}{1.225}{-3.11}
+		\resmark{inzone}{5.436}{-3.11}
+		\resmark{inzone}{5.436}{-3.29}
+		\node[anchor=west, font=\small\itshape] at (-3.3, -3.5999999999999996) {Request for payment};
+		\node[anchor=east] at (-0.15, -3.9999999999999996) {baseline};
+		\draw[black!25] (0, -3.9999999999999996) -- (10.4, -3.9999999999999996);
+		\intramark{fp}{1.225}{-3.91}
+		\resmark{fp}{1.225}{-3.91}
+		\resmark{fp}{9.648}{-3.91}
+		\node[anchor=east] at (-0.15, -4.3999999999999995) {\texttt{cf}, sudden};
+		\draw[black!25] (0, -4.3999999999999995) -- (10.4, -4.3999999999999995);
+		\draw[dashed, thick] (4.04, -4.57) -- (4.04, -4.23);
+		\intramark{fp}{1.225}{-4.31}
+		\intramark{inzone}{4.233}{-4.31}
+		\resmark{fp}{1.826}{-4.31}
+		\intramark{inzone}{4.083}{-4.49}
+		\node[anchor=east] at (-0.15, -4.8) {\texttt{cf}, gradual};
+		\draw[black!25] (0, -4.8) -- (10.4, -4.8);
+		\fill[gradual] (3.051, -4.97) rectangle (5.071, -4.63);
+		\intramark{fp}{1.225}{-4.71}
+		\intramark{inzone}{3.631}{-4.71}
+		\intramark{fp}{9.046}{-4.71}
+		\resmark{fp}{1.225}{-4.71}
+		\intramark{inzone}{4.835}{-4.89}
+		\node[anchor=east] at (-0.15, -5.2) {\texttt{time\_fast}, sudden};
+		\draw[black!25] (0, -5.2) -- (10.4, -5.2);
+		\draw[dashed, thick] (4.04, -5.37) -- (4.04, -5.03);
+		\intramark{fp}{1.225}{-5.11}
+		\resmark{inzone}{4.233}{-5.11}
+		\resmark{inzone}{4.233}{-5.29}
+		\node[anchor=east] at (-0.15, -5.6000000000000005) {\texttt{time\_fast}, gradual};
+		\draw[black!25] (0, -5.6000000000000005) -- (10.4, -5.6000000000000005);
+		\fill[gradual] (3.051, -5.77) rectangle (5.071, -5.43);
+		\intramark{fp}{1.225}{-5.51}
+		\resmark{fp}{1.225}{-5.51}
+		\resmark{fp}{9.046}{-5.51}
+		\resmark{inzone}{4.835}{-5.69}
+		\node[anchor=east] at (-0.15, -6.000000000000001) {\texttt{time\_slow}, sudden};
+		\draw[black!25] (0, -6.000000000000001) -- (10.4, -6.000000000000001);
+		\draw[dashed, thick] (4.04, -6.17) -- (4.04, -5.83);
+		\intramark{fp}{1.375}{-5.91}
+		\resmark{fp}{1.375}{-5.91}
+		\resmark{inzone}{4.233}{-6.09}
+		\node[anchor=east] at (-0.15, -6.400000000000001) {\texttt{time\_slow}, gradual};
+		\draw[black!25] (0, -6.400000000000001) -- (10.4, -6.400000000000001);
+		\fill[gradual] (3.051, -6.57) rectangle (5.071, -6.23);
+		\intramark{fp}{1.225}{-6.31}
+		\resmark{fp}{1.225}{-6.31}
+		\resmark{inzone}{3.631}{-6.49}
+		\draw (0, -6.65) -- (10.4, -6.65);
+		\draw (1.311, -6.65) -- (1.311, -6.73) node[below] {Jan.~2018};
+		\draw (3.245, -6.65) -- (3.245, -6.73) node[below] {Apr.~2018};
+		\draw (5.2, -6.65) -- (5.2, -6.73) node[below] {July~2018};
+		\draw (7.177, -6.65) -- (7.177, -6.73) node[below] {Oct.~2018};
+		\draw (9.154, -6.65) -- (9.154, -6.73) node[below] {Jan.~2019};
+	\end{tikzpicture}
+	\caption[Detections around the turn of the year 2017/18]{%
+		Detections in the 14 logs of the base logs Domestic declarations and Request for payment, with Run~1 in the upper and Run~2 in the lower lane of each row. Circles are intra-case and triangles resource detections at the start of their signal window, blue in the zone of the injected drift and orange as FP. Dashed lines mark sudden drift points and light blue areas gradual drift windows. The gray band marks the natural change from December~21, 2017, to January~8, 2018, at which 24 of the 30 FPs of Run~1 lie.}
+	\label{fig:eval:padella:timeline}
+\end{figure}
+
 \begin{figure}[tb]
 	\centering
 	\def\confmat#1#2#3#4{%
@@ -108,250 +247,247 @@ Evaluation framework (Figure~\ref{fig:eval:example}):
 		\end{tikzpicture}}
 	\begin{subfigure}[b]{0.45\textwidth}
 		\centering
-		\confmat{20}{9}{25}{2,336}
+		\confmat{19}{10}{75}{1,284}
 		\caption{Run 1}
 	\end{subfigure}
 	\hfill
 	\begin{subfigure}[b]{0.45\textwidth}
 		\centering
-		\confmat{16}{13}{13}{2,369}
+		\confmat{28}{1}{8}{1,522}
 		\caption{Run 2}
 	\end{subfigure}
-	\caption[Confusion matrices on the Padella benchmark (mock data)]{%
-		Confusion matrices over all Padella logs for both runs, with TP and FN in the first row and FP and TN in the second row. Rows: actual, columns: detected (mock data).}
+	\caption[Confusion matrices on the Padella benchmark]{%
+		Confusion matrices over all 34 Padella logs and both evaluated perspectives for both runs, with TP and FN in the first row and FP and TN in the second row. Rows: actual, columns: detected. TP and FN count injected drifts, FP count detections and TN count signal windows.}
 	\label{fig:eval:padella:confusion}
 \end{figure}
 
-% mock data, to be replaced by the results
 \begin{table}[tb]
 	\centering
-	\caption[Results on the Padella benchmark (mock data)]{%
-		Counts, precision, recall and F1 of both runs on the Padella benchmark, over all logs and per drift type and drift mode. All logs include the baselines (mock data).}
+	\caption[Results on the Padella benchmark]{%
+		Counts, precision, recall and F1 of both runs on the Padella benchmark, over all logs and per drift type and drift mode. Each group pools the counts of both perspectives. The baselines have no drift, so that their precision, recall and F1 are undefined (--).}
 	\label{tab:eval:padella:metrics}
 	\small
-	\begin{tabular}{@{}l|r|r|r|r|r|r|r|r|r@{}}
+	\begin{tabular}{@{}l|r|r|r|r|r|r|r|r@{}}
 		\hline
-		Group               & Run & Logs & TP & FN & FP & TN    & Precision & Recall & F1    \\
+		Group               & Run & TP & FP & FN & TN    & Precision & Recall & F1    \\
 		\hline
-		All                 & 1   & 34   & 20 & 9  & 25 & 2,336 & 0.444     & 0.690  & 0.541 \\
-		                    & 2   & 34   & 16 & 13 & 13 & 2,369 & 0.552     & 0.552  & 0.552 \\
+		All                 & 1   & 19 & 75 & 10 & 1,284 & 0.202     & 0.655  & 0.309 \\
+		                    & 2   & 28 & 8  & 1  & 1,522 & 0.778     & 0.966  & 0.862 \\
 		\hline
-		\texttt{cf}         & 1   & 9    & 8  & 1  & 7  & 610   & 0.533     & 0.889  & 0.667 \\
-		                    & 2   & 9    & 7  & 2  & 4  & 620   & 0.636     & 0.778  & 0.700 \\
+		\texttt{cf}         & 1   & 8  & 26 & 1  & 318   & 0.235     & 0.889  & 0.372 \\
+		                    & 2   & 9  & 2  & 0  & 386   & 0.818     & 1.000  & 0.900 \\
+		\texttt{time\_fast} & 1   & 5  & 22 & 5  & 363   & 0.185     & 0.500  & 0.270 \\
+		                    & 2   & 10 & 2  & 0  & 423   & 0.833     & 1.000  & 0.909 \\
+		\texttt{time\_slow} & 1   & 6  & 14 & 4  & 376   & 0.300     & 0.600  & 0.400 \\
+		                    & 2   & 9  & 4  & 1  & 465   & 0.692     & 0.900  & 0.783 \\
+		Baselines           & 1   & 0  & 13 & 0  & 227   & --        & --     & --    \\
+		                    & 2   & 0  & 0  & 0  & 248   & --        & --     & --    \\
 		\hline
-		\texttt{time\_fast} & 1   & 10   & 5  & 5  & 7  & 683   & 0.417     & 0.500  & 0.455 \\
-		                    & 2   & 10   & 3  & 7  & 3  & 694   & 0.500     & 0.300  & 0.375 \\
-		\hline
-		\texttt{time\_slow} & 1   & 10   & 7  & 3  & 5  & 691   & 0.583     & 0.700  & 0.636 \\
-		                    & 2   & 10   & 6  & 4  & 3  & 698   & 0.667     & 0.600  & 0.632 \\
-		\hline
-		Sudden              & 1   & 15   & 12 & 3  & 8  & 1,035 & 0.600     & 0.800  & 0.686 \\
-		                    & 2   & 15   & 10 & 5  & 4  & 1,048 & 0.714     & 0.667  & 0.690 \\
-		\hline
-		Gradual             & 1   & 14   & 8  & 6  & 11 & 949   & 0.421     & 0.571  & 0.485 \\
-		                    & 2   & 14   & 6  & 8  & 6  & 964   & 0.500     & 0.429  & 0.462 \\
+		Sudden              & 1   & 9  & 36 & 6  & 563   & 0.200     & 0.600  & 0.300 \\
+		                    & 2   & 14 & 5  & 1  & 636   & 0.737     & 0.933  & 0.824 \\
+		Gradual             & 1   & 10 & 26 & 4  & 494   & 0.278     & 0.714  & 0.400 \\
+		                    & 2   & 14 & 3  & 0  & 638   & 0.824     & 1.000  & 0.903 \\
 		\hline
 	\end{tabular}
 \end{table}
 
 \subsection{Control-Flow Drifts}
 \label{sec:eval:padella:cf}
-\begin{itemize}
-	\item Results of both runs on the logs with control-flow drifts (\texttt{cf}).
-	\item Comparison of the runs: how much the configuration and the hyperparameters matter for these logs.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+We expect the intra-case states to show the \texttt{cf} drifts directly, since these drifts change the activities of the cases (Figure~\ref{fig:approach:features_intra}). Both runs confirm this with a recall of 0.889 and 1.0, but Run~1 has 26 FPs and Run~2 only two. For example, in the Bank account closure log the activity \texttt{Pending Request for Reservation Closure} disappears on November~26, 2018. Run~1 only uses the current activity as feature, so that each of its 15 states stands for one activity. The share of the state of this activity drops from 13.6\% in the signal window from November~1 to 0.2\% in the signal window from January~24, 2019. Thus, the intra-case states reliably catch deleted, inserted and replaced activities, and with one state per activity they directly show which activity changes.
 
 \subsection{Fast Time Drifts}
 \label{sec:eval:padella:time_fast}
-\begin{itemize}
-	\item Results of both runs on the logs with fast time drifts (\texttt{time\_fast}).
-	\item Comparison of the runs: how much the configuration and the hyperparameters matter for these logs.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+We expect the resource states to show the \texttt{time\_fast} drifts through the mean duration of the events of each resource, but not the intra-case states, since their features do not encode time. Run~1 only detects 5 of the 10 drifts with 22 FPs (F1-score 0.270), whereas Run~2 detects all ten with two FPs (F1-score 0.909). For example, in the Loan application log a sudden drift multiplies the duration of the activity \texttt{W\_Completeren aanvraag} by 0.1. The resource perspective of Run~1 only clusters the number of events per resource, which does not encode durations, and misses the drift. Run~2 uses the durations per resource and detects it. Thus, a drift that no feature of the configuration captures stays hidden in the states (Section~\ref{sec:approach:features}).
 
 \subsection{Slow Time Drifts}
 \label{sec:eval:padella:time_slow}
-\begin{itemize}
-	\item Results of both runs on the logs with slow time drifts (\texttt{time\_slow}).
-	\item Comparison of the runs: how much the configuration and the hyperparameters matter for these logs.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+Since the \texttt{time\_slow} drifts multiply a duration by 2 to 6, we expect them to be easier to detect than the \texttt{time\_fast} drifts. This holds for Run~1 with a recall of 0.6 against 0.5. In Run~2, however, \texttt{time\_slow} is the weakest drift type with an F1-score of 0.783. Run~2 only misses the sudden \texttt{time\_slow} drift in the Domestic declarations log, which multiplies the duration of an activity by 4, and has four FPs on these logs. For example, in the Request for payment log a sudden drift on May~8, 2018, multiplies the duration of an activity by 5. Both perspectives of Run~1 detect the real change at the turn of the year 2017/18 instead. Since a run has only one configuration and one threshold per perspective, a stronger real change can hide an injected drift of the same perspective.
 
 \subsection{Sudden Drifts}
 \label{sec:eval:padella:sudden}
-\begin{itemize}
-	\item Results of both runs on the logs with sudden drifts, over all drift types.
-	\item Comparison of the runs: how much the configuration and the hyperparameters matter for these logs.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+A sudden drift changes the state distribution from one signal window to the next (Section~\ref{sec:approach:drift_signals}). Therefore, we expect sudden drifts to be easier to detect. However, Run~1 only detects 9 of the 15 sudden drifts (F1-score 0.300) and Run~2 detects 14 (F1-score 0.824). Both runs detect all sudden \texttt{cf} drifts, but Run~1 misses six sudden time drifts. Moreover, the zone of a sudden drift only covers three signal windows, whereas the zone of a gradual drift covers 5.3 signal windows on average in Run~1. Thus, the longer zones favor the gradual drifts.
 
 \subsection{Gradual Drifts}
 \label{sec:eval:padella:gradual}
-\begin{itemize}
-	\item Results of both runs on the logs with gradual drifts, over all drift types.
-	\item Comparison of the runs: how much the configuration and the hyperparameters matter for these logs.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+Run~1 detects 10 of the 14 gradual drifts (F1-score 0.400) and Run~2 all 14 (F1-score 0.903). Contrary to our expectation, gradual drifts therefore perform better than sudden drifts. For example, Run~1 misses the gradual \texttt{cf} drift in the Domestic declarations log with signal windows of 30 days and the previous signal window as reference. Run~2 detects it with signal windows of 56 days and the mean of the three previous signal windows as reference. In this example, longer signal windows with a reference over several signal windows show the gradual change better.
 
 \section{Rheon Benchmark}
 \label{sec:eval:rheon}
+The Rheon logs contain drifts from all three perspectives (Chapter~\ref{chap:rheon}). Therefore, we evaluate all three perspectives on three sets of 15 logs each:
 \begin{itemize}
-	\item Three sets of Rheon logs: single-drift, multi-drift and mixed-drift logs.
-	\item All three perspectives are evaluated. The expected perspective of a drift is the perspective of its drift type (Table~\ref{tab:rheon:drift_types}).
-	\item In each set, the global results of both runs first, then the results per drift perspective and per drift mode.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
+	\item \emph{Single-drift logs:} Each log has one drift (Section~\ref{sec:eval:rheon:single}).
+	\item \emph{Multi-drift logs:} Each log has two to four drifts from the same perspective (Section~\ref{sec:eval:rheon:multi}).
+	\item \emph{Mixed-drift logs:} Each log has two to five drifts from different perspectives (Section~\ref{sec:eval:rheon:mixed}).
 \end{itemize}
+The expected perspective of a drift is the perspective of its drift type (Table~\ref{tab:rheon:drift_types}). Apart from the injected drifts, Rheon samples the logs from fixed distributions (Section~\ref{sec:rheon:generation}). However, some drift types also reach the features of other perspectives (Section~\ref{sec:approach:features}), and such reactions count as FPs. In fact, 29 of the 38 FPs of all three sets lie at most two signal windows next to a drift of another perspective, and most of the others lie at the start or the end of a log. Thus, a drift often shows in several perspectives, and its perspective only follows from comparing the states of all three perspectives. In each set, we first present the results over all logs, then per drift perspective and drift mode.
 
 \subsection{Single-Drift Logs}
 \label{sec:eval:rheon:single}
-\begin{itemize}
-	\item Logs with one drift each.
-	\item Global results of both runs first (Table~\ref{tab:eval:rheon:single}).
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The first set consists of 15 logs with one drift each, five per perspective. Eight drifts are sudden and seven gradual. The logs have 3,254 to 124,021 cases, time spans from one month to five years, 4 to 22 activities and 3 to 60 resources. The run detects 14 of the 15 drifts with 12 FPs and reaches an F1-score of 0.683 (Table~\ref{tab:eval:rheon:single}). Nine of the 12 FPs are reactions of other perspectives to the drift of the log, and the other three lie at the end of a log. Thus, the states almost always detect a single drift in its expected perspective.
 
-% mock data, to be replaced by the results
-\begin{table}[tb]
+\begin{table}[htb]
 	\centering
-	\caption[Results on the single-drift Rheon logs (mock data)]{%
-		Precision, recall and F1 of both runs on the single-drift Rheon logs, over all logs, per drift perspective and per drift mode (mock data).}
+	\caption[Results on the single-drift Rheon logs]{%
+		Counts, precision, recall and F1 on the 15 single-drift Rheon logs, over all logs, per drift type and per drift mode. Each group pools all drift signals of the logs with this drift type or drift mode.}
 	\label{tab:eval:rheon:single}
 	\small
-	\begin{tabular}{@{}l|r|r|r|r|r|r@{}}
+	\begin{tabular}{@{}l|r|r|r|r|r|r|r@{}}
 		\hline
-		                  & \multicolumn{3}{c|}{Run 1}  & \multicolumn{3}{c}{Run 2}   \\
-		Logs              & Precision & Recall & F1    & Precision & Recall & F1    \\
+		Group                  & TP & FP & FN & TN    & Precision & Recall & F1    \\
 		\hline
-		All               & 0.438     & 0.778  & 0.560 & 0.545     & 0.667  & 0.600 \\
+		All                    & 14 & 12 & 1  & 1,447 & 0.538     & 0.933  & 0.683 \\
 		\hline
-		Intra-case        & 0.400     & 1.000  & 0.571 & 0.667     & 1.000  & 0.800 \\
-		Resource          & 0.500     & 0.875  & 0.636 & 0.556     & 0.625  & 0.588 \\
-		Inter-case        & 0.385     & 0.625  & 0.476 & 0.500     & 0.625  & 0.556 \\
+		\texttt{control\_flow} & 4  & 7  & 1  & 539   & 0.364     & 0.800  & 0.500 \\
 		\hline
-		Sudden            & 0.533     & 0.889  & 0.667 & 0.636     & 0.778  & 0.700 \\
-		Gradual           & 0.353     & 0.667  & 0.462 & 0.455     & 0.556  & 0.500 \\
+		\texttt{duration}      & 1  & 0  & 0  & 55    & 1.000     & 1.000  & 1.000 \\
+		\texttt{pool\_size}    & 2  & 0  & 0  & 221   & 1.000     & 1.000  & 1.000 \\
+		\texttt{reassignment}  & 1  & 0  & 0  & 68    & 1.000     & 1.000  & 1.000 \\
+		\texttt{workload}      & 1  & 1  & 0  & 25    & 0.500     & 1.000  & 0.667 \\
+		\hline
+		\texttt{amount}        & 2  & 0  & 0  & 40    & 1.000     & 1.000  & 1.000 \\
+		\texttt{arrival\_rate} & 1  & 1  & 0  & 132   & 0.500     & 1.000  & 0.667 \\
+		\texttt{region}        & 1  & 1  & 0  & 226   & 0.500     & 1.000  & 0.667 \\
+		\texttt{waiting\_time} & 1  & 2  & 0  & 141   & 0.333     & 1.000  & 0.500 \\
+		\hline
+		Sudden                 & 8  & 7  & 0  & 637   & 0.533     & 1.000  & 0.696 \\
+		Gradual                & 6  & 5  & 1  & 810   & 0.545     & 0.857  & 0.667 \\
 		\hline
 	\end{tabular}
 \end{table}
 
 \subsubsection{Intra-Case Drifts}
 \label{sec:eval:rheon:single:intra}
-\begin{itemize}
-	\item Results of both runs on the intra-case drifts (\texttt{control\_flow}) in the single-drift logs, and their comparison.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The run detects four of the five \texttt{control\_flow} drifts. Only the resource perspective reacts to the missed gradual drift, since its features include the shares of the activities and the handovers of the resources. All seven FPs of these logs come from the resource and the inter-case perspectives, which also react to the \texttt{control\_flow} drifts (Figures~\ref{fig:approach:features_resource} and~\ref{fig:approach:features_inter}). Thus, a detection in the resource or the inter-case perspective does not always indicate a drift of that perspective.
 
 \subsubsection{Resource Drifts}
 \label{sec:eval:rheon:single:resource}
-\begin{itemize}
-	\item Results of both runs on the resource drifts in the single-drift logs, and their comparison.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The run detects all five resource drifts. The inter-case perspective also reacts to the \texttt{workload} drift with an FP, and the resource perspective reacts to the \texttt{arrival\_rate} drift. Both drift types change the counts in the same way, so that no feature distinguishes them (Sections~\ref{sec:approach:features:resource} and~\ref{sec:approach:features:inter}).
 
 \subsubsection{Inter-Case Drifts}
 \label{sec:eval:rheon:single:inter}
-\begin{itemize}
-	\item Results of both runs on the inter-case drifts in the single-drift logs, and their comparison.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The run detects all five inter-case drifts, also the gradual \texttt{waiting\_time} drift, which doubles the mean waiting time over almost six months. In the logs of the three attribute drifts (\texttt{amount} and \texttt{region}), no perspective has an FP except one at the end of a log. Since attribute drifts only reach the attribute features, the states detect them clearly.
 
 \subsubsection{Sudden Drifts}
 \label{sec:eval:rheon:single:sudden}
-\begin{itemize}
-	\item Results of both runs on the sudden drifts in the single-drift logs, and their comparison.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The run detects all eight sudden drifts with seven FPs (F1-score 0.696). Six of these FPs are reactions of other perspectives to the drift of their log. Thus, the states detect every single sudden drift, and most FPs come from the other perspectives.
 
 \subsubsection{Gradual Drifts}
 \label{sec:eval:rheon:single:gradual}
-\begin{itemize}
-	\item Results of both runs on the gradual drifts in the single-drift logs, and their comparison.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The run detects six of the seven gradual drifts with five FPs (F1-score 0.667) and only misses one \texttt{control\_flow} drift. Thus, with a single drift per log, the F1-score hardly depends on the drift mode.
 
 \subsection{Multi-Drift Logs}
 \label{sec:eval:rheon:multi}
-\begin{itemize}
-	\item Logs with several drifts, all from the same perspective.
-	\item Global results of both runs first, as in Table~\ref{tab:eval:rheon:single}.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The second set consists of 15 logs with two to four drifts from the same perspective, five logs per perspective, with 30 sudden and 14 gradual drifts in total. The logs have 3,132 to 57,197 cases, time spans from six weeks to five years, 5 to 22 activities and 3 to 35 resources. We expect several drifts of one perspective to be harder to detect than a single drift. The run detects 25 of the 44 drifts with 13 FPs and reaches an F1-score of 0.610 (Table~\ref{tab:eval:rheon:multi}). Compared to the single-drift logs, the recall drops from 0.933 to 0.568. 11 of the 13 FPs are reactions of perspectives without a drift of their own to a drift in the log.
+
+\begin{table}[htb]
+	\centering
+	\caption[Results on the multi-drift Rheon logs]{%
+		Counts, precision (Prec.), recall (Rec.) and F1 on the 15 multi-drift Rheon logs, over all logs, per drift type and per drift mode. Each group pools all drift signals of the logs with exactly this set of drift types or drift modes.}
+	\label{tab:eval:rheon:multi}
+	\small
+	\setlength{\tabcolsep}{3pt}
+	\begin{tabular}{@{}>{\raggedright\arraybackslash}p{8.45cm}|r|r|r|r|r|r|r@{}}
+		\hline
+		Group                                                                            & TP & FP & FN & TN    & Prec. & Rec. & F1    \\
+		\hline
+		All                                                                              & 25 & 13 & 19 & 1,178 & 0.658 & 0.568 & 0.610 \\
+		\hline
+		\texttt{control\_flow}                                                           & 6  & 8  & 8  & 384   & 0.429 & 0.429 & 0.429 \\
+		\hline
+		\texttt{pool\_size}                                                              & 2  & 1  & 0  & 118   & 0.667 & 1.000 & 0.800 \\
+		\texttt{reassignment}                                                            & 2  & 0  & 0  & 76    & 1.000 & 1.000 & 1.000 \\
+		\texttt{pool\_size}, \texttt{reassignment}, \texttt{workload}                    & 1  & 1  & 2  & 11    & 0.500 & 0.333 & 0.400 \\
+		\texttt{duration}, \texttt{pool\_size}, \texttt{workload}                        & 1  & 0  & 2  & 132   & 1.000 & 0.333 & 0.500 \\
+		\texttt{duration}, \texttt{pool\_size}, \texttt{reassignment}, \texttt{workload} & 2  & 0  & 2  & 74    & 1.000 & 0.500 & 0.667 \\
+		\hline
+		\texttt{region}                                                                  & 3  & 0  & 0  & 138   & 1.000 & 1.000 & 1.000 \\
+		\texttt{amount}, \texttt{region}                                                 & 3  & 1  & 0  & 75    & 0.750 & 1.000 & 0.857 \\
+		\texttt{waiting\_time}                                                           & 1  & 0  & 2  & 14    & 1.000 & 0.333 & 0.500 \\
+		\texttt{arrival\_rate}, \texttt{waiting\_time}                                   & 3  & 2  & 0  & 57    & 0.600 & 1.000 & 0.750 \\
+		\texttt{amount}, \texttt{arrival\_rate}, \texttt{region}, \texttt{waiting\_time} & 1  & 0  & 3  & 99    & 1.000 & 0.250 & 0.400 \\
+		\hline
+		Sudden                                                                           & 11 & 5  & 2  & 534   & 0.688 & 0.846 & 0.759 \\
+		Gradual                                                                          & 0  & 1  & 2  & 83    & 0.000 & 0.000 & 0.000 \\
+		Sudden, gradual                                                                  & 14 & 7  & 15 & 561   & 0.667 & 0.483 & 0.560 \\
+		\hline
+	\end{tabular}
+\end{table}
 
 \subsubsection{Intra-Case Drifts}
 \label{sec:eval:rheon:multi:intra}
-\begin{itemize}
-	\item Results of both runs on the intra-case drifts (\texttt{control\_flow}) in the multi-drift logs, and their comparison.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The \texttt{control\_flow} logs only reach a recall of 0.429. The run detects six of the nine sudden but none of the five gradual \texttt{control\_flow} drifts. In four of the five logs, the resource perspective also reacts to a \texttt{control\_flow} drift, and in three of them also the inter-case perspective. Each of these reactions counts as an FP. Thus, several control-flow drifts in one log are much harder to detect than a single one with a recall of 0.8.
 
 \subsubsection{Resource Drifts}
 \label{sec:eval:rheon:multi:resource}
-\begin{itemize}
-	\item Results of both runs on the resource drifts in the multi-drift logs, and their comparison.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The run fully detects the logs with only \texttt{pool\_size} or only \texttt{reassignment} drifts. However, it misses one gradual \texttt{reassignment} drift, all three \texttt{workload} drifts and both \texttt{duration} drifts. The two \texttt{duration} drifts only affect two of the 10 and two of the 20 resources. Thus, the resource states here do not show \texttt{workload} drifts and \texttt{duration} drifts of few resources.
 
 \subsubsection{Inter-Case Drifts}
 \label{sec:eval:rheon:multi:inter}
-\begin{itemize}
-	\item Results of both runs on the inter-case drifts in the multi-drift logs, and their comparison.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The run detects all five \texttt{region} drifts. It misses five drifts in two logs, among them three of the five \texttt{waiting\_time} drifts. In one log, the resource perspective reacts to an \texttt{arrival\_rate} and a \texttt{waiting\_time} drift, since its features include the counts and the mean waiting time until the resource (Figure~\ref{fig:approach:features_resource}). Thus, the inter-case states only partly separate several \texttt{waiting\_time} drifts in one log.
 
 \subsubsection{Sudden Drifts}
 \label{sec:eval:rheon:multi:sudden}
-\begin{itemize}
-	\item Results of both runs on the sudden drifts in the multi-drift logs, and their comparison.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The logs with only sudden drifts reach an F1-score of 0.759. Both FNs come from one small log with four \texttt{control\_flow} drifts in three months. In the other logs with only sudden drifts, the run detects all drifts.
 
 \subsubsection{Gradual Drifts}
 \label{sec:eval:rheon:multi:gradual}
-\begin{itemize}
-	\item Results of both runs on the gradual drifts in the multi-drift logs, and their comparison.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+In the only log with only gradual drifts, the run misses both \texttt{control\_flow} drifts (F1-score 0), and the logs with both drift modes reach an F1-score of 0.560. Overall, the run only detects four of the 14 gradual drifts. Thus, gradual drifts between other drifts of the same perspective mostly stay undetected here.
 
 \subsection{Mixed-Drift Logs}
 \label{sec:eval:rheon:mixed}
-\begin{itemize}
-	\item Logs with several drifts from different perspectives.
-	\item Global results of both runs first, as in Table~\ref{tab:eval:rheon:single}.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The third set consists of 15 logs with two to five drifts from different perspectives, with 12 intra-case, 15 resource and 17 inter-case drifts in total, 29 of them sudden and 15 gradual. In five logs, drifts of different perspectives share their drift point or drift window. The logs have 2,860 to 42,192 cases, time spans from one month to five years, 4 to 25 activities and 3 to 45 resources. We expect simultaneous drifts of different perspectives to hide each other. The results do not confirm this: the run detects all twelve drifts of the five logs with simultaneous drifts. Overall, it detects 36 of the 44 drifts with 13 FPs and reaches the highest F1-score of the three sets with 0.774 (Table~\ref{tab:eval:rheon:mixed}). Since each perspective has its own states, our framework separates simultaneous drifts of different perspectives.
+
+\begin{table}[htb]
+	\centering
+	\caption[Results on the mixed-drift Rheon logs]{%
+		Counts, precision (Prec.), recall (Rec.) and F1 on the 15 mixed-drift Rheon logs, over all logs, per drift type and per drift mode. Each group pools all drift signals of the logs with exactly this set of drift types or drift modes.}
+	\label{tab:eval:rheon:mixed}
+	\small
+	\setlength{\tabcolsep}{3pt}
+	\begin{tabular}{@{}>{\raggedright\arraybackslash}p{8.45cm}|r|r|r|r|r|r|r@{}}
+		\hline
+		Group                                                                                                & TP & FP & FN & TN    & Prec. & Rec. & F1    \\
+		\hline
+		All                                                                                                  & 36 & 13 & 8  & 1,092 & 0.735     & 0.818  & 0.774 \\
+		\hline
+		\texttt{amount}, \texttt{control\_flow}, \texttt{duration}                                           & 4  & 4  & 2  & 286   & 0.500     & 0.667  & 0.571 \\
+		\texttt{amount}, \texttt{control\_flow}, \texttt{pool\_size}                                         & 3  & 0  & 0  & 21    & 1.000     & 1.000  & 1.000 \\
+		\texttt{amount}, \texttt{control\_flow}, \texttt{pool\_size}, \texttt{reassignment}, \texttt{region} & 5  & 1  & 0  & 109   & 0.833     & 1.000  & 0.909 \\
+		\texttt{amount}, \texttt{control\_flow}, \texttt{reassignment}                                       & 2  & 1  & 1  & 50    & 0.667     & 0.667  & 0.667 \\
+		\texttt{amount}, \texttt{pool\_size}, \texttt{reassignment}, \texttt{waiting\_time}                  & 3  & 0  & 1  & 125   & 1.000     & 0.750  & 0.857 \\
+		\texttt{arrival\_rate}, \texttt{control\_flow}, \texttt{reassignment}                                & 3  & 1  & 0  & 135   & 0.750     & 1.000  & 0.857 \\
+		\texttt{arrival\_rate}, \texttt{control\_flow}, \texttt{workload}                                    & 2  & 1  & 2  & 20    & 0.667     & 0.500  & 0.571 \\
+		\texttt{arrival\_rate}, \texttt{workload}                                                            & 1  & 0  & 1  & 65    & 1.000     & 0.500  & 0.667 \\
+		\texttt{control\_flow}, \texttt{duration}, \texttt{region}, \texttt{waiting\_time}                   & 3  & 1  & 1  & 39    & 0.750     & 0.750  & 0.750 \\
+		\texttt{control\_flow}, \texttt{reassignment}                                                        & 2  & 1  & 0  & 82    & 0.667     & 1.000  & 0.800 \\
+		\texttt{control\_flow}, \texttt{region}                                                              & 2  & 1  & 0  & 45    & 0.667     & 1.000  & 0.800 \\
+		\texttt{control\_flow}, \texttt{waiting\_time}                                                       & 2  & 2  & 0  & 26    & 0.500     & 1.000  & 0.667 \\
+		\texttt{reassignment}, \texttt{region}                                                               & 2  & 0  & 0  & 71    & 1.000     & 1.000  & 1.000 \\
+		\texttt{waiting\_time}, \texttt{workload}                                                            & 2  & 0  & 0  & 18    & 1.000     & 1.000  & 1.000 \\
+		\hline
+		Sudden                                                                                               & 11 & 4  & 1  & 197   & 0.733     & 0.917  & 0.815 \\
+		Gradual                                                                                              & 5  & 2  & 0  & 210   & 0.714     & 1.000  & 0.833 \\
+		Sudden, gradual                                                                                      & 20 & 7  & 7  & 685   & 0.741     & 0.741  & 0.741 \\
+		\hline
+	\end{tabular}
+\end{table}
 
 \subsubsection{Intra-Case Drifts}
 \label{sec:eval:rheon:mixed:intra}
-\begin{itemize}
-	\item Results of both runs on the intra-case drifts (\texttt{control\_flow}) in the mixed-drift logs, and their comparison.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The intra-case perspective has no FP in any of the 15 logs, although the logs contain 32 drifts of other perspectives. The run only misses one of the twelve \texttt{control\_flow} drifts. Thus, the intra-case states are specific: a detection here indicates a control-flow drift.
 
 \subsubsection{Resource Drifts}
 \label{sec:eval:rheon:mixed:resource}
-\begin{itemize}
-	\item Results of both runs on the resource drifts in the mixed-drift logs, and their comparison.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The run detects all six \texttt{reassignment} drifts, also next to a simultaneous \texttt{control\_flow} drift. However, it misses two \texttt{duration}, two \texttt{workload} and one \texttt{pool\_size} drift. Moreover, the resource perspective has 10 of the 13 FPs, six of them next to a \texttt{control\_flow} drift and three at the start or the end of a log. Thus, in logs with several drifts the resource states rarely show \texttt{duration} and \texttt{workload} drifts, and they also react to control-flow drifts.
 
 \subsubsection{Inter-Case Drifts}
 \label{sec:eval:rheon:mixed:inter}
-\begin{itemize}
-	\item Results of both runs on the inter-case drifts in the mixed-drift logs, and their comparison.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The run detects all \texttt{region}, \texttt{waiting\_time} and \texttt{arrival\_rate} drifts and only misses two sudden \texttt{amount} drifts. In two logs, it detects the \texttt{arrival\_rate} drift but not the \texttt{workload} drift. Since both drift types change the same counts, a change of the volume mainly shows in the inter-case states here.
 
 \subsubsection{Sudden Drifts}
 \label{sec:eval:rheon:mixed:sudden}
-\begin{itemize}
-	\item Results of both runs on the sudden drifts in the mixed-drift logs, and their comparison.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+The logs with only sudden drifts reach an F1-score of 0.815. Three of these logs contain simultaneous sudden drifts, which do not hide each other.
 
 \subsubsection{Gradual Drifts}
 \label{sec:eval:rheon:mixed:gradual}
-\begin{itemize}
-	\item Results of both runs on the gradual drifts in the mixed-drift logs, and their comparison.
-	\item Note: strengths, limitations and what the states show here, for Chapters~\ref{chap:discussion} and~\ref{chap:conclusion}.
-\end{itemize}
+Both logs with only gradual drifts contain simultaneous drifts of several perspectives. The run detects all of them (F1-score 0.833). Thus, simultaneous gradual drifts do not hide each other either.

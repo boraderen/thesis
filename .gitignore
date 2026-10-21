@@ -12,6 +12,7 @@
 
 # Event logs, analysis and benchmark results
 /data/thesis
+/data/google_drive/
 /analyses/
 /benchmarks/
 

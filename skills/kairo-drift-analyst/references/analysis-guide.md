@@ -77,7 +77,7 @@ clustering scores.
 
 Patterns, not scripts; adapt them to the task.
 
-- **Find drift points and perspectives.** Initial runs in all perspectives → date ranges with high
+- **Find drift points and perspectives.** Initial runs in all required perspectives → date ranges with high
   scores (check for truncation) → zoom in and tune where the states are not meaningful → explain
   each candidate by states and features → if several perspectives react at the same date, decide
   the drift perspective with the feature figures of the approach chapter (direct versus side
@@ -107,8 +107,9 @@ How to pass an own frame is in the kairo docs (*Flexible by design*). In additio
 
 ## 7. Thresholds
 
-For every reported configuration, at most one per perspective, suggest one drift score above
-which a signal window counts as a drift, for a later evaluation:
+For every reported configuration, exactly one for each required perspective (`SKILL.md`, rule
+11), suggest one drift score above which a signal window counts as a drift, for a later
+evaluation:
 - Split the signal windows into the ones you report as drifts and the others; leave out the first
   and last windows and windows flagged as thin or partial.
 - Take a value between the highest score of the others and the lowest score of the drift windows,
@@ -120,6 +121,9 @@ which a signal window counts as a drift, for a later evaluation:
   separates the two levels.
 - If no value separates them, give the value that keeps all drift windows and say in the results
   how many other windows it also flags.
+- If the perspective shows no drift, still report its configuration with a threshold just above
+  the highest score of its scored windows, rounded up to two significant digits, so that it flags
+  no window; say in the results that the perspective shows no drift.
 
 ## 8. Drift signal files
 
@@ -158,7 +162,8 @@ report.reset_index().to_csv(f"{folder}/drift_signals/{name}.csv", index=False)  
 - [ ] The states that change are named and profiled.
 - [ ] The perspective of each drift is argued, and the reactions of the others are explained.
 - [ ] Calendar effects, thin or empty windows and outliers are ruled out or mentioned.
-- [ ] At most one configuration per perspective is reported, the others that confirm it are named
-      in the *Analysis* bullets.
+- [ ] Exactly one configuration for each required perspective is reported (two for a Padella log:
+      intra-case and resource; three for every other log: intra-case, resource and inter-case), the
+      others that confirm it are named in the *Analysis* bullets.
 - [ ] Every number comes from a run of this analysis, and every configuration has a threshold and a
       saved plot and CSV.
