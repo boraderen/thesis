@@ -170,6 +170,7 @@ In conclusion, this thesis focuses on the following problem:
 \end{figure}
 
 \section{Research Questions}
+\label{sec:intro_ssec:rq}
 The main research question of this thesis is:
 \begin{quote}
 	\emph{Can a process be monitored as a combination of intra-case, resource and inter-case states, and is this combination a useful indicator for a concept drift in traditional case-centric event logs?}
@@ -186,6 +187,7 @@ We divide our main research question into five further Research Questions (RQs):
 \ref{item:intro:rq_states} addresses the first part of the main research question, monitoring a process through states. \ref{item:intro:rq_detection} to~\ref{item:intro:rq_applicability} cover the second part of the main research question, the usage of the states as an indicator for concept drift detection.
 
 \section{Research Goals}
+\label{sec:intro_ssec:goals}
 In order to answer the research questions, we follow seven Research Goals (RGs). Each goal lists the research questions it addresses in parentheses.
 \begin{enumerate}[label=\textbf{RG\arabic*}, ref=RG\arabic*, leftmargin=*]
 	\item\label{item:intro:rg_terminology} \emph{Terminology:} To clearly define drift type, drift mode and drift perspective (\ref{item:intro:rq_characterization}).
@@ -199,6 +201,7 @@ In order to answer the research questions, we follow seven Research Goals (RGs).
 
 
 \section{Contributions}
+\label{sec:intro_ssec:contrib}
 
 This thesis has six main contributions. Each contribution lists its research goals and chapters in parentheses.
 \begin{itemize}
@@ -212,6 +215,7 @@ This thesis has six main contributions. Each contribution lists its research goa
 
 
 \section{Thesis Structure}
+\label{sec:intro_ssec:struct}
 The remainder of the thesis is structured as follows. Chapter~\ref{chap:related_work} reviews the literature on concept drift detection and state-based process mining approaches and places this thesis within the literature. Chapter~\ref{chap:prelim} introduces the notation for event logs, foundations of concept drifts, PCA, clustering and divergences. Chapter~\ref{chap:rheon} presents the implementation of our log drift generator Rheon, which generates the synthetic event logs for the evaluation.
 
 Chapter~\ref{chap:approach} defines intra-case, resource and inter-case states and answers \ref{item:intro:rq_states}. Each of its sections covers one step of the framework, i.e., feature extraction, scaling and dimensionality reduction, clustering into states, and drift signals, for all three perspectives. Chapter~\ref{chap:impl} describes the implementation of our drift detector, i.e., kairo and the dashboard tool, and introduces the AI-assisted analysis of the results with LLMs.

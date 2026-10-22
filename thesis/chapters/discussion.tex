@@ -1,9 +1,48 @@
 \chapter{Discussion}
 \label{chap:discussion}
+In this chapter we discuss the results and design choices of our framework. Section~\ref{sec:discussion:rq} answers our research questions from Section~\ref{sec:intro_ssec:rq}. Section~\ref{sec:discussion:flexibility} explains why the framework might be strong but also misleading and hard to evaluate. Section~\ref{sec:discussion:config} describes useful hints and heuristics for choosing better configurations for event logs, Section~\ref{sec:discussion:llm} discusses the LLM assistance and Section~\ref{sec:discussion:runtime} discusses runtime complexity and open questions.
 
-In this section, you discuss your general approach.
-What design decisions did you make, and, what are the implications of this?
-Maybe your approach computes an exact intermediary result, which is costly in terms of time.
-Does a suitable approximation approach exist?
-What are the implications for that approach.
-You can also dive deeper in very related work and explain why it does not work in certain cases.
+\section{Research Questions}
+\label{sec:discussion:rq}
+Based on our evaluation on three sets of Rheon logs and on the Padella benchmark (Section~\ref{chap:eval}), we answer the research questions from Section~\ref{sec:intro_ssec:rq}.
+
+\begin{itemize}
+	\item \ref{item:intro:rq_states}~\emph{States:} Feature extraction, PCA and clustering yield states in all three perspectives. The states are interpretable because their features show what changes. E.g., in the Padella log Bank account closure, each intra-case state of run 1 corresponds to one activity such that the deletion of an activity is directly observable~\ref{sec:eval:padella:cf}.
+	\item \ref{item:intro:rq_detection}~\emph{Detection:} The changes of the states signal drift points. In run 2 on the Rheon logs, the framework detects 14 out of the 15 single drift logs, 39 of the 44 drifts multi drift per perspective logs and 40 of 44 drifts in mixed drift logs. In run 2 of the Padella logs, our framework detects 28 of 29 drifts. With the configurations of run 1 on Rheon logs, it is obviously harder to detect multiple drifts of the same perspective(Recall 0.568).
+	\item \ref{item:intro:rq_characterization}~\emph{Characterization:} Since each perspective has its own states, the framework separates simultaneous drifts of different perspectives. However, Some drifts also respond to other perspectives such that the perspective of a drift is better analyzed by looking at the drift signals of all perspectives.
+	\item \ref{item:intro:rq_clustering}~\emph{Clustering:} In 354 of the 406 evaluated drift signals, k-means clusters the states mostly with $k =$ 2 to 4. SOMs are used by 37 intra-case drift signals and DBSCAN by 15 configurations~\ref{fig:eval:clustering}. Even though it is in general hard to answer which algorithm is more robust and reliable, we can say that SOMs are a better fit for intra-case configurations, k-means for resouce and inter-case configurations. The reason is that intra-case often needs more states since it has more activites and prefixes to separate whereas resource and inter-case define a log-level trajectory at the end and therefore k-means and DBSCAN are more robust agains SOMs in less number of cluster use cases.
+	\item \ref{item:intro:rq_applicability}~\emph{Applicability:} The framework is strong if the chosen features capture the drift and misleading otherwise. In logs with multiple drifts, run 1 fails to detects some \texttt{duration} drifts with less number of resources and \texttt{workload} drifts whereas run 2 is able to detect most of them.
+\end{itemize}
+
+\section{Flexibility and Evaluation}
+\label{sec:discussion:flexibility}
+The large hyperparameter space is the biggest disadvantage of the framework but the flexibility behind it its advantage. With appropriate features the framework detects drifts in all three perspectives and shows what changed. On the other hand, inappropriate features, a drift stays undetected. E.g., if the resource perspective only counts events per resource, it misses the \texttt{time\_fast} drifts in Padella logs (\ref{sec:eval:padella:time_fast}). On the same Padella logs, run~1 reaches an F1-score of 0.309 and run~2 of 0.862. On the Rheon logs with multiple drifts of the same perspective, the F1-score rises from 0.610 in run~1 to 0.907 in run~2. That means, good results mainly shows that suitable configurations exist, but not that every configuration works.
+
+This makes the framework hard to evaluate:
+\begin{itemize}
+	\item \emph{Configuration per log:} A run reports its own configuration and threshold for each log and perspective. Thus the metrics always evaluate the framework together with the choice of its configuration.
+	\item \emph{Reactions of other perspectives:} Some drift types reach also the features of other perspectives. Such reactions count as FP, while the states show a "real" change. 29 of the 38 FPs in run 1 on Rheon logs lie at most two signal windows nearby of a drift of an other perspective. Run 2 avoids these reactions better. (Section~\ref{sec:eval:rheon}).
+	\item \emph{Real logs:} Real processes are not static even without an injected drift (first-order dynamics). They may contain changes that a benchmark does not know. 24 of the 30 FPs of run 1 in the 14 logs of Domestic declarations and Request for payment lie at the turn of the year 2017/18, at which the approval steps really change (Section~\ref{sec:eval:padella}). Therefore, the precision on the Rheon logs is higher, in run~2 from 0.909 to 0.933 against 0.778 on the Padella logs. Apart from the injected drifts, Rheon samples the logs from fixed distributions, so that no unknown real changes count as FPs.
+	\item \emph{Zones:} A detection only counts in the zone of a drift. The zone of a gradual drift covers more signal windows than the zone of a sudden drift and thus favors gradual drifts (Section~\ref{sec:eval:padella:sudden}).
+\end{itemize}
+Thus, a precision, recall and F1-score "evaluate" the framework only partially.
+
+\section{Choosing a Configuration}
+\label{sec:discussion:config}
+For the clustering, a SOM with a large grid is useful in helping to choose $k$ for k-means. It shows how many groups of frequently used cells lie far apart from each other (Section~\ref{sec:approach:clustering}). DBSCAN is harder to tune. In our running example, the sorted $k$-dist graph has no clear knee for the choice of $\varepsilon$. Its $k$-distances also become slow for many rows (Section~\ref{sec:impl:kairo:pipeline}). This is another reason to use DBSCAN in the resource and inter-case perspectives, in which the rows are feature windows, and not in the intra-case perspective, in which they are events.
+
+The choice of the window lengths and thresholds is still manual work. Similar to the heuristics for $\varepsilon$ and $\mathit{minPts}$ of DBSCAN (Section~\ref{sec:prelim:dbscan}), we suggest three rules of thumb as a starting point. Let $\mathit{span}_L$ be the time span of the log $L$ in days and $\abs{E}$ its number of events:
+\begin{itemize}
+	\item \emph{Signal window:} $\Delta_s \approx \sqrt{\mathit{span}_L}$ days, rounded to 1, 3, 7, 14, 28 or 56 days. E.g., for a log over one year, this gives 14 days. Thus, both the length and the number of the signal windows grow with $\sqrt{\mathit{span}_L}$, which balances fluctuations against granularity in time (Section~\ref{sec:approach:drift_signals}).
+	\item \emph{Feature window:} $\Delta_f \approx 300 \cdot \mathit{span}_L / \abs{E}$ days, rounded to one hour, one day or one week. Thus, a feature window holds about 300 events on average.
+	\item \emph{Threshold:} The median of the drift scores of a drift signal describes its fluctuations without a drift. Therefore, an upper quantile of the drift scores, e.g., the 90\% or 95\% quantile, is a starting point for the threshold $\tau$. However, a quantile always marks a fixed share of the signal windows, also without a drift.
+\end{itemize}
+For 86\% of the 406 drift signals of our evaluation, the chosen $\Delta_s$ differs at most by a factor of 2 from the first rule. The second rule exactly matches 69\% of the 248 chosen feature window lengths, among them all four windows of one hour and 18 of the 42 windows of one week. For 400 of the 406 drift signals, the chosen $\tau$ lies above the median of the drift scores, and for 82\% at least at the 90\% quantile. Thus, the rules summarize the configurations we chose, but they do not guarantee a good configuration.
+
+\section{LLM Support}
+\label{sec:discussion:llm}
+Using our skill \texttt{kairo-drift-analyst}, an AI agent can execute the pipeline itself, compare configurations and deliver a configuration and a thresholds per persepctive of a log (\ref{sec:impl:kairo:agent}). 
+
+\section{Runtime and Open Issues}
+\label{sec:discussion:runtime}
+placeholder

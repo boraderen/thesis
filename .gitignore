@@ -21,6 +21,7 @@
 /chapters/
 /paper/
 /presentation/
+papers/explanations
 
 # Python and Jupyter
 /.venv/

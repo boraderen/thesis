@@ -1,0 +1,1667 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nyvt/global//global/global/global}
+    \entry{abarcazuniga2026version}{inproceedings}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=235da0a265788af56bc5bfd0c42c1fde}{%
+           family={Abarca\bibnamedelima Zúñiga},
+           familyi={A\bibinitperiod\bibinitdelim Z\bibinitperiod},
+           given={Bernold\bibnamedelima Rodrigo},
+           giveni={B\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ceb7174756734fe0a583085d818c24c1}{%
+           family={Yeshchenko},
+           familyi={Y\bibinitperiod},
+           given={Anton},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ac7236811e9fb910a9f1a1bb10e3bab1}{%
+           family={Aa},
+           familyi={A\bibinitperiod},
+           given={Han},
+           giveni={H\bibinitperiod},
+           givenun=0,
+           prefix={van\bibnamedelima der},
+           prefixi={v\bibinitperiod\bibinitdelim d\bibinitperiod}}}%
+      }
+      \name{editor}{4}{}{%
+        {{hash=da121eed204ae3868af9678374cedc33}{%
+           family={Fuentes},
+           familyi={F\bibinitperiod},
+           given={Lidia},
+           giveni={L\bibinitperiod}}}%
+        {{hash=8ac4c85cf73158f6662cd8b64f5d1824}{%
+           family={Plebani},
+           familyi={P\bibinitperiod},
+           given={Pierluigi},
+           giveni={P\bibinitperiod}}}%
+        {{hash=f72aeb0e120535e7f9d5a9d99b9854ac}{%
+           family={Combi},
+           familyi={C\bibinitperiod},
+           given={Carlo},
+           giveni={C\bibinitperiod}}}%
+        {{hash=06d7a469f3b1cfd5233fb5e897de83c0}{%
+           family={Reijers},
+           familyi={R\bibinitperiod},
+           given={Hajo},
+           giveni={H\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{17045a205d93faf6d926f0f28e15bf73}
+      \strng{fullhash}{db17ab5e65d9bfebd6626a1457b29510}
+      \strng{fullhashraw}{db17ab5e65d9bfebd6626a1457b29510}
+      \strng{bibnamehash}{db17ab5e65d9bfebd6626a1457b29510}
+      \strng{authorbibnamehash}{db17ab5e65d9bfebd6626a1457b29510}
+      \strng{authornamehash}{17045a205d93faf6d926f0f28e15bf73}
+      \strng{authorfullhash}{db17ab5e65d9bfebd6626a1457b29510}
+      \strng{authorfullhashraw}{db17ab5e65d9bfebd6626a1457b29510}
+      \strng{editorbibnamehash}{31bc90a61365789bf71822a75369afa1}
+      \strng{editornamehash}{22deefb236f3682846043f788cd543fc}
+      \strng{editorfullhash}{31bc90a61365789bf71822a75369afa1}
+      \strng{editorfullhashraw}{31bc90a61365789bf71822a75369afa1}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Advanced Information Systems Engineering - 38th International Conference, {CAiSE} 2026, Verona, Italy, June 8-12, 2026, Proceedings, Part {I}}
+      \field{series}{Lecture Notes in Computer Science}
+      \field{title}{Version Clustering: A Top-Down Approach for Process Concept Drift Detection}
+      \field{year}{2026}
+      \field{pages}{61\bibrangedash 77}
+      \range{pages}{17}
+      \verb{doi}
+      \verb 10.1007/978-3-032-28110-4_4
+      \endverb
+    \endentry
+    \entry{adams2023experimental}{article}{}{}
+      \name{author}{4}{}{%
+        {{un=0,uniquepart=base,hash=dfb5db7433ad8c7e134c646d1f345ec6}{%
+           family={Adams},
+           familyi={A\bibinitperiod},
+           given={Jan\bibnamedelima Niklas},
+           giveni={J\bibinitperiod\bibinitdelim N\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=365204652f3f70e8d5b903b736246331}{%
+           family={Pitsch},
+           familyi={P\bibinitperiod},
+           given={Cameron},
+           giveni={C\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ead030d345addb6137d0390aa4f964e2}{%
+           family={Brockhoff},
+           familyi={B\bibinitperiod},
+           given={Tobias},
+           giveni={T\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=45fed513d4bd5fb28cebd7bb58a35c4a}{%
+           family={Aalst},
+           familyi={A\bibinitperiod},
+           given={Wil\bibnamedelimb M.\bibnamedelimi P.},
+           giveni={W\bibinitperiod\bibinitdelim M\bibinitperiod\bibinitdelim P\bibinitperiod},
+           givenun=0,
+           prefix={van\bibnamedelima der},
+           prefixi={v\bibinitperiod\bibinitdelim d\bibinitperiod}}}%
+      }
+      \strng{namehash}{9f034eea6bd455dae6435e49c95a8c5e}
+      \strng{fullhash}{b4d901f2cdcc0869cd8bf683b140a066}
+      \strng{fullhashraw}{b4d901f2cdcc0869cd8bf683b140a066}
+      \strng{bibnamehash}{b4d901f2cdcc0869cd8bf683b140a066}
+      \strng{authorbibnamehash}{b4d901f2cdcc0869cd8bf683b140a066}
+      \strng{authornamehash}{9f034eea6bd455dae6435e49c95a8c5e}
+      \strng{authorfullhash}{b4d901f2cdcc0869cd8bf683b140a066}
+      \strng{authorfullhashraw}{b4d901f2cdcc0869cd8bf683b140a066}
+      \field{extraname}{1}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Proceedings of the {VLDB} Endowment}
+      \field{number}{8}
+      \field{title}{An Experimental Evaluation of Process Concept Drift Detection}
+      \field{volume}{16}
+      \field{year}{2023}
+      \field{pages}{1856\bibrangedash 1869}
+      \range{pages}{14}
+      \verb{doi}
+      \verb 10.14778/3594512.3594517
+      \endverb
+    \endentry
+    \entry{adams2023explainable}{article}{}{}
+      \name{author}{4}{}{%
+        {{un=0,uniquepart=base,hash=dfb5db7433ad8c7e134c646d1f345ec6}{%
+           family={Adams},
+           familyi={A\bibinitperiod},
+           given={Jan\bibnamedelima Niklas},
+           giveni={J\bibinitperiod\bibinitdelim N\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=e202fba519da50ab556ddbd87da4f7d6}{%
+           family={Zelst},
+           familyi={Z\bibinitperiod},
+           given={Sebastiaan\bibnamedelima J.},
+           giveni={S\bibinitperiod\bibinitdelim J\bibinitperiod},
+           givenun=0,
+           prefix={van},
+           prefixi={v\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=1ef824ea965e632a96b91fd72b82f897}{%
+           family={Rose},
+           familyi={R\bibinitperiod},
+           given={Thomas},
+           giveni={T\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=45fed513d4bd5fb28cebd7bb58a35c4a}{%
+           family={Aalst},
+           familyi={A\bibinitperiod},
+           given={Wil\bibnamedelimb M.\bibnamedelimi P.},
+           giveni={W\bibinitperiod\bibinitdelim M\bibinitperiod\bibinitdelim P\bibinitperiod},
+           givenun=0,
+           prefix={van\bibnamedelima der},
+           prefixi={v\bibinitperiod\bibinitdelim d\bibinitperiod}}}%
+      }
+      \strng{namehash}{9f034eea6bd455dae6435e49c95a8c5e}
+      \strng{fullhash}{208b0192fc8a1865947b9799cca035f8}
+      \strng{fullhashraw}{208b0192fc8a1865947b9799cca035f8}
+      \strng{bibnamehash}{208b0192fc8a1865947b9799cca035f8}
+      \strng{authorbibnamehash}{208b0192fc8a1865947b9799cca035f8}
+      \strng{authornamehash}{9f034eea6bd455dae6435e49c95a8c5e}
+      \strng{authorfullhash}{208b0192fc8a1865947b9799cca035f8}
+      \strng{authorfullhashraw}{208b0192fc8a1865947b9799cca035f8}
+      \field{extraname}{2}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Information Systems}
+      \field{title}{Explainable Concept Drift in Process Mining}
+      \field{volume}{114}
+      \field{year}{2023}
+      \field{pages}{102177}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1016/j.is.2023.102177
+      \endverb
+    \endentry
+    \entry{alpaydin2010introduction}{book}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=8351b0b43ad4aed68fb279505ebd7d01}{%
+           family={Alpaydin},
+           familyi={A\bibinitperiod},
+           given={Ethem},
+           giveni={E\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{publisher}{1}{%
+        {MIT Press}%
+      }
+      \strng{namehash}{8351b0b43ad4aed68fb279505ebd7d01}
+      \strng{fullhash}{8351b0b43ad4aed68fb279505ebd7d01}
+      \strng{fullhashraw}{8351b0b43ad4aed68fb279505ebd7d01}
+      \strng{bibnamehash}{8351b0b43ad4aed68fb279505ebd7d01}
+      \strng{authorbibnamehash}{8351b0b43ad4aed68fb279505ebd7d01}
+      \strng{authornamehash}{8351b0b43ad4aed68fb279505ebd7d01}
+      \strng{authorfullhash}{8351b0b43ad4aed68fb279505ebd7d01}
+      \strng{authorfullhashraw}{8351b0b43ad4aed68fb279505ebd7d01}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{edition}{2}
+      \field{isbn}{978-0-262-01243-0}
+      \field{series}{Adaptive Computation and Machine Learning}
+      \field{title}{Introduction to Machine Learning}
+      \field{year}{2010}
+    \endentry
+    \entry{baier2020handling}{inproceedings}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=f9b517d41dde7b031f3cf50e86cd87f3}{%
+           family={Baier},
+           familyi={B\bibinitperiod},
+           given={Lucas},
+           giveni={L\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=321fb5e00548392406c0d57f5ad913af}{%
+           family={Reimold},
+           familyi={R\bibinitperiod},
+           given={Josua},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=03b52cf351599ddbce95b65d9a6ec57a}{%
+           family={Kühl},
+           familyi={K\bibinitperiod},
+           given={Niklas},
+           giveni={N\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{publisher}{1}{%
+        {IEEE}%
+      }
+      \strng{namehash}{ee979452cb59c50a9f88928182194e9c}
+      \strng{fullhash}{9b024ce82e7a5e6d2996971cbb1ec239}
+      \strng{fullhashraw}{9b024ce82e7a5e6d2996971cbb1ec239}
+      \strng{bibnamehash}{9b024ce82e7a5e6d2996971cbb1ec239}
+      \strng{authorbibnamehash}{9b024ce82e7a5e6d2996971cbb1ec239}
+      \strng{authornamehash}{ee979452cb59c50a9f88928182194e9c}
+      \strng{authorfullhash}{9b024ce82e7a5e6d2996971cbb1ec239}
+      \strng{authorfullhashraw}{9b024ce82e7a5e6d2996971cbb1ec239}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{22nd {IEEE} Conference on Business Informatics, {CBI} 2020, Antwerp, Belgium, June 22-24, 2020}
+      \field{title}{Handling Concept Drift for Predictions in Business Process Mining}
+      \field{year}{2020}
+      \field{pages}{76\bibrangedash 83}
+      \range{pages}{8}
+      \verb{doi}
+      \verb 10.1109/CBI49978.2020.00016
+      \endverb
+    \endentry
+    \entry{barbonjunior2018framework}{inproceedings}{}{}
+      \name{author}{5}{}{%
+        {{un=0,uniquepart=base,hash=23e038118a76cbf4aba1b33ceba110b3}{%
+           family={Barbon\bibnamedelima Junior},
+           familyi={B\bibinitperiod\bibinitdelim J\bibinitperiod},
+           given={Sylvio},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=6b8188d541ac2b87e99adb6260df3ea1}{%
+           family={Tavares},
+           familyi={T\bibinitperiod},
+           given={Gabriel\bibnamedelima Marques},
+           giveni={G\bibinitperiod\bibinitdelim M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=e3ba3ecd3305945b3fda223fb94a1c63}{%
+           family={{Turrisi da Costa}},
+           familyi={T\bibinitperiod},
+           given={Victor\bibnamedelima G.},
+           giveni={V\bibinitperiod\bibinitdelim G\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=40e9e211096bb855b5e45c2621c47f5f}{%
+           family={Ceravolo},
+           familyi={C\bibinitperiod},
+           given={Paolo},
+           giveni={P\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=832654d2c401b8bf9a040fe6056d3a49}{%
+           family={Damiani},
+           familyi={D\bibinitperiod},
+           given={Ernesto},
+           giveni={E\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{publisher}{1}{%
+        {ACM}%
+      }
+      \strng{namehash}{501fca8c8c10ad5e031ede6cc4ddeab5}
+      \strng{fullhash}{54c2d9f8f6ed015acff3b551c63f29af}
+      \strng{fullhashraw}{54c2d9f8f6ed015acff3b551c63f29af}
+      \strng{bibnamehash}{54c2d9f8f6ed015acff3b551c63f29af}
+      \strng{authorbibnamehash}{54c2d9f8f6ed015acff3b551c63f29af}
+      \strng{authornamehash}{501fca8c8c10ad5e031ede6cc4ddeab5}
+      \strng{authorfullhash}{54c2d9f8f6ed015acff3b551c63f29af}
+      \strng{authorfullhashraw}{54c2d9f8f6ed015acff3b551c63f29af}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Companion of the The Web Conference 2018 on The Web Conference 2018, {WWW} 2018, Lyon, France, April 23-27, 2018}
+      \field{title}{A Framework for Human-in-the-Loop Monitoring of Concept-Drift Detection in Event Log Stream}
+      \field{year}{2018}
+      \field{pages}{319\bibrangedash 326}
+      \range{pages}{8}
+      \verb{doi}
+      \verb 10.1145/3184558.3186343
+      \endverb
+    \endentry
+    \entry{berti2025ocel}{misc}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=31aef31d05222aad4978469412b51f0a}{%
+           family={Berti},
+           familyi={B\bibinitperiod},
+           given={Alessandro},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=507c8fc2add13d1962cc68fe97e238f5}{%
+           family={Kretzschmann},
+           familyi={K\bibinitperiod},
+           given={Dina},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=45fed513d4bd5fb28cebd7bb58a35c4a}{%
+           family={Aalst},
+           familyi={A\bibinitperiod},
+           given={Wil\bibnamedelimb M.\bibnamedelimi P.},
+           giveni={W\bibinitperiod\bibinitdelim M\bibinitperiod\bibinitdelim P\bibinitperiod},
+           givenun=0,
+           prefix={van\bibnamedelima der},
+           prefixi={v\bibinitperiod\bibinitdelim d\bibinitperiod}}}%
+      }
+      \strng{namehash}{45fbab133119d8a9a3f75a8b91686dc1}
+      \strng{fullhash}{af2e454f94cc864af5f2f8f00f1d6b64}
+      \strng{fullhashraw}{af2e454f94cc864af5f2f8f00f1d6b64}
+      \strng{bibnamehash}{af2e454f94cc864af5f2f8f00f1d6b64}
+      \strng{authorbibnamehash}{af2e454f94cc864af5f2f8f00f1d6b64}
+      \strng{authornamehash}{45fbab133119d8a9a3f75a8b91686dc1}
+      \strng{authorfullhash}{af2e454f94cc864af5f2f8f00f1d6b64}
+      \strng{authorfullhashraw}{af2e454f94cc864af5f2f8f00f1d6b64}
+      \field{extraname}{1}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{TechRxiv preprint}
+      \field{title}{Identifying Execution States and Boundary Conditions in Object-Centric Event Logs: A Framework and Case Study}
+      \field{year}{2025}
+      \verb{doi}
+      \verb 10.36227/techrxiv.176522567.74931712/v1
+      \endverb
+    \endentry
+    \entry{berti2024abstractions}{inproceedings}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=31aef31d05222aad4978469412b51f0a}{%
+           family={Berti},
+           familyi={B\bibinitperiod},
+           given={Alessandro},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=be68b1bddc16039848fa2f97f2f486d2}{%
+           family={Schuster},
+           familyi={S\bibinitperiod},
+           given={Daniel},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=45fed513d4bd5fb28cebd7bb58a35c4a}{%
+           family={Aalst},
+           familyi={A\bibinitperiod},
+           given={Wil\bibnamedelimb M.\bibnamedelimi P.},
+           giveni={W\bibinitperiod\bibinitdelim M\bibinitperiod\bibinitdelim P\bibinitperiod},
+           givenun=0,
+           prefix={van\bibnamedelima der},
+           prefixi={v\bibinitperiod\bibinitdelim d\bibinitperiod}}}%
+      }
+      \name{editor}{2}{}{%
+        {{hash=d7732e38f7c5f7d83c663da73f47de4d}{%
+           family={De\bibnamedelima Weerdt},
+           familyi={D\bibinitperiod\bibinitdelim W\bibinitperiod},
+           given={Jochen},
+           giveni={J\bibinitperiod}}}%
+        {{hash=4d752747982a0a9629526e420fd031ad}{%
+           family={Pufahl},
+           familyi={P\bibinitperiod},
+           given={Luise},
+           giveni={L\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{45fbab133119d8a9a3f75a8b91686dc1}
+      \strng{fullhash}{661fa775be0262a7d524ec852a829c24}
+      \strng{fullhashraw}{661fa775be0262a7d524ec852a829c24}
+      \strng{bibnamehash}{661fa775be0262a7d524ec852a829c24}
+      \strng{authorbibnamehash}{661fa775be0262a7d524ec852a829c24}
+      \strng{authornamehash}{45fbab133119d8a9a3f75a8b91686dc1}
+      \strng{authorfullhash}{661fa775be0262a7d524ec852a829c24}
+      \strng{authorfullhashraw}{661fa775be0262a7d524ec852a829c24}
+      \strng{editorbibnamehash}{fedb81e4cc06467976b9f2a732103474}
+      \strng{editornamehash}{fedb81e4cc06467976b9f2a732103474}
+      \strng{editorfullhash}{fedb81e4cc06467976b9f2a732103474}
+      \strng{editorfullhashraw}{fedb81e4cc06467976b9f2a732103474}
+      \field{extraname}{2}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Business Process Management Workshops - {BPM} 2023 International Workshops, Utrecht, The Netherlands, September 11-15, 2023, Revised Selected Papers}
+      \field{series}{Lecture Notes in Business Information Processing}
+      \field{title}{Abstractions, Scenarios, and Prompt Definitions for Process Mining with {LLMs}: A Case Study}
+      \field{volume}{492}
+      \field{year}{2024}
+      \field{pages}{427\bibrangedash 439}
+      \range{pages}{13}
+      \verb{doi}
+      \verb 10.1007/978-3-031-50974-2_32
+      \endverb
+    \endentry
+    \entry{berti2019pm4py}{inproceedings}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=31aef31d05222aad4978469412b51f0a}{%
+           family={Berti},
+           familyi={B\bibinitperiod},
+           given={Alessandro},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=e202fba519da50ab556ddbd87da4f7d6}{%
+           family={Zelst},
+           familyi={Z\bibinitperiod},
+           given={Sebastiaan\bibnamedelima J.},
+           giveni={S\bibinitperiod\bibinitdelim J\bibinitperiod},
+           givenun=0,
+           prefix={van},
+           prefixi={v\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=45fed513d4bd5fb28cebd7bb58a35c4a}{%
+           family={Aalst},
+           familyi={A\bibinitperiod},
+           given={Wil\bibnamedelimb M.\bibnamedelimi P.},
+           giveni={W\bibinitperiod\bibinitdelim M\bibinitperiod\bibinitdelim P\bibinitperiod},
+           givenun=0,
+           prefix={van\bibnamedelima der},
+           prefixi={v\bibinitperiod\bibinitdelim d\bibinitperiod}}}%
+      }
+      \name{editor}{3}{}{%
+        {{hash=52b12c4ca5e8ea7fdecf5757a6eb635b}{%
+           family={Burattin},
+           familyi={B\bibinitperiod},
+           given={Andrea},
+           giveni={A\bibinitperiod}}}%
+        {{hash=ef17b34fa332dad2dcefa85a0e2ed951}{%
+           family={Polyvyanyy},
+           familyi={P\bibinitperiod},
+           given={Artem},
+           giveni={A\bibinitperiod}}}%
+        {{hash=e202fba519da50ab556ddbd87da4f7d6}{%
+           family={Zelst},
+           familyi={Z\bibinitperiod},
+           given={Sebastiaan\bibnamedelima J.},
+           giveni={S\bibinitperiod\bibinitdelim J\bibinitperiod},
+           prefix={van},
+           prefixi={v\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {CEUR-WS.org}%
+      }
+      \strng{namehash}{45fbab133119d8a9a3f75a8b91686dc1}
+      \strng{fullhash}{5e6e2ffc80e04c10ce01e3fb5f5db108}
+      \strng{fullhashraw}{5e6e2ffc80e04c10ce01e3fb5f5db108}
+      \strng{bibnamehash}{5e6e2ffc80e04c10ce01e3fb5f5db108}
+      \strng{authorbibnamehash}{5e6e2ffc80e04c10ce01e3fb5f5db108}
+      \strng{authornamehash}{45fbab133119d8a9a3f75a8b91686dc1}
+      \strng{authorfullhash}{5e6e2ffc80e04c10ce01e3fb5f5db108}
+      \strng{authorfullhashraw}{5e6e2ffc80e04c10ce01e3fb5f5db108}
+      \strng{editorbibnamehash}{ccc6213c304c62e7989311d890e20261}
+      \strng{editornamehash}{a41eaf3cfca28f38f36838fdfc674ef2}
+      \strng{editorfullhash}{ccc6213c304c62e7989311d890e20261}
+      \strng{editorfullhashraw}{ccc6213c304c62e7989311d890e20261}
+      \field{extraname}{3}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the {ICPM} Demo Track 2019, Co-Located with 1st International Conference on Process Mining ({ICPM} 2019), Aachen, Germany, June 24-26, 2019}
+      \field{series}{{CEUR} Workshop Proceedings}
+      \field{title}{Process Mining for Python ({PM4Py}): Bridging the Gap Between Process- and Data Science}
+      \field{volume}{2374}
+      \field{year}{2019}
+      \field{pages}{13\bibrangedash 16}
+      \range{pages}{4}
+      \verb{urlraw}
+      \verb https://ceur-ws.org/Vol-2374/paper4.pdf
+      \endverb
+      \verb{url}
+      \verb https://ceur-ws.org/Vol-2374/paper4.pdf
+      \endverb
+    \endentry
+    \entry{bose2011handling}{inproceedings}{}{}
+      \name{author}{4}{}{%
+        {{un=0,uniquepart=base,hash=9ccf86355cec3ada9efaf35c9864668b}{%
+           family={Bose},
+           familyi={B\bibinitperiod},
+           given={R.\bibnamedelimi P.\bibnamedelimi Jagadeesh\bibnamedelima Chandra},
+           giveni={R\bibinitperiod\bibinitdelim P\bibinitperiod\bibinitdelim J\bibinitperiod\bibinitdelim C\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=45fed513d4bd5fb28cebd7bb58a35c4a}{%
+           family={Aalst},
+           familyi={A\bibinitperiod},
+           given={Wil\bibnamedelimb M.\bibnamedelimi P.},
+           giveni={W\bibinitperiod\bibinitdelim M\bibinitperiod\bibinitdelim P\bibinitperiod},
+           givenun=0,
+           prefix={van\bibnamedelima der},
+           prefixi={v\bibinitperiod\bibinitdelim d\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=56534dec9cf5897497e2925fa379194c}{%
+           family={Žliobaitė},
+           familyi={Ž\bibinitperiod},
+           given={Indrė},
+           giveni={I\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=8e2774559888845d8e0e20be5a4dd907}{%
+           family={Pechenizkiy},
+           familyi={P\bibinitperiod},
+           given={Mykola},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+      }
+      \name{editor}{2}{}{%
+        {{hash=d01efbf1936db18ed11c9c34a435b48b}{%
+           family={Mouratidis},
+           familyi={M\bibinitperiod},
+           given={Haralambos},
+           giveni={H\bibinitperiod}}}%
+        {{hash=35e635a69b3c077054b2ada16cc67506}{%
+           family={Rolland},
+           familyi={R\bibinitperiod},
+           given={Colette},
+           giveni={C\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{41306a1fd63a917f3f1271b365fc0b4c}
+      \strng{fullhash}{bae6bb2568f561b3b5941c161b7e788f}
+      \strng{fullhashraw}{bae6bb2568f561b3b5941c161b7e788f}
+      \strng{bibnamehash}{bae6bb2568f561b3b5941c161b7e788f}
+      \strng{authorbibnamehash}{bae6bb2568f561b3b5941c161b7e788f}
+      \strng{authornamehash}{41306a1fd63a917f3f1271b365fc0b4c}
+      \strng{authorfullhash}{bae6bb2568f561b3b5941c161b7e788f}
+      \strng{authorfullhashraw}{bae6bb2568f561b3b5941c161b7e788f}
+      \strng{editorbibnamehash}{78969e3bd0922c06cd9ab8b338210474}
+      \strng{editornamehash}{78969e3bd0922c06cd9ab8b338210474}
+      \strng{editorfullhash}{78969e3bd0922c06cd9ab8b338210474}
+      \strng{editorfullhashraw}{78969e3bd0922c06cd9ab8b338210474}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Advanced Information Systems Engineering - 23rd International Conference, {CAiSE} 2011, London, UK, June 20-24, 2011. Proceedings}
+      \field{series}{Lecture Notes in Computer Science}
+      \field{title}{Handling Concept Drift in Process Mining}
+      \field{volume}{6741}
+      \field{year}{2011}
+      \field{pages}{391\bibrangedash 405}
+      \range{pages}{15}
+      \verb{doi}
+      \verb 10.1007/978-3-642-21640-4_30
+      \endverb
+    \endentry
+    \entry{brockhoff2020time}{inproceedings}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=ead030d345addb6137d0390aa4f964e2}{%
+           family={Brockhoff},
+           familyi={B\bibinitperiod},
+           given={Tobias},
+           giveni={T\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=6836f9a5ea829cbaf0c4a9b9953db81d}{%
+           family={Uysal},
+           familyi={U\bibinitperiod},
+           given={Merih\bibnamedelima Seran},
+           giveni={M\bibinitperiod\bibinitdelim S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=45fed513d4bd5fb28cebd7bb58a35c4a}{%
+           family={Aalst},
+           familyi={A\bibinitperiod},
+           given={Wil\bibnamedelimb M.\bibnamedelimi P.},
+           giveni={W\bibinitperiod\bibinitdelim M\bibinitperiod\bibinitdelim P\bibinitperiod},
+           givenun=0,
+           prefix={van\bibnamedelima der},
+           prefixi={v\bibinitperiod\bibinitdelim d\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {IEEE}%
+      }
+      \strng{namehash}{ab69c7d5a609755764a9d85cf8d4a72b}
+      \strng{fullhash}{e814bb6d99d1d4017b685c18baf3fe10}
+      \strng{fullhashraw}{e814bb6d99d1d4017b685c18baf3fe10}
+      \strng{bibnamehash}{e814bb6d99d1d4017b685c18baf3fe10}
+      \strng{authorbibnamehash}{e814bb6d99d1d4017b685c18baf3fe10}
+      \strng{authornamehash}{ab69c7d5a609755764a9d85cf8d4a72b}
+      \strng{authorfullhash}{e814bb6d99d1d4017b685c18baf3fe10}
+      \strng{authorfullhashraw}{e814bb6d99d1d4017b685c18baf3fe10}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{2nd International Conference on Process Mining, {ICPM} 2020, Padua, Italy, October 5-8, 2020}
+      \field{title}{Time-Aware Concept Drift Detection Using the Earth Mover's Distance}
+      \field{year}{2020}
+      \field{pages}{33\bibrangedash 40}
+      \range{pages}{8}
+      \verb{doi}
+      \verb 10.1109/ICPM49681.2020.00016
+      \endverb
+    \endentry
+    \entry{calinski1974dendrite}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=ca449b99faca9e3268f9cd5089ee374b}{%
+           family={Caliński},
+           familyi={C\bibinitperiod},
+           given={T.},
+           giveni={T\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=9fca4f269165e117e1e19179c9571c72}{%
+           family={Harabasz},
+           familyi={H\bibinitperiod},
+           given={J.},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{04758f598b9a1ccb2e19147486c6d66e}
+      \strng{fullhash}{04758f598b9a1ccb2e19147486c6d66e}
+      \strng{fullhashraw}{04758f598b9a1ccb2e19147486c6d66e}
+      \strng{bibnamehash}{04758f598b9a1ccb2e19147486c6d66e}
+      \strng{authorbibnamehash}{04758f598b9a1ccb2e19147486c6d66e}
+      \strng{authornamehash}{04758f598b9a1ccb2e19147486c6d66e}
+      \strng{authorfullhash}{04758f598b9a1ccb2e19147486c6d66e}
+      \strng{authorfullhashraw}{04758f598b9a1ccb2e19147486c6d66e}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Communications in Statistics}
+      \field{number}{1}
+      \field{title}{A Dendrite Method for Cluster Analysis}
+      \field{volume}{3}
+      \field{year}{1974}
+      \field{pages}{1\bibrangedash 27}
+      \range{pages}{27}
+      \verb{doi}
+      \verb 10.1080/03610927408827101
+      \endverb
+    \endentry
+    \entry{ester1996density}{inproceedings}{}{}
+      \name{author}{4}{}{%
+        {{un=0,uniquepart=base,hash=2c062e64ed26aacc08a62155e7944f04}{%
+           family={Ester},
+           familyi={E\bibinitperiod},
+           given={Martin},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=9559fe65ed2c0877cf14a66fe1f8e9b3}{%
+           family={Kriegel},
+           familyi={K\bibinitperiod},
+           given={Hans-Peter},
+           giveni={H\bibinithyphendelim P\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=802157026f850823b2027c2100cb359a}{%
+           family={Sander},
+           familyi={S\bibinitperiod},
+           given={Jörg},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=2dda16c0a5d50fc830d0d4a3787937fa}{%
+           family={Xu},
+           familyi={X\bibinitperiod},
+           given={Xiaowei},
+           giveni={X\bibinitperiod},
+           givenun=0}}%
+      }
+      \name{editor}{3}{}{%
+        {{hash=ebe3c105175ad500b489b3be8fab0279}{%
+           family={Simoudis},
+           familyi={S\bibinitperiod},
+           given={Evangelos},
+           giveni={E\bibinitperiod}}}%
+        {{hash=7cacfe272c4d395c979d6aecd2f5ec9c}{%
+           family={Han},
+           familyi={H\bibinitperiod},
+           given={Jiawei},
+           giveni={J\bibinitperiod}}}%
+        {{hash=d72660528ebbfc30c6661be74afda5c2}{%
+           family={Fayyad},
+           familyi={F\bibinitperiod},
+           given={Usama\bibnamedelima M.},
+           giveni={U\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {AAAI Press}%
+      }
+      \strng{namehash}{9158a41d23cb4e154e78366d59c05728}
+      \strng{fullhash}{3270dfaa31e8210b3bd04b1bcf4a29a3}
+      \strng{fullhashraw}{3270dfaa31e8210b3bd04b1bcf4a29a3}
+      \strng{bibnamehash}{3270dfaa31e8210b3bd04b1bcf4a29a3}
+      \strng{authorbibnamehash}{3270dfaa31e8210b3bd04b1bcf4a29a3}
+      \strng{authornamehash}{9158a41d23cb4e154e78366d59c05728}
+      \strng{authorfullhash}{3270dfaa31e8210b3bd04b1bcf4a29a3}
+      \strng{authorfullhashraw}{3270dfaa31e8210b3bd04b1bcf4a29a3}
+      \strng{editorbibnamehash}{939413ab4a7ec18b5cc72dff25105ef5}
+      \strng{editornamehash}{f04653518ea0c78cffc4312148d46893}
+      \strng{editorfullhash}{939413ab4a7ec18b5cc72dff25105ef5}
+      \strng{editorfullhashraw}{939413ab4a7ec18b5cc72dff25105ef5}
+      \field{sortinit}{E}
+      \field{sortinithash}{8da8a182d344d5b9047633dfc0cc9131}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the Second International Conference on Knowledge Discovery and Data Mining (KDD-96), Portland, Oregon, USA}
+      \field{title}{A Density-Based Algorithm for Discovering Clusters in Large Spatial Databases with Noise}
+      \field{year}{1996}
+      \field{pages}{226\bibrangedash 231}
+      \range{pages}{6}
+      \verb{urlraw}
+      \verb https://www.aaai.org/Library/KDD/1996/kdd96-037.php
+      \endverb
+      \verb{url}
+      \verb https://www.aaai.org/Library/KDD/1996/kdd96-037.php
+      \endverb
+    \endentry
+    \entry{grimm2022cdlg}{inproceedings}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=267a82f085deda852fe8c71e62b2e2dc}{%
+           family={Grimm},
+           familyi={G\bibinitperiod},
+           given={Justus},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=8479d622be5c5c7f24145c6bc06eec14}{%
+           family={Kraus},
+           familyi={K\bibinitperiod},
+           given={Alexander},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ac7236811e9fb910a9f1a1bb10e3bab1}{%
+           family={Aa},
+           familyi={A\bibinitperiod},
+           given={Han},
+           giveni={H\bibinitperiod},
+           givenun=0,
+           prefix={van\bibnamedelima der},
+           prefixi={v\bibinitperiod\bibinitdelim d\bibinitperiod}}}%
+      }
+      \name{editor}{9}{}{%
+        {{hash=45de6a8a223c275a82b99a163a7e38ce}{%
+           family={Janiesch},
+           familyi={J\bibinitperiod},
+           given={Christian},
+           giveni={C\bibinitperiod}}}%
+        {{hash=ab8b674e4dec5c580752bb16d8140ae5}{%
+           family={Di\bibnamedelima Francescomarino},
+           familyi={D\bibinitperiod\bibinitdelim F\bibinitperiod},
+           given={Chiara},
+           giveni={C\bibinitperiod}}}%
+        {{hash=3970ad48dd138f56815485c6bc30de7e}{%
+           family={Grisold},
+           familyi={G\bibinitperiod},
+           given={Thomas},
+           giveni={T\bibinitperiod}}}%
+        {{hash=7aa5eb3330dba26e37e78d0071c27e7e}{%
+           family={Kumar},
+           familyi={K\bibinitperiod},
+           given={Akhil},
+           giveni={A\bibinitperiod}}}%
+        {{hash=77c03f6db0b7101e4efabda4bd436ce4}{%
+           family={Mendling},
+           familyi={M\bibinitperiod},
+           given={Jan},
+           giveni={J\bibinitperiod}}}%
+        {{hash=7c5c8f47023726dac06f7e021b8fe4b0}{%
+           family={Pentland},
+           familyi={P\bibinitperiod},
+           given={Brian},
+           giveni={B\bibinitperiod}}}%
+        {{hash=06d7a469f3b1cfd5233fb5e897de83c0}{%
+           family={Reijers},
+           familyi={R\bibinitperiod},
+           given={Hajo},
+           giveni={H\bibinitperiod}}}%
+        {{hash=25208824fbaeae605dbc7ab6341aa4e3}{%
+           family={Weske},
+           familyi={W\bibinitperiod},
+           given={Mathias},
+           giveni={M\bibinitperiod}}}%
+        {{hash=db42b731ed3fdfd3220dae321db5dc08}{%
+           family={Winter},
+           familyi={W\bibinitperiod},
+           given={Robert},
+           giveni={R\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {CEUR-WS.org}%
+      }
+      \strng{namehash}{fd229dd5abc7e6f9cf0f4788c79d33df}
+      \strng{fullhash}{01a03ccf66d3700b6f50568cf5af8a93}
+      \strng{fullhashraw}{01a03ccf66d3700b6f50568cf5af8a93}
+      \strng{bibnamehash}{01a03ccf66d3700b6f50568cf5af8a93}
+      \strng{authorbibnamehash}{01a03ccf66d3700b6f50568cf5af8a93}
+      \strng{authornamehash}{fd229dd5abc7e6f9cf0f4788c79d33df}
+      \strng{authorfullhash}{01a03ccf66d3700b6f50568cf5af8a93}
+      \strng{authorfullhashraw}{01a03ccf66d3700b6f50568cf5af8a93}
+      \strng{editorbibnamehash}{b65192c54309d147cf0052598b26831d}
+      \strng{editornamehash}{219200346234e26a0e20b7d044d95862}
+      \strng{editorfullhash}{b65192c54309d147cf0052598b26831d}
+      \strng{editorfullhashraw}{b65192c54309d147cf0052598b26831d}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the Best Dissertation Award, Doctoral Consortium, and Demonstration \& Resources Track at {BPM} 2022, Münster, Germany, September 11-16, 2022}
+      \field{series}{{CEUR} Workshop Proceedings}
+      \field{title}{{CDLG}: A Tool for the Generation of Event Logs with Concept Drifts}
+      \field{volume}{3216}
+      \field{year}{2022}
+      \field{pages}{92\bibrangedash 96}
+      \range{pages}{5}
+      \verb{urlraw}
+      \verb https://ceur-ws.org/Vol-3216/paper_241.pdf
+      \endverb
+      \verb{url}
+      \verb https://ceur-ws.org/Vol-3216/paper_241.pdf
+      \endverb
+    \endentry
+    \entry{haykin2009neural}{book}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=91e57481898b943d6a72a1deba06a6a9}{%
+           family={Haykin},
+           familyi={H\bibinitperiod},
+           given={Simon},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{publisher}{1}{%
+        {Pearson Education}%
+      }
+      \strng{namehash}{91e57481898b943d6a72a1deba06a6a9}
+      \strng{fullhash}{91e57481898b943d6a72a1deba06a6a9}
+      \strng{fullhashraw}{91e57481898b943d6a72a1deba06a6a9}
+      \strng{bibnamehash}{91e57481898b943d6a72a1deba06a6a9}
+      \strng{authorbibnamehash}{91e57481898b943d6a72a1deba06a6a9}
+      \strng{authornamehash}{91e57481898b943d6a72a1deba06a6a9}
+      \strng{authorfullhash}{91e57481898b943d6a72a1deba06a6a9}
+      \strng{authorfullhashraw}{91e57481898b943d6a72a1deba06a6a9}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{edition}{3}
+      \field{isbn}{978-0-13-147139-9}
+      \field{title}{Neural Networks and Learning Machines}
+      \field{year}{2009}
+    \endentry
+    \entry{khraiwesh2027window}{inproceedings}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=05cc81476bcd37bf14bc6c754dc4b56f}{%
+           family={Khraiwesh},
+           familyi={K\bibinitperiod},
+           given={Samira},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=c8a414f9975872131fd1e3e96c163ae8}{%
+           family={Dagtekin},
+           familyi={D\bibinitperiod},
+           given={Dogukan},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=4d752747982a0a9629526e420fd031ad}{%
+           family={Pufahl},
+           familyi={P\bibinitperiod},
+           given={Luise},
+           giveni={L\bibinitperiod},
+           givenun=0}}%
+      }
+      \name{editor}{4}{}{%
+        {{hash=c9b1bc874aa7678c6bd81e3a81fda868}{%
+           family={Maggi},
+           familyi={M\bibinitperiod},
+           given={Fabrizio\bibnamedelima Maria},
+           giveni={F\bibinitperiod\bibinitdelim M\bibinitperiod}}}%
+        {{hash=685de5db04ba434fb83441a38177fe6c}{%
+           family={Leopold},
+           familyi={L\bibinitperiod},
+           given={Henrik},
+           giveni={H\bibinitperiod}}}%
+        {{hash=87716370f7200af3198be8c289c78219}{%
+           family={Santoro},
+           familyi={S\bibinitperiod},
+           given={Flavia},
+           giveni={F\bibinitperiod}}}%
+        {{hash=572d697196c3c5fd4271b35ce4dfb1ff}{%
+           family={Gal},
+           familyi={G\bibinitperiod},
+           given={Avigdor},
+           giveni={A\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{46bee50304c98c41d6aa3ef1bd83d70a}
+      \strng{fullhash}{10eaf0e14141e6a3092fe6606b8edf0a}
+      \strng{fullhashraw}{10eaf0e14141e6a3092fe6606b8edf0a}
+      \strng{bibnamehash}{10eaf0e14141e6a3092fe6606b8edf0a}
+      \strng{authorbibnamehash}{10eaf0e14141e6a3092fe6606b8edf0a}
+      \strng{authornamehash}{46bee50304c98c41d6aa3ef1bd83d70a}
+      \strng{authorfullhash}{10eaf0e14141e6a3092fe6606b8edf0a}
+      \strng{authorfullhashraw}{10eaf0e14141e6a3092fe6606b8edf0a}
+      \strng{editorbibnamehash}{39c4887e505d1a55dfc949210f751b84}
+      \strng{editornamehash}{4608b6867597bd3f40ec165a4615c036}
+      \strng{editorfullhash}{39c4887e505d1a55dfc949210f751b84}
+      \strng{editorfullhashraw}{39c4887e505d1a55dfc949210f751b84}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Business Process Management Forum - {BPM} 2026 Forum, Toronto, ON, Canada, September 27 - October 2, 2026, Proceedings}
+      \field{series}{Lecture Notes in Business Information Processing}
+      \field{title}{{CV}-Driven Window Selection for Multi-Perspective Concept Drift Detection in Event Logs}
+      \field{volume}{599}
+      \field{year}{2027}
+      \field{pages}{185\bibrangedash 202}
+      \range{pages}{18}
+      \verb{doi}
+      \verb 10.1007/978-3-032-37877-4_11
+      \endverb
+    \endentry
+    \entry{klijn2024multi}{inproceedings}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=37c0a56f21f9e04952af0583f1f04b7e}{%
+           family={Klijn},
+           familyi={K\bibinitperiod},
+           given={Eva\bibnamedelima L.},
+           giveni={E\bibinitperiod\bibinitdelim L\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=5aec67dc00caf0a82c3fd6ff7cedee63}{%
+           family={Mannhardt},
+           familyi={M\bibinitperiod},
+           given={Felix},
+           giveni={F\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=7d74ac54a5956360222a7ea350920f26}{%
+           family={Fahland},
+           familyi={F\bibinitperiod},
+           given={Dirk},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+      }
+      \name{editor}{4}{}{%
+        {{hash=5c3bb384db9434934a0c3f88b02874ca}{%
+           family={Guizzardi},
+           familyi={G\bibinitperiod},
+           given={Giancarlo},
+           giveni={G\bibinitperiod}}}%
+        {{hash=87716370f7200af3198be8c289c78219}{%
+           family={Santoro},
+           familyi={S\bibinitperiod},
+           given={Flavia},
+           giveni={F\bibinitperiod}}}%
+        {{hash=d01efbf1936db18ed11c9c34a435b48b}{%
+           family={Mouratidis},
+           familyi={M\bibinitperiod},
+           given={Haralambos},
+           giveni={H\bibinitperiod}}}%
+        {{hash=e31530cf9561e40c3b19adfb86640fd2}{%
+           family={Soffer},
+           familyi={S\bibinitperiod},
+           given={Pnina},
+           giveni={P\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{69ac0b4f14b59403f8f2dde3fd7cc09c}
+      \strng{fullhash}{6d41d407d12fa0747765b6785c7045c4}
+      \strng{fullhashraw}{6d41d407d12fa0747765b6785c7045c4}
+      \strng{bibnamehash}{6d41d407d12fa0747765b6785c7045c4}
+      \strng{authorbibnamehash}{6d41d407d12fa0747765b6785c7045c4}
+      \strng{authornamehash}{69ac0b4f14b59403f8f2dde3fd7cc09c}
+      \strng{authorfullhash}{6d41d407d12fa0747765b6785c7045c4}
+      \strng{authorfullhashraw}{6d41d407d12fa0747765b6785c7045c4}
+      \strng{editorbibnamehash}{f8186f9c6c46b2a0d47109cede5d05d0}
+      \strng{editornamehash}{f71ae9c97c45de464185360ebbb58145}
+      \strng{editorfullhash}{f8186f9c6c46b2a0d47109cede5d05d0}
+      \strng{editorfullhashraw}{f8186f9c6c46b2a0d47109cede5d05d0}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Advanced Information Systems Engineering - 36th International Conference, {CAiSE} 2024, Limassol, Cyprus, June 3-7, 2024, Proceedings}
+      \field{series}{Lecture Notes in Computer Science}
+      \field{title}{Multi-Perspective Concept Drift Detection: Including the Actor Perspective}
+      \field{volume}{14663}
+      \field{year}{2024}
+      \field{pages}{141\bibrangedash 157}
+      \range{pages}{17}
+      \verb{doi}
+      \verb 10.1007/978-3-031-61057-8_9
+      \endverb
+    \endentry
+    \entry{kraus2026steady}{article}{}{}
+      \name{author}{5}{}{%
+        {{un=0,uniquepart=base,hash=8479d622be5c5c7f24145c6bc06eec14}{%
+           family={Kraus},
+           familyi={K\bibinitperiod},
+           given={Alexander},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=6f3f0de75701dd50d66a3db542372f32}{%
+           family={Amiri\bibnamedelima Elyasi},
+           familyi={A\bibinitperiod\bibinitdelim E\bibinitperiod},
+           given={Keyvan},
+           giveni={K\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=2c28b3307a66cd938ecad2a2a90ff27e}{%
+           family={Rebmann},
+           familyi={R\bibinitperiod},
+           given={Adrian},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=fc85cb187ecca87112afb3008a9ec408}{%
+           family={Hadian},
+           familyi={H\bibinitperiod},
+           given={Sherri},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ac7236811e9fb910a9f1a1bb10e3bab1}{%
+           family={Aa},
+           familyi={A\bibinitperiod},
+           given={Han},
+           giveni={H\bibinitperiod},
+           givenun=0,
+           prefix={van\bibnamedelima der},
+           prefixi={v\bibinitperiod\bibinitdelim d\bibinitperiod}}}%
+      }
+      \strng{namehash}{325c1b6f5468a2f172dbc173616ddeb1}
+      \strng{fullhash}{3c1b9fd0fa7da8970ebcbaf0d91cf4b8}
+      \strng{fullhashraw}{3c1b9fd0fa7da8970ebcbaf0d91cf4b8}
+      \strng{bibnamehash}{3c1b9fd0fa7da8970ebcbaf0d91cf4b8}
+      \strng{authorbibnamehash}{3c1b9fd0fa7da8970ebcbaf0d91cf4b8}
+      \strng{authornamehash}{325c1b6f5468a2f172dbc173616ddeb1}
+      \strng{authorfullhash}{3c1b9fd0fa7da8970ebcbaf0d91cf4b8}
+      \strng{authorfullhashraw}{3c1b9fd0fa7da8970ebcbaf0d91cf4b8}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Information Systems}
+      \field{title}{A Framework for Steady-State Detection in Process Mining}
+      \field{volume}{140}
+      \field{year}{2026}
+      \field{pages}{102740}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1016/j.is.2026.102740
+      \endverb
+    \endentry
+    \entry{kraus2025machine}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=8479d622be5c5c7f24145c6bc06eec14}{%
+           family={Kraus},
+           familyi={K\bibinitperiod},
+           given={Alexander},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ac7236811e9fb910a9f1a1bb10e3bab1}{%
+           family={Aa},
+           familyi={A\bibinitperiod},
+           given={Han},
+           giveni={H\bibinitperiod},
+           givenun=0,
+           prefix={van\bibnamedelima der},
+           prefixi={v\bibinitperiod\bibinitdelim d\bibinitperiod}}}%
+      }
+      \strng{namehash}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \strng{fullhash}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \strng{fullhashraw}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \strng{bibnamehash}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \strng{authorbibnamehash}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \strng{authornamehash}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \strng{authorfullhash}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \strng{authorfullhashraw}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \field{extraname}{1}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Process Science}
+      \field{number}{1}
+      \field{title}{Machine Learning-Based Detection of Concept Drift in Business Processes}
+      \field{volume}{2}
+      \field{year}{2025}
+      \field{pages}{5}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1007/s44311-025-00012-w
+      \endverb
+    \endentry
+    \entry{kraus2026characterization}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=8479d622be5c5c7f24145c6bc06eec14}{%
+           family={Kraus},
+           familyi={K\bibinitperiod},
+           given={Alexander},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ac7236811e9fb910a9f1a1bb10e3bab1}{%
+           family={Aa},
+           familyi={A\bibinitperiod},
+           given={Han},
+           giveni={H\bibinitperiod},
+           givenun=0,
+           prefix={van\bibnamedelima der},
+           prefixi={v\bibinitperiod\bibinitdelim d\bibinitperiod}}}%
+      }
+      \strng{namehash}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \strng{fullhash}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \strng{fullhashraw}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \strng{bibnamehash}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \strng{authorbibnamehash}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \strng{authornamehash}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \strng{authorfullhash}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \strng{authorfullhashraw}{d3b58b2a13f7bb6b887bf13f448ea6df}
+      \field{extraname}{2}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Information Systems}
+      \field{title}{Comprehensive Characterization of Concept Drifts in Process Mining}
+      \field{volume}{135}
+      \field{year}{2026}
+      \field{pages}{102584}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.1016/j.is.2025.102584
+      \endverb
+    \endentry
+    \entry{lin1991divergence}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=c9ad66a38d11327f45f96280e5ece1dd}{%
+           family={Lin},
+           familyi={L\bibinitperiod},
+           given={Jianhua},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{c9ad66a38d11327f45f96280e5ece1dd}
+      \strng{fullhash}{c9ad66a38d11327f45f96280e5ece1dd}
+      \strng{fullhashraw}{c9ad66a38d11327f45f96280e5ece1dd}
+      \strng{bibnamehash}{c9ad66a38d11327f45f96280e5ece1dd}
+      \strng{authorbibnamehash}{c9ad66a38d11327f45f96280e5ece1dd}
+      \strng{authornamehash}{c9ad66a38d11327f45f96280e5ece1dd}
+      \strng{authorfullhash}{c9ad66a38d11327f45f96280e5ece1dd}
+      \strng{authorfullhashraw}{c9ad66a38d11327f45f96280e5ece1dd}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{{IEEE} Transactions on Information Theory}
+      \field{number}{1}
+      \field{title}{Divergence Measures Based on the Shannon Entropy}
+      \field{volume}{37}
+      \field{year}{1991}
+      \field{pages}{145\bibrangedash 151}
+      \range{pages}{7}
+      \verb{doi}
+      \verb 10.1109/18.61115
+      \endverb
+    \endentry
+    \entry{maaradji2017detecting}{article}{}{}
+      \name{author}{4}{}{%
+        {{un=0,uniquepart=base,hash=f0ea6cf7bd05d6a5380ac1a98a9403de}{%
+           family={Maaradji},
+           familyi={M\bibinitperiod},
+           given={Abderrahmane},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=3608d06b171d40c433341a0cb7bf8a3b}{%
+           family={Dumas},
+           familyi={D\bibinitperiod},
+           given={Marlon},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=6c93b851668ff9e0023eaf8c20dde5d3}{%
+           family={La\bibnamedelima Rosa},
+           familyi={L\bibinitperiod\bibinitdelim R\bibinitperiod},
+           given={Marcello},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=6ebc0e10f498c4ca72b1dca9aeb1ea91}{%
+           family={Ostovar},
+           familyi={O\bibinitperiod},
+           given={Alireza},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{425dfa466cdfa3c7dd0de620cd032ed0}
+      \strng{fullhash}{1be3ded28bcf3d2e54e8d4d0c2f58b84}
+      \strng{fullhashraw}{1be3ded28bcf3d2e54e8d4d0c2f58b84}
+      \strng{bibnamehash}{1be3ded28bcf3d2e54e8d4d0c2f58b84}
+      \strng{authorbibnamehash}{1be3ded28bcf3d2e54e8d4d0c2f58b84}
+      \strng{authornamehash}{425dfa466cdfa3c7dd0de620cd032ed0}
+      \strng{authorfullhash}{1be3ded28bcf3d2e54e8d4d0c2f58b84}
+      \strng{authorfullhashraw}{1be3ded28bcf3d2e54e8d4d0c2f58b84}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{{IEEE} Transactions on Knowledge and Data Engineering}
+      \field{number}{10}
+      \field{title}{Detecting Sudden and Gradual Drifts in Business Processes from Execution Traces}
+      \field{volume}{29}
+      \field{year}{2017}
+      \field{pages}{2140\bibrangedash 2154}
+      \range{pages}{15}
+      \verb{doi}
+      \verb 10.1109/TKDE.2017.2720601
+      \endverb
+    \endentry
+    \entry{moulavi2014density}{inproceedings}{}{}
+      \name{author}{5}{}{%
+        {{un=0,uniquepart=base,hash=8608b4a10cbfee7eb81b652407a3305a}{%
+           family={Moulavi},
+           familyi={M\bibinitperiod},
+           given={Davoud},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=977f798d4b9d4f549bfc19f7ec47ad02}{%
+           family={Jaskowiak},
+           familyi={J\bibinitperiod},
+           given={Pablo\bibnamedelima A.},
+           giveni={P\bibinitperiod\bibinitdelim A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=382d8e986b9afdbfedb661be5cf9ce33}{%
+           family={Campello},
+           familyi={C\bibinitperiod},
+           given={Ricardo\bibnamedelimb J.\bibnamedelimi G.\bibnamedelimi B.},
+           giveni={R\bibinitperiod\bibinitdelim J\bibinitperiod\bibinitdelim G\bibinitperiod\bibinitdelim B\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=cbfafee6627ecbb346007c41a5787a4e}{%
+           family={Zimek},
+           familyi={Z\bibinitperiod},
+           given={Arthur},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=802157026f850823b2027c2100cb359a}{%
+           family={Sander},
+           familyi={S\bibinitperiod},
+           given={Jörg},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{publisher}{2}{%
+        {Society for Industrial}%
+        {Applied Mathematics}%
+      }
+      \strng{namehash}{bd9dc6feeaa97827502fffa0f6371176}
+      \strng{fullhash}{068b5f926405b4feb1c171072bbb86de}
+      \strng{fullhashraw}{068b5f926405b4feb1c171072bbb86de}
+      \strng{bibnamehash}{068b5f926405b4feb1c171072bbb86de}
+      \strng{authorbibnamehash}{068b5f926405b4feb1c171072bbb86de}
+      \strng{authornamehash}{bd9dc6feeaa97827502fffa0f6371176}
+      \strng{authorfullhash}{068b5f926405b4feb1c171072bbb86de}
+      \strng{authorfullhashraw}{068b5f926405b4feb1c171072bbb86de}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Proceedings of the 2014 {SIAM} International Conference on Data Mining}
+      \field{title}{Density-Based Clustering Validation}
+      \field{year}{2014}
+      \field{pages}{839\bibrangedash 847}
+      \range{pages}{9}
+      \verb{doi}
+      \verb 10.1137/1.9781611973440.96
+      \endverb
+    \endentry
+    \entry{padella2026everything}{misc}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=dd2da0117fc39df0fd057b296406728f}{%
+           family={Padella},
+           familyi={P\bibinitperiod},
+           given={Alessandro},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ce0f9c27e755c15366ef2882f1eb62e1}{%
+           family={Vinci},
+           familyi={V\bibinitperiod},
+           given={Francesco},
+           giveni={F\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{97ab290328a172a157ccbdfa98d64fc7}
+      \strng{fullhash}{97ab290328a172a157ccbdfa98d64fc7}
+      \strng{fullhashraw}{97ab290328a172a157ccbdfa98d64fc7}
+      \strng{bibnamehash}{97ab290328a172a157ccbdfa98d64fc7}
+      \strng{authorbibnamehash}{97ab290328a172a157ccbdfa98d64fc7}
+      \strng{authornamehash}{97ab290328a172a157ccbdfa98d64fc7}
+      \strng{authorfullhash}{97ab290328a172a157ccbdfa98d64fc7}
+      \strng{authorfullhashraw}{97ab290328a172a157ccbdfa98d64fc7}
+      \field{sortinit}{P}
+      \field{sortinithash}{ff3bcf24f47321b42cb156c2cc8a8422}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{Zenodo dataset, version 1}
+      \field{title}{Everything Real but the Drift: A Concept-Drift Benchmark Event Logs for Process Mining}
+      \field{year}{2026}
+      \verb{doi}
+      \verb 10.5281/zenodo.21005862
+      \endverb
+    \endentry
+    \entry{rousseeuw1987silhouettes}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=72d8129c9f4e6afddacb834fb2d8226f}{%
+           family={Rousseeuw},
+           familyi={R\bibinitperiod},
+           given={Peter\bibnamedelima J.},
+           giveni={P\bibinitperiod\bibinitdelim J\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{72d8129c9f4e6afddacb834fb2d8226f}
+      \strng{fullhash}{72d8129c9f4e6afddacb834fb2d8226f}
+      \strng{fullhashraw}{72d8129c9f4e6afddacb834fb2d8226f}
+      \strng{bibnamehash}{72d8129c9f4e6afddacb834fb2d8226f}
+      \strng{authorbibnamehash}{72d8129c9f4e6afddacb834fb2d8226f}
+      \strng{authornamehash}{72d8129c9f4e6afddacb834fb2d8226f}
+      \strng{authorfullhash}{72d8129c9f4e6afddacb834fb2d8226f}
+      \strng{authorfullhashraw}{72d8129c9f4e6afddacb834fb2d8226f}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Computational and Applied Mathematics}
+      \field{title}{Silhouettes: A Graphical Aid to the Interpretation and Validation of Cluster Analysis}
+      \field{volume}{20}
+      \field{year}{1987}
+      \field{pages}{53\bibrangedash 65}
+      \range{pages}{13}
+      \verb{doi}
+      \verb 10.1016/0377-0427(87)90125-7
+      \endverb
+    \endentry
+    \entry{sato2022survey}{article}{}{}
+      \name{author}{4}{}{%
+        {{un=0,uniquepart=base,hash=d470550396c3515149adf70ea4524c43}{%
+           family={Sato},
+           familyi={S\bibinitperiod},
+           given={Denise\bibnamedelimb Maria\bibnamedelima Vecino},
+           giveni={D\bibinitperiod\bibinitdelim M\bibinitperiod\bibinitdelim V\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=09b7524046e4f6b02ff618e925cc08c9}{%
+           family={De\bibnamedelima Freitas},
+           familyi={D\bibinitperiod\bibinitdelim F\bibinitperiod},
+           given={Sheila\bibnamedelima Cristiana},
+           giveni={S\bibinitperiod\bibinitdelim C\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=5577b0c1457c428ee7cc67b8747e4f8f}{%
+           family={Barddal},
+           familyi={B\bibinitperiod},
+           given={Jean\bibnamedelima Paul},
+           giveni={J\bibinitperiod\bibinitdelim P\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a5b42486aac92436940f204d9045ca34}{%
+           family={Scalabrin},
+           familyi={S\bibinitperiod},
+           given={Edson\bibnamedelima Emilio},
+           giveni={E\bibinitperiod\bibinitdelim E\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{b54eb74c98a68bf738d9abcd20513f1b}
+      \strng{fullhash}{88fb10004795061771e27a686b364706}
+      \strng{fullhashraw}{88fb10004795061771e27a686b364706}
+      \strng{bibnamehash}{88fb10004795061771e27a686b364706}
+      \strng{authorbibnamehash}{88fb10004795061771e27a686b364706}
+      \strng{authornamehash}{b54eb74c98a68bf738d9abcd20513f1b}
+      \strng{authorfullhash}{88fb10004795061771e27a686b364706}
+      \strng{authorfullhashraw}{88fb10004795061771e27a686b364706}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{{ACM} Computing Surveys}
+      \field{number}{9}
+      \field{title}{A Survey on Concept Drift in Process Mining}
+      \field{volume}{54}
+      \field{year}{2022}
+      \field{pages}{189:1\bibrangedash 189:38}
+      \range{pages}{-1}
+      \verb{doi}
+      \verb 10.1145/3472752
+      \endverb
+    \endentry
+    \entry{senderovich2017intra}{inproceedings}{}{}
+      \name{author}{5}{}{%
+        {{un=0,uniquepart=base,hash=f6dd0e41b77c20944608098eccae51f0}{%
+           family={Senderovich},
+           familyi={S\bibinitperiod},
+           given={Arik},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ab8b674e4dec5c580752bb16d8140ae5}{%
+           family={Di\bibnamedelima Francescomarino},
+           familyi={D\bibinitperiod\bibinitdelim F\bibinitperiod},
+           given={Chiara},
+           giveni={C\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=31e9465c8c8d2598cceb631a66bffd27}{%
+           family={Ghidini},
+           familyi={G\bibinitperiod},
+           given={Chiara},
+           giveni={C\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=34e197a02d85b020dc71c1316b77bd2b}{%
+           family={Jorbina},
+           familyi={J\bibinitperiod},
+           given={Kerwin},
+           giveni={K\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=c9b1bc874aa7678c6bd81e3a81fda868}{%
+           family={Maggi},
+           familyi={M\bibinitperiod},
+           given={Fabrizio\bibnamedelima Maria},
+           giveni={F\bibinitperiod\bibinitdelim M\bibinitperiod},
+           givenun=0}}%
+      }
+      \name{editor}{3}{}{%
+        {{hash=457ba2320daad4066f20e1d9587a7dfb}{%
+           family={Carmona},
+           familyi={C\bibinitperiod},
+           given={Josep},
+           giveni={J\bibinitperiod}}}%
+        {{hash=af382dc4ee2ef85f92a873e209159a0a}{%
+           family={Engels},
+           familyi={E\bibinitperiod},
+           given={Gregor},
+           giveni={G\bibinitperiod}}}%
+        {{hash=7aa5eb3330dba26e37e78d0071c27e7e}{%
+           family={Kumar},
+           familyi={K\bibinitperiod},
+           given={Akhil},
+           giveni={A\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{f65f4dd989e4dd7b3f007e9bc9d12605}
+      \strng{fullhash}{c1027e12d004d13b2f3421dc6ec68b34}
+      \strng{fullhashraw}{c1027e12d004d13b2f3421dc6ec68b34}
+      \strng{bibnamehash}{c1027e12d004d13b2f3421dc6ec68b34}
+      \strng{authorbibnamehash}{c1027e12d004d13b2f3421dc6ec68b34}
+      \strng{authornamehash}{f65f4dd989e4dd7b3f007e9bc9d12605}
+      \strng{authorfullhash}{c1027e12d004d13b2f3421dc6ec68b34}
+      \strng{authorfullhashraw}{c1027e12d004d13b2f3421dc6ec68b34}
+      \strng{editorbibnamehash}{f109cce168e758d49316627af55e53de}
+      \strng{editornamehash}{587725ef98ea05985eb92419ee4a36c0}
+      \strng{editorfullhash}{f109cce168e758d49316627af55e53de}
+      \strng{editorfullhashraw}{f109cce168e758d49316627af55e53de}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{Business Process Management - 15th International Conference, {BPM} 2017, Barcelona, Spain, September 10-15, 2017, Proceedings}
+      \field{series}{Lecture Notes in Computer Science}
+      \field{title}{Intra and Inter-Case Features in Predictive Process Monitoring: A Tale of Two Dimensions}
+      \field{volume}{10445}
+      \field{year}{2017}
+      \field{pages}{306\bibrangedash 323}
+      \range{pages}{18}
+      \verb{doi}
+      \verb 10.1007/978-3-319-65000-5_18
+      \endverb
+    \endentry
+    \entry{vanderaalst2016process}{book}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=45fed513d4bd5fb28cebd7bb58a35c4a}{%
+           family={Aalst},
+           familyi={A\bibinitperiod},
+           given={Wil\bibnamedelimb M.\bibnamedelimi P.},
+           giveni={W\bibinitperiod\bibinitdelim M\bibinitperiod\bibinitdelim P\bibinitperiod},
+           givenun=0,
+           prefix={van\bibnamedelima der},
+           prefixi={v\bibinitperiod\bibinitdelim d\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \strng{fullhash}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \strng{fullhashraw}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \strng{bibnamehash}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \strng{authorbibnamehash}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \strng{authornamehash}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \strng{authorfullhash}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \strng{authorfullhashraw}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \field{extraname}{1}
+      \field{sortinit}{v}
+      \field{sortinithash}{afb52128e5b4dc4b843768c0113d673b}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{edition}{2}
+      \field{title}{Process Mining: Data Science in Action}
+      \field{year}{2016}
+      \verb{doi}
+      \verb 10.1007/978-3-662-49851-4
+      \endverb
+    \endentry
+    \entry{beautiful}{misc}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=45fed513d4bd5fb28cebd7bb58a35c4a}{%
+           family={Aalst},
+           familyi={A\bibinitperiod},
+           given={Wil\bibnamedelimb M.\bibnamedelimi P.},
+           giveni={W\bibinitperiod\bibinitdelim M\bibinitperiod\bibinitdelim P\bibinitperiod},
+           givenun=0,
+           prefix={van\bibnamedelima der},
+           prefixi={v\bibinitperiod\bibinitdelim d\bibinitperiod}}}%
+      }
+      \strng{namehash}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \strng{fullhash}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \strng{fullhashraw}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \strng{bibnamehash}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \strng{authorbibnamehash}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \strng{authornamehash}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \strng{authorfullhash}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \strng{authorfullhashraw}{45fed513d4bd5fb28cebd7bb58a35c4a}
+      \field{extraname}{2}
+      \field{sortinit}{v}
+      \field{sortinithash}{afb52128e5b4dc4b843768c0113d673b}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{eprintclass}{cs.DL}
+      \field{eprinttype}{arXiv}
+      \field{title}{How to Write Beautiful Process-and-Data-Science Papers?}
+      \field{year}{2024}
+      \verb{eprint}
+      \verb 2203.09286
+      \endverb
+      \verb{urlraw}
+      \verb https://arxiv.org/abs/2203.09286
+      \endverb
+      \verb{url}
+      \verb https://arxiv.org/abs/2203.09286
+      \endverb
+    \endentry
+    \entry{zheng2017detecting}{inproceedings}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=91cd75aeb4b84e7a7718923693f709ad}{%
+           family={Zheng},
+           familyi={Z\bibinitperiod},
+           given={Canbin},
+           giveni={C\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=4423209807acf3e8956fa4bb6406472a}{%
+           family={Wen},
+           familyi={W\bibinitperiod},
+           given={Lijie},
+           giveni={L\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=5677a530ed74bcd73cbf45f8088a8418}{%
+           family={Wang},
+           familyi={W\bibinitperiod},
+           given={Jianmin},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+      }
+      \name{editor}{7}{}{%
+        {{hash=31b3c79508059b5b2508ea4182e2d3bf}{%
+           family={Panetto},
+           familyi={P\bibinitperiod},
+           given={Hervé},
+           giveni={H\bibinitperiod}}}%
+        {{hash=60b320d29445757595bfc1c093a3b3e8}{%
+           family={Debruyne},
+           familyi={D\bibinitperiod},
+           given={Christophe},
+           giveni={C\bibinitperiod}}}%
+        {{hash=47b3c8046cdbdc45e1ed031df378f657}{%
+           family={Gaaloul},
+           familyi={G\bibinitperiod},
+           given={Walid},
+           giveni={W\bibinitperiod}}}%
+        {{hash=042879538ddedd10b59620089b1808aa}{%
+           family={Papazoglou},
+           familyi={P\bibinitperiod},
+           given={Mike},
+           giveni={M\bibinitperiod}}}%
+        {{hash=d12c3ac18bc495ad34b0fd1da5c92548}{%
+           family={Paschke},
+           familyi={P\bibinitperiod},
+           given={Adrian},
+           giveni={A\bibinitperiod}}}%
+        {{hash=e908d0e85d9d0945a6a29cd47b0f4add}{%
+           family={Ardagna},
+           familyi={A\bibinitperiod},
+           given={Claudio\bibnamedelima Agostino},
+           giveni={C\bibinitperiod\bibinitdelim A\bibinitperiod}}}%
+        {{hash=6b837cda52ad149715262c940fe24eb3}{%
+           family={Meersman},
+           familyi={M\bibinitperiod},
+           given={Robert},
+           giveni={R\bibinitperiod}}}%
+      }
+      \list{publisher}{1}{%
+        {Springer}%
+      }
+      \strng{namehash}{f2dc82db178ba06980a3ab4347ab7dbb}
+      \strng{fullhash}{4b5064d7e351df9e1ee64ff41570e873}
+      \strng{fullhashraw}{4b5064d7e351df9e1ee64ff41570e873}
+      \strng{bibnamehash}{4b5064d7e351df9e1ee64ff41570e873}
+      \strng{authorbibnamehash}{4b5064d7e351df9e1ee64ff41570e873}
+      \strng{authornamehash}{f2dc82db178ba06980a3ab4347ab7dbb}
+      \strng{authorfullhash}{4b5064d7e351df9e1ee64ff41570e873}
+      \strng{authorfullhashraw}{4b5064d7e351df9e1ee64ff41570e873}
+      \strng{editorbibnamehash}{121179217ba68d7756fe3c76e9bdec4f}
+      \strng{editornamehash}{c24b4f37086b017e40b68e8e3930a7ce}
+      \strng{editorfullhash}{121179217ba68d7756fe3c76e9bdec4f}
+      \strng{editorfullhashraw}{121179217ba68d7756fe3c76e9bdec4f}
+      \field{sortinit}{Z}
+      \field{sortinithash}{96892c0b0a36bb8557c40c49813d48b3}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{booktitle}{On the Move to Meaningful Internet Systems. {OTM} 2017 Conferences - Confederated International Conferences: CoopIS, C\&TC, and ODBASE 2017, Rhodes, Greece, October 23-27, 2017, Proceedings, Part I}
+      \field{series}{Lecture Notes in Computer Science}
+      \field{title}{Detecting Process Concept Drifts from Event Logs}
+      \field{volume}{10573}
+      \field{year}{2017}
+      \field{pages}{524\bibrangedash 542}
+      \range{pages}{19}
+      \verb{doi}
+      \verb 10.1007/978-3-319-69462-7_33
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+
