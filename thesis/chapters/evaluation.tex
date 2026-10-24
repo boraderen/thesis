@@ -1,8 +1,8 @@
 \chapter{Evaluation}
 \label{chap:eval}
-The main handicap of our framework is its flexibility and large hyperparameter space. That has the consequence that for the same with the same drifts two different configurations of a perspective might have a very different performance in catchting the drifts or not catching the non-drifts.
+The main handicap of our framework is its flexibility and large hyperparameter space. That has the consequence that for the same event log two different configurations of a perspective might have a very different performance in catchting the drifts or not catching the non-drifts.
 
-In this chapter we will evaluate our framework from Chapter~\ref{chap:approach}. The goal is to show where is framework is strong and where it has limitations. In our evaluation we use the logs of the Padella benchmark~\ref{sec:eval:padella} and three sets of synthetic Rheon logs~\ref{sec:eval:rheon}. 
+In this chapter we will evaluate our framework from Chapter~\ref{chap:approach}. The goal is to show where the is framework is strong and where it has limitations. In our evaluation we use the logs of the Padella benchmark~\ref{sec:eval:padella} and three sets of synthetic Rheon logs~\ref{sec:eval:rheon}. 
 
 Since the output for a log of our framework is a drift signal over signal windows per perspective, we need to align it with log and real drifts points. In order to do our evaluation, we first formalize it and introduce an evaluation framework. Figure~\ref{fig:eval:example} shows an example of our evaluation framework and how it compares a drift signal and a log with drifts.
 

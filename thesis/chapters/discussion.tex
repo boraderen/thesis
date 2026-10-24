@@ -4,28 +4,65 @@ In this chapter we discuss the results and design choices of our framework. Sect
 
 \section{Research Questions}
 \label{sec:discussion:rq}
-Based on our evaluation on three sets of Rheon logs and on the Padella benchmark (Section~\ref{chap:eval}), we answer the research questions from Section~\ref{sec:intro_ssec:rq}.
+Based on our evaluation on three sets of Rheon logs and on the Padella benchmark (Chapter~\ref{chap:eval}), we answer the research questions from Section~\ref{sec:intro_ssec:rq}.
 
 \begin{itemize}
-	\item \ref{item:intro:rq_states}~\emph{States:} Feature extraction, PCA and clustering yield states in all three perspectives. The states are interpretable because their features show what changes. E.g., in the Padella log Bank account closure, each intra-case state of run 1 corresponds to one activity such that the deletion of an activity is directly observable~\ref{sec:eval:padella:cf}.
-	\item \ref{item:intro:rq_detection}~\emph{Detection:} The changes of the states signal drift points. In run 2 on the Rheon logs, the framework detects 14 out of the 15 single drift logs, 39 of the 44 drifts multi drift per perspective logs and 40 of 44 drifts in mixed drift logs. In run 2 of the Padella logs, our framework detects 28 of 29 drifts. With the configurations of run 1 on Rheon logs, it is obviously harder to detect multiple drifts of the same perspective(Recall 0.568).
-	\item \ref{item:intro:rq_characterization}~\emph{Characterization:} Since each perspective has its own states, the framework separates simultaneous drifts of different perspectives. However, Some drifts also respond to other perspectives such that the perspective of a drift is better analyzed by looking at the drift signals of all perspectives.
-	\item \ref{item:intro:rq_clustering}~\emph{Clustering:} In 354 of the 406 evaluated drift signals, k-means clusters the states mostly with $k =$ 2 to 4. SOMs are used by 37 intra-case drift signals and DBSCAN by 15 configurations~\ref{fig:eval:clustering}. Even though it is in general hard to answer which algorithm is more robust and reliable, we can say that SOMs are a better fit for intra-case configurations, k-means for resouce and inter-case configurations. The reason is that intra-case often needs more states since it has more activites and prefixes to separate whereas resource and inter-case define a log-level trajectory at the end and therefore k-means and DBSCAN are more robust agains SOMs in less number of cluster use cases.
-	\item \ref{item:intro:rq_applicability}~\emph{Applicability:} The framework is strong if the chosen features capture the drift and misleading otherwise. In logs with multiple drifts, run 1 fails to detects some \texttt{duration} drifts with less number of resources and \texttt{workload} drifts whereas run 2 is able to detect most of them.
+	\item \ref{item:intro:rq_states}~\emph{States:} Feature extraction, PCA and clustering yield states in all three perspectives. The states are interpretable because their features show what changes. E.g., in the Padella log Bank account closure, each intra-case state of Run~1 corresponds to one activity such that the deletion of an activity is directly observable (Section~\ref{sec:eval:padella:cf}).
+	\item \ref{item:intro:rq_detection}~\emph{Detection:} The changes of the states signal drift points. In Run~2 on the Rheon logs, the framework detects 14 of the 15 drifts in the single-drift logs, 39 of the 44 drifts in the multi-drift logs and 40 of the 44 drifts in the mixed-drift logs. In Run~2 on the Padella logs, our framework detects 28 of 29 drifts. With the configurations of Run~1 on the Rheon logs, it is obviously harder to detect multiple drifts of the same perspective (recall 0.568).
+	\item \ref{item:intro:rq_characterization}~\emph{Characterization:} Since each perspective has its own states, the framework separates simultaneous drifts of different perspectives. However, some drift types also reach the features of other perspectives such that the perspective of a drift is better analyzed by looking at the drift signals of all perspectives.
+	\item \ref{item:intro:rq_applicability}~\emph{Applicability:} The framework is strong if the chosen features capture the drift and misleading otherwise. In logs with multiple drifts, Run~1 fails to detect some \texttt{duration} drifts with less number of resources and \texttt{workload} drifts whereas Run~2 is able to detect most of them.
 \end{itemize}
 
 \section{Flexibility and Evaluation}
 \label{sec:discussion:flexibility}
-The large hyperparameter space is the biggest disadvantage of the framework but the flexibility behind it its advantage. With appropriate features the framework detects drifts in all three perspectives and shows what changed. On the other hand, inappropriate features, a drift stays undetected. E.g., if the resource perspective only counts events per resource, it misses the \texttt{time\_fast} drifts in Padella logs (\ref{sec:eval:padella:time_fast}). On the same Padella logs, run~1 reaches an F1-score of 0.309 and run~2 of 0.862. On the Rheon logs with multiple drifts of the same perspective, the F1-score rises from 0.610 in run~1 to 0.907 in run~2. That means, good results mainly shows that suitable configurations exist, but not that every configuration works.
+The large hyperparameter space is the biggest disadvantage of the framework but the flexibility behind it is its advantage. With appropriate features the framework detects drifts in all three perspectives and shows what changed. With inappropriate features, a drift stays undetected. E.g., if the resource perspective only counts events per resource, it misses the \texttt{time\_fast} drift in the Padella log Loan application (Section~\ref{sec:eval:padella:time_fast}). On the same Padella logs, Run~1 reaches an F1-score of 0.309 and Run~2 of 0.862. On the Rheon logs with multiple drifts of the same perspective, the F1-score rises from 0.610 in Run~1 to 0.907 in Run~2. That means, good results mainly show that suitable configurations exist, but not that every configuration works (Figure~\ref{fig:discussion:f1}).
+
+\begin{figure}[tb]
+	\centering
+	\definecolor{runOne}{RGB}{213,94,0}
+	\definecolor{runTwo}{RGB}{0,114,178}
+	% Run 2 is drawn as a diamond, #1 and #2 are the F1-score and the row
+	\newcommand*{\runtwomark}[2]{\fill[runTwo] (#1, #2) ++(0, 4pt) -- ++(4pt, -4pt) -- ++(-4pt, -4pt) -- ++(-4pt, 4pt) -- cycle;}
+	\begin{tikzpicture}[font=\small, x=8cm, y=0.55cm]
+		% one x unit is an F1-score of 1
+		\foreach \t in {0, 0.2, 0.4, 0.6, 0.8, 1.0} {
+			\draw[black!12] (\t, -0.6) -- (\t, 3.5);
+			\draw (\t, -0.6) -- (\t, -0.75) node[below] {\t};
+		}
+		\draw (0, -0.6) -- (1, -0.6);
+		\node at (0.5, -2.0) {F1-score};
+		% one row per set of logs with the F1-scores of run 1 and run 2
+		\foreach \y/\name/\a/\b in {
+				3/{Padella benchmark}/0.309/0.862,
+				2/{Rheon: single-drift logs}/0.683/0.933,
+				1/{Rheon: multi-drift logs}/0.610/0.907,
+				0/{Rheon: mixed-drift logs}/0.774/0.909} {
+			\node[anchor=east] at (-0.03, \y) {\name};
+			\draw[black!35, line width=1.5pt] (\a, \y) -- (\b, \y);
+			\fill[runOne] (\a, \y) circle (3.4pt);
+			\runtwomark{\b}{\y}
+			\node[anchor=east] at (\a - 0.012, \y) {\a};
+			\node[anchor=west] at (\b + 0.012, \y) {\b};
+		}
+		% legend
+		\fill[runOne] (0.01, 4.6) circle (3.4pt);
+		\node[anchor=west] at (0.025, 4.6) {Run~1: agents};
+		\runtwomark{0.41}{4.6}
+		\node[anchor=west] at (0.425, 4.6) {Run~2: tuned by hand};
+	\end{tikzpicture}
+	\caption[F1-scores of both runs on all sets of logs]{%
+		F1-scores of both runs on the Padella benchmark (34 logs, 29 drifts) and on the three sets of 15 Rheon logs each with a single drift, multiple drifts of one perspective and mixed drifts (15, 44 and 44 drifts). The gap between the configurations of the agents (circles) and those tuned by hand (diamonds) shows how strongly the results depend on the configuration.}
+	\label{fig:discussion:f1}
+\end{figure}
 
 This makes the framework hard to evaluate:
 \begin{itemize}
 	\item \emph{Configuration per log:} A run reports its own configuration and threshold for each log and perspective. Thus the metrics always evaluate the framework together with the choice of its configuration.
-	\item \emph{Reactions of other perspectives:} Some drift types reach also the features of other perspectives. Such reactions count as FP, while the states show a "real" change. 29 of the 38 FPs in run 1 on Rheon logs lie at most two signal windows nearby of a drift of an other perspective. Run 2 avoids these reactions better. (Section~\ref{sec:eval:rheon}).
-	\item \emph{Real logs:} Real processes are not static even without an injected drift (first-order dynamics). They may contain changes that a benchmark does not know. 24 of the 30 FPs of run 1 in the 14 logs of Domestic declarations and Request for payment lie at the turn of the year 2017/18, at which the approval steps really change (Section~\ref{sec:eval:padella}). Therefore, the precision on the Rheon logs is higher, in run~2 from 0.909 to 0.933 against 0.778 on the Padella logs. Apart from the injected drifts, Rheon samples the logs from fixed distributions, so that no unknown real changes count as FPs.
+	\item \emph{Reactions of other perspectives:} Some drift types reach also the features of other perspectives. Such reactions count as FP, while the states show a \enquote{real} change. 29 of the 38 FPs in Run~1 on Rheon logs lie at most two signal windows nearby of a drift of another perspective. Run~2 avoids these reactions better (Section~\ref{sec:eval:rheon}).
+	\item \emph{Real logs:} Real processes are not static even without an injected drift (first-order dynamics). They may contain changes that a benchmark does not know. 24 of the 30 FPs of Run~1 in the 14 logs of Domestic declarations and Request for payment lie at the turn of the year 2017/18, at which the approval steps really change (Section~\ref{sec:eval:padella}). Therefore, the precision on the Rheon logs is higher, in Run~2 from 0.909 to 0.933 against 0.778 on the Padella logs. Apart from the injected drifts, Rheon samples the logs from fixed distributions, so that no unknown real changes count as FPs.
 	\item \emph{Zones:} A detection only counts in the zone of a drift. The zone of a gradual drift covers more signal windows than the zone of a sudden drift and thus favors gradual drifts (Section~\ref{sec:eval:padella:sudden}).
 \end{itemize}
-Thus, a precision, recall and F1-score "evaluate" the framework only partially.
+Thus, a precision, recall and F1-score \enquote{evaluate} the framework only partially.
 
 \section{Choosing a Configuration}
 \label{sec:discussion:config}
@@ -41,8 +78,10 @@ For 86\% of the 406 drift signals of our evaluation, the chosen $\Delta_s$ diffe
 
 \section{LLM Support}
 \label{sec:discussion:llm}
-Using our skill \texttt{kairo-drift-analyst}, an AI agent can execute the pipeline itself, compare configurations and deliver a configuration and a thresholds per persepctive of a log (\ref{sec:impl:kairo:agent}). 
+Using our skill \texttt{kairo-drift-analyst}, an AI agent can execute the pipeline itself, compare configurations and deliver configurations and thresholds per perspective of a log (Section~\ref{sec:impl:kairo:agent}). The Kairo Copilot assists users in the dashboard (Section~\ref{sec:impl:dashboard:copilot}). Both help in searching the large hyperparameter space of our pipelines, but do not avoid the examination of a human. In the Padella benchmark, the Run~1 configurations by the agents alone receive an F1-score of 0.309, whereas the Run~2 configurations yield 0.862. On the three Rheon sets of logs, Run~1 configurations from the agents receive F1-scores from 0.610 to 0.774, whereas Run~2 configurations receive F1-scores from 0.907 to 0.933. Besides, the results of LLMs should be treated skeptically and are very model-dependent. Therefore, we see our agent skill and Copilot as assistants of a human-in-the-loop-analysis and not as independent detectors.
 
 \section{Runtime and Open Issues}
 \label{sec:discussion:runtime}
-placeholder
+The runtime of the pipeline grows with the number of rows. In the intra-case perspective, each event becomes a row whereas in the resource and inter-case perspectives only each feature window becomes a row. Feature extraction, PCA, k-means and drift signals grow linearly with the number of rows, a SOM additionally with the number of its cells. The feature extraction in kairo uses pandas, which computes its operations mostly on a single core. Polars\footnote{\url{https://pola.rs}} distributes DataFrame operations on multiple cores, and cuDF\footnote{\url{https://docs.rapids.ai/api/cudf/stable/}} provides a pandas-like interface on the GPU. Both might accelerate the computations in especially the intra-case perspective. kairo trains a SOM in only one epoch, in which each row is used to update the neuron prototypes once in random order. One of the limitations of our implementation kairo is that it currently has no multi epoch support. Multi epoch support and GPU-based training are reasonable extension directions of our implementation.
+
+Another topic we did not cover in our thesis is the evaluation of recurring drifts.

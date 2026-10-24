@@ -90,7 +90,7 @@
 			Advisor:         & \pads@advisor
 		\end{tabular}
 		\vfill
-		\centering{\Large Aachen, \@date\par}
+		\centering{\Large Munich, \@date\par}
 	\end{titlepage}
 	\restoregeometry
 }

@@ -1523,7 +1523,6 @@
       \strng{authornamehash}{45fed513d4bd5fb28cebd7bb58a35c4a}
       \strng{authorfullhash}{45fed513d4bd5fb28cebd7bb58a35c4a}
       \strng{authorfullhashraw}{45fed513d4bd5fb28cebd7bb58a35c4a}
-      \field{extraname}{1}
       \field{sortinit}{v}
       \field{sortinithash}{afb52128e5b4dc4b843768c0113d673b}
       \field{labelnamesource}{author}
@@ -1533,44 +1532,6 @@
       \field{year}{2016}
       \verb{doi}
       \verb 10.1007/978-3-662-49851-4
-      \endverb
-    \endentry
-    \entry{beautiful}{misc}{}{}
-      \name{author}{1}{}{%
-        {{un=0,uniquepart=base,hash=45fed513d4bd5fb28cebd7bb58a35c4a}{%
-           family={Aalst},
-           familyi={A\bibinitperiod},
-           given={Wil\bibnamedelimb M.\bibnamedelimi P.},
-           giveni={W\bibinitperiod\bibinitdelim M\bibinitperiod\bibinitdelim P\bibinitperiod},
-           givenun=0,
-           prefix={van\bibnamedelima der},
-           prefixi={v\bibinitperiod\bibinitdelim d\bibinitperiod}}}%
-      }
-      \strng{namehash}{45fed513d4bd5fb28cebd7bb58a35c4a}
-      \strng{fullhash}{45fed513d4bd5fb28cebd7bb58a35c4a}
-      \strng{fullhashraw}{45fed513d4bd5fb28cebd7bb58a35c4a}
-      \strng{bibnamehash}{45fed513d4bd5fb28cebd7bb58a35c4a}
-      \strng{authorbibnamehash}{45fed513d4bd5fb28cebd7bb58a35c4a}
-      \strng{authornamehash}{45fed513d4bd5fb28cebd7bb58a35c4a}
-      \strng{authorfullhash}{45fed513d4bd5fb28cebd7bb58a35c4a}
-      \strng{authorfullhashraw}{45fed513d4bd5fb28cebd7bb58a35c4a}
-      \field{extraname}{2}
-      \field{sortinit}{v}
-      \field{sortinithash}{afb52128e5b4dc4b843768c0113d673b}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{eprintclass}{cs.DL}
-      \field{eprinttype}{arXiv}
-      \field{title}{How to Write Beautiful Process-and-Data-Science Papers?}
-      \field{year}{2024}
-      \verb{eprint}
-      \verb 2203.09286
-      \endverb
-      \verb{urlraw}
-      \verb https://arxiv.org/abs/2203.09286
-      \endverb
-      \verb{url}
-      \verb https://arxiv.org/abs/2203.09286
       \endverb
     \endentry
     \entry{zheng2017detecting}{inproceedings}{}{}
