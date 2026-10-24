@@ -110,7 +110,7 @@ Each perspective has four pages, one for each step: Features, PCA, States \& Tra
 \begin{itemize}
 	\item \emph{States:} The page shows the clustering measures of Section~\ref{sec:prelim:cluster_eval} as well as the colors of the states and the distances between them (Figure~\ref{fig:impl:dashboard_states}). It also compares the state frequencies of two date ranges, e.g., before and after a suspected drift.
 	\item \emph{Trajectories:} In the intra-case perspective, the page shows the trajectory of a single case and the trajectories of all cases in a date range. In the resource and inter-case perspectives, it shows the trajectory of the log with a table of its visits (Figure~\ref{fig:impl:dashboard_trajectory}).
-	\item \emph{Drift signal:} The page shows the drift signal and the state distribution of each signal window (Figure~\ref{fig:impl:dashboard_drift}).
+	\item \emph{Drift signal:} The page shows the drift signal and the state distribution of each signal window (Figure~\ref{fig:impl:dashboard_drift}). It also shows the mean and a chosen quantile of the drift scores and of the rows per signal window, and plots the rows of every signal window.
 \end{itemize}
 
 The user tries out configurations step by step and computes the perspectives one after another. This follows the human-in-the-loop process of \textcite{barbonjunior2018framework}, in which a human observes the emergence of drifts over time and adjusts the hyperparameters.

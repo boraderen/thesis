@@ -31,7 +31,8 @@ STEPS = {
                "plot_colors", "plot_distances", "plot_frequencies_1", "plot_frequencies_2",
                "trajectories", "last_case", "range_trajectories", "plot_trajectories",
                "log_trajectory", "plot_log_trajectory", "scores"],
-    "drift": ["distributions", "drift_signal", "drift_signal_config", "plot_distribution", "plot_drift_signal"],
+    "drift": ["distributions", "drift_signal", "drift_signal_config", "signal_window_rows", "plot_distribution",
+              "plot_drift_signal", "plot_signal_window_rows"],
 }
 
 # the plots a page stores, by the name the copilot offers them under
@@ -49,6 +50,7 @@ PLOTS = {
     "plot_log_trajectory": "Trajectory of the log",
     "plot_distribution": "State distribution per signal window",
     "plot_drift_signal": "Drift signal",
+    "plot_signal_window_rows": "Rows per signal window",
 }
 
 

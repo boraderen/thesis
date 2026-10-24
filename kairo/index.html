@@ -486,7 +486,13 @@ states = pd.concat([compressed, kairo.get_kmeans_states(compressed, kmeans)], ax
 
 distributions = kairo.compute_state_distributions(states, signal_window="14D")
 drift_signal = kairo.compute_drift_signal(distributions, divergence="js", reference="previous")
-kairo.plot_drift_signal(drift_signal, "js", "previous").show()</code></pre>
+kairo.plot_drift_signal(drift_signal, "js", "previous").show()
+
+# an upper quantile of the drift scores as a first threshold, and the rows behind every drift score
+threshold = kairo.compute_drift_signal_quantile(drift_signal, t=0.9)
+kairo.plot_drift_signal(drift_signal, "js", "previous", threshold=threshold).show()
+rows = kairo.compute_signal_window_rows(states, signal_window="14D")
+kairo.plot_signal_window_rows(rows).show()</code></pre>
 
   <h3>Resource and inter-case states</h3>
   <p>One row per feature window, the rest of the pipeline stays the same. The log follows one
@@ -536,7 +542,7 @@ print(kairo.get_chat_history(chat_history))</code></pre>
   <a class="card" href="#api-dbscan"><h3>DBSCAN</h3><p>Dense regions as states.</p></a>
   <a class="card" href="#api-scores"><h3>Clustering scores</h3><p>How good the states are.</p></a>
   <a class="card" href="#api-trajectories"><h3>Frequencies and trajectories</h3><p>States over time.</p></a>
-  <a class="card" href="#api-drift"><h3>Drift</h3><p>The drift signal per signal window.</p></a>
+  <a class="card" href="#api-drift"><h3>Drift</h3><p>The drift signal and the rows per signal window.</p></a>
   <a class="card" href="#api-llm"><h3>Language models</h3><p>Text and connectors.</p></a>
   <a class="card" href="#api-constants"><h3>Constants</h3><p>Accepted values.</p></a>
 </div>
@@ -1050,12 +1056,74 @@ plot_dbscan_state_frequencies(frequencies, state_colors) -&gt; go.Figure</code><
 
 <h3 id="api-plot_drift_signal"><code>plot_drift_signal</code></h3>
 <p>Draws the drift signal over time: the start of every signal window against its drift score.</p>
-<pre><code>plot_drift_signal(drift_signal, divergence="kl", reference="previous") -&gt; go.Figure</code></pre>
+<pre><code>plot_drift_signal(drift_signal, divergence="kl", reference="previous", threshold=None) -&gt; go.Figure</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>drift_signal</code></td><td>from <code>compute_drift_signal</code></td><td>The drift scores to draw.</td></tr>
 <tr><td><code>divergence</code>, <code>reference</code></td><td>the values it was computed with</td><td>Name the axis and the title.</td></tr>
+<tr><td><code>threshold</code></td><td>number, or <code>None</code></td><td>Draws a dashed horizontal line at this drift score, e.g. the threshold above which a signal window counts as a drift. <code>None</code> draws no line.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> a plotly figure.</p>
+
+<h3 id="api-compute_drift_signal_mean"><code>compute_drift_signal_mean</code></h3>
+<p>The mean drift score over the signal windows that have one.</p>
+<pre><code>compute_drift_signal_mean(drift_signal) -&gt; float</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>drift_signal</code></td><td>from <code>compute_drift_signal</code></td><td>The drift scores to average. With KL, a state missing on one side gives a very high drift score, which pulls the mean up.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> the mean drift score.</p>
+
+<h3 id="api-compute_drift_signal_quantile"><code>compute_drift_signal_quantile</code></h3>
+<p>The drift score that a share <code>t</code> of the signal windows stays at or below. The median
+  (<code>t=0.5</code>) shows the drift scores without a drift, an upper quantile such as <code>t=0.9</code> is a
+  starting point for the threshold of a drift.</p>
+<pre><code>compute_drift_signal_quantile(drift_signal, t) -&gt; float</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>drift_signal</code></td><td>from <code>compute_drift_signal</code></td><td>The drift scores, signal windows without one are left out.</td></tr>
+<tr><td><code>t</code></td><td>number from 0 to 1</td><td>The quantile, e.g. <code>0.5</code> for the median.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> the <code>t</code>-quantile of the drift scores. Raises a <code>ValueError</code> for a
+  <code>t</code> outside 0 to 1.</p>
+
+<h3 id="api-compute_signal_window_rows"><code>compute_signal_window_rows</code></h3>
+<p>Counts the rows of every signal window, i.e., how many events or feature windows every drift score
+  stands on.</p>
+<pre><code>compute_signal_window_rows(df, signal_window="7D") -&gt; pd.DataFrame</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>df</code></td><td>a states frame</td><td>The rows to count, events or feature windows. A feature window counts in the signal window its start falls into.</td></tr>
+<tr><td><code>signal_window</code></td><td>pandas frequency, e.g. <code>"1D"</code>, <code>"7D"</code>, <code>"14D"</code> or <code>"30D"</code></td><td>The length of the signal windows, the one of the drift signal.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> the columns <code>signal_window</code> (its start) and <code>rows</code>, one row per
+  signal window with rows. With the same <code>df</code> and <code>signal_window</code>, these are the signal
+  windows of the drift signal. Raises a <code>ValueError</code> when the signal window is shorter than the
+  feature windows.</p>
+
+<h3 id="api-plot_signal_window_rows"><code>plot_signal_window_rows</code></h3>
+<p>Draws the rows of the signal windows over time: the start of every signal window against its number
+  of rows, in the style of the drift signal. Thin signal windows show as dips.</p>
+<pre><code>plot_signal_window_rows(signal_window_rows) -&gt; go.Figure</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>signal_window_rows</code></td><td>from <code>compute_signal_window_rows</code></td><td>The rows to draw.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> a plotly figure.</p>
+
+<h3 id="api-compute_signal_window_rows_mean"><code>compute_signal_window_rows_mean</code></h3>
+<p>The mean number of rows of the signal windows.</p>
+<pre><code>compute_signal_window_rows_mean(signal_window_rows) -&gt; float</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>signal_window_rows</code></td><td>from <code>compute_signal_window_rows</code></td><td>The rows to average.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> the mean number of rows.</p>
+
+<h3 id="api-compute_signal_window_rows_quantile"><code>compute_signal_window_rows_quantile</code></h3>
+<p>The number of rows that a share <code>t</code> of the signal windows stays at or below. A low quantile such
+  as <code>t=0.1</code> shows how thin the thinnest signal windows are.</p>
+<pre><code>compute_signal_window_rows_quantile(signal_window_rows, t) -&gt; float</code></pre>
+<table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
+<tr><td><code>signal_window_rows</code></td><td>from <code>compute_signal_window_rows</code></td><td>The rows of the signal windows.</td></tr>
+<tr><td><code>t</code></td><td>number from 0 to 1</td><td>The quantile, e.g. <code>0.5</code> for the median.</td></tr>
+</tbody></table>
+<p><strong>Returns</strong> the <code>t</code>-quantile of the rows. Raises a <code>ValueError</code> for a
+  <code>t</code> outside 0 to 1.</p>
 
 <h2 id="api-llm">Language models</h2>
 

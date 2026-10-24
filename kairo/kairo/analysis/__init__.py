@@ -368,14 +368,7 @@ def compute_state_distributions(df: pd.DataFrame, signal_window: str = "7D") -> 
     # windows, which then count in the signal window their start falls into. a signal window is
     # at least as long as the feature windows, with the same length every signal window holds
     # one feature window
-    if "case:concept:name" not in df.columns:
-        feature_window = df["time:timestamp"].sort_values().diff().min()
-
-        if pd.Timedelta(signal_window) < feature_window:
-            raise ValueError(
-                f"The signal window {signal_window} has to be at least as long as the feature windows of "
-                f"{str(feature_window).removesuffix(' 00:00:00')}"
-            )
+    _check_signal_window(df, signal_window)
 
     signal_windows = df["time:timestamp"].dt.floor(signal_window).rename("signal_window")
 
@@ -419,8 +412,59 @@ def compute_drift_signal(distributions: pd.DataFrame, divergence: str = "kl", re
 
     return pd.DataFrame({"signal_window": distributions.index, "drift_score": scores})
 
+def compute_drift_signal_mean(drift_signal: pd.DataFrame) -> float:
+    # the mean drift score over the signal windows that have one. with KL, a state missing on
+    # one side gives a very high drift score, which pulls the mean up
+    return float(drift_signal["drift_score"].mean())
+
+def compute_drift_signal_quantile(drift_signal: pd.DataFrame, t: float) -> float:
+    # the drift score that a share t of the signal windows stays at or below, over the signal
+    # windows that have one. t = 0.5 is the median, an upper quantile like t = 0.9 a starting point
+    # for the threshold of a drift
+    _check_quantile(t)
+
+    return float(drift_signal["drift_score"].quantile(t))
+
+def compute_signal_window_rows(df: pd.DataFrame, signal_window: str = "7D") -> pd.DataFrame:
+    # the number of rows in every signal window, events or for the resource and inter-case
+    # perspectives feature windows, which count in the signal window their start falls into.
+    # with the same df and signal_window, these are the signal windows of compute_state_distributions
+    # and compute_drift_signal, signal windows without rows are left out
+    _check_signal_window(df, signal_window)
+
+    rows = df["time:timestamp"].dt.floor(signal_window).value_counts().sort_index()
+
+    return pd.DataFrame({"signal_window": rows.index, "rows": rows.to_numpy()})
+
+def compute_signal_window_rows_mean(signal_window_rows: pd.DataFrame) -> float:
+    # the mean number of rows of the signal windows
+    return float(signal_window_rows["rows"].mean())
+
+def compute_signal_window_rows_quantile(signal_window_rows: pd.DataFrame, t: float) -> float:
+    # the number of rows that a share t of the signal windows stays at or below, a low quantile
+    # shows how thin the thinnest signal windows are
+    _check_quantile(t)
+
+    return float(signal_window_rows["rows"].quantile(t))
+
 
 # shared by the functions above
+
+def _check_signal_window(df: pd.DataFrame, signal_window: str) -> None:
+    # the resource and inter-case rows are feature windows, a signal window shorter than them
+    # would cut a feature window in parts
+    if "case:concept:name" not in df.columns:
+        feature_window = df["time:timestamp"].sort_values().diff().min()
+
+        if pd.Timedelta(signal_window) < feature_window:
+            raise ValueError(
+                f"The signal window {signal_window} has to be at least as long as the feature windows of "
+                f"{str(feature_window).removesuffix(' 00:00:00')}"
+            )
+
+def _check_quantile(t: float) -> None:
+    if not 0 <= t <= 1:
+        raise ValueError(f"The quantile t has to lie between 0 and 1, not {t}")
 
 def _state_labels(states: pd.DataFrame) -> np.ndarray:
     # one number per state, a som neuron (i, j) or a cluster, dbscan noise stays -1

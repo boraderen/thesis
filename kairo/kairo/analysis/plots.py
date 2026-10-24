@@ -291,7 +291,7 @@ def plot_state_distributions(distributions: pd.DataFrame, state_colors: dict) ->
 
     return fig
 
-def plot_drift_signal(drift_signal: pd.DataFrame, divergence: str = "kl", reference: str = "previous") -> go.Figure:
+def plot_drift_signal(drift_signal: pd.DataFrame, divergence: str = "kl", reference: str = "previous", threshold: float = None) -> go.Figure:
     # drift_signal is what compute_drift_signal returns: over time, the start of every signal
     # window, the drift score of the signal window, its divergence from the reference
     fig = px.line(
@@ -301,6 +301,25 @@ def plot_drift_signal(drift_signal: pd.DataFrame, divergence: str = "kl", refere
         markers=True,
         labels={"signal_window": "Signal window", "drift_score": f"Drift score ({DIVERGENCES[divergence]})"},
         title=f"Drift signal: {DIVERGENCES[divergence]} of every signal window against the {REFERENCES[reference]}",
+    )
+
+    # a dashed line at the threshold, the signal windows above it count as drifts
+    if threshold is not None:
+        fig.add_hline(y=threshold, line_dash="dash", annotation_text=f"Threshold {threshold:.3g}",
+                      annotation_position="top left")
+
+    return fig
+
+def plot_signal_window_rows(signal_window_rows: pd.DataFrame) -> go.Figure:
+    # signal_window_rows is what compute_signal_window_rows returns: over time, the start of every
+    # signal window and the number of its rows, events or feature windows
+    fig = px.line(
+        signal_window_rows,
+        x="signal_window",
+        y="rows",
+        markers=True,
+        labels={"signal_window": "Signal window", "rows": "Rows"},
+        title="Rows per signal window: the events or feature windows that fall into it",
     )
 
     return fig

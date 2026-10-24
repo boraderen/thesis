@@ -36,6 +36,11 @@ from .analysis import (
     compute_dbcv,
     compute_state_distributions,
     compute_drift_signal,
+    compute_drift_signal_mean,
+    compute_drift_signal_quantile,
+    compute_signal_window_rows,
+    compute_signal_window_rows_mean,
+    compute_signal_window_rows_quantile,
     DIVERGENCES,
     REFERENCES,
     DISTANCES,
@@ -82,6 +87,7 @@ from .analysis.plots import (
     plot_dbscan_log_trajectory,
     plot_state_distributions,
     plot_drift_signal,
+    plot_signal_window_rows,
 )
 
 from .llm import (

@@ -42,6 +42,17 @@ def remove_log() -> None:
     st.session_state["uploader"] = st.session_state.get("uploader", 0) + 1
 
 
+def derive_event_duration() -> None:
+    """Add the event duration in minutes, from the start timestamp to the timestamp of every event."""
+    log = st.session_state["log"]
+    # a csv keeps its start timestamps as text
+    start = pd.to_datetime(log["start_timestamp"], utc=True)
+    end = pd.to_datetime(log["time:timestamp"], utc=True)
+    st.session_state["log"] = log.assign(event_duration=(end - start).dt.total_seconds() / 60)
+    st.toast("Added the column event_duration, the minutes from the start timestamp to the timestamp.",
+             icon=":material/timer:")
+
+
 def read_log(uploaded) -> pd.DataFrame:
     # the uploaded file read once, as it is. pandas reads a csv straight from the upload,
     # pm4py reads an xes only from a path, so it goes into a temporary file first
@@ -103,9 +114,11 @@ if "raw" not in st.session_state:
 raw = st.session_state["raw"]
 picked: dict[str, str | None] = st.session_state.setdefault("picked", {})
 
-left, right, _ = st.columns([1, 1, 6])
+left, middle, right, _ = st.columns([1, 1, 1.6, 4.4])
 left.button("Reset mapping", on_click=reset, width="stretch")
-right.button("Remove log", on_click=remove_log, width="stretch")
+middle.button("Remove log", on_click=remove_log, width="stretch")
+# filled once the mapping is complete, the duration is derived from the mapped log
+derive_slot = right.empty()
 mapping_table()
 
 # --- one role at a time ----------------------------------------------------
@@ -152,6 +165,14 @@ if "log" not in st.session_state:
     st.session_state["log"] = log
 
 log = st.session_state["log"]
+
+# the duration needs the start and the completion of every event, and a log without a duration yet
+derivable = "start_timestamp" in log.columns and "event_duration" not in log.columns
+derive_slot.button("Derive event duration column", on_click=derive_event_duration, width="stretch",
+                   disabled=not derivable,
+                   help="Adds the event duration in minutes, from the start timestamp to the timestamp of every "
+                        "event." if derivable else "Needs a start timestamp and a log without an event duration.")
+
 stats = kairo.compute_log_stats(log)
 
 st.success(

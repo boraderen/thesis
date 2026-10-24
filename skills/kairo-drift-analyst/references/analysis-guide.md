@@ -6,7 +6,9 @@ defaults are in the docs; what references and signal window sizes do is in the a
 ## 1. Starting points
 
 Rules of thumb to start with, not results. Validate them with the rows per window and the
-clustering scores.
+clustering scores. `kairo.compute_signal_window_rows(states, signal_window)` counts the rows of every
+signal window, `compute_signal_window_rows_mean` and `compute_signal_window_rows_quantile` summarize
+them, and `plot_signal_window_rows` draws them.
 
 - **Volume.** From `compute_log_stats`: span S (days), cases and events per day, median case
   duration.
@@ -110,6 +112,10 @@ How to pass an own frame is in the kairo docs (*Flexible by design*). In additio
 For every reported configuration, exactly one for each required perspective (`SKILL.md`, rule
 11), suggest one drift score above which a signal window counts as a drift, for a later
 evaluation:
+- For a first look, compare the drift scores with their median and an upper quantile:
+  `kairo.compute_drift_signal_quantile(signal, 0.5)` shows the scores without a drift, `0.9` or
+  `0.95` a starting point for the threshold (`compute_drift_signal_mean` for the mean). A quantile
+  always flags a fixed share of the windows, so it does not replace the split below.
 - Split the signal windows into the ones you report as drifts and the others; leave out the first
   and last windows and windows flagged as thin or partial.
 - Take a value between the highest score of the others and the lowest score of the drift windows,
@@ -146,8 +152,7 @@ Without the helper:
 ```python
 folder = "analyses/padella/log_07/3"   # your claimed result folder; mkdir folder/plots folder/drift_signals first
 name = "log_07_resource"
-fig = kairo.plot_drift_signal(signal, divergence, reference)   # signal from compute_drift_signal
-fig.add_hline(y=threshold, line_dash="dash")
+fig = kairo.plot_drift_signal(signal, divergence, reference, threshold=threshold)   # signal from compute_drift_signal
 fig.write_image(f"{folder}/plots/{name}.png", width=900, height=300)
 report.reset_index().to_csv(f"{folder}/drift_signals/{name}.csv", index=False)   # signal_window_report
 ```

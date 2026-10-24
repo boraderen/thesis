@@ -94,16 +94,63 @@ def new_chat() -> None:
         st.session_state.pop(f"copilot_{key}", None)
 
 
+def split_reasoning(answer: str) -> tuple[str, str]:
+    # a thinking model writes its reasoning first and ends it with </think>, sometimes after an
+    # opening <think>. without </think>, the whole answer is the answer
+    reasoning, separator, final = answer.rpartition("</think>")
+    if not separator:
+        return "", answer
+    return reasoning.replace("<think>", "").strip(), final.strip()
+
+
+def show_answer(answer: str) -> None:
+    # the reasoning stays folded away unless the user opens it
+    reasoning, final = split_reasoning(answer)
+    if reasoning:
+        with st.expander("Reasoning", icon=":material/psychology:"):
+            st.markdown(reasoning)
+    st.markdown(final)
+
+
+def stream_answer(pieces) -> None:
+    # until </think> arrives, the text may be reasoning, so it streams into a folded box. the
+    # answer after </think> streams in plain sight, an answer without reasoning shows when it ends
+    thinking = st.expander("Thinking…", icon=":material/psychology:")
+    thought = thinking.empty()
+    shown = st.empty()
+    text = ""
+    for piece in pieces:
+        text += piece
+        reasoning, final = split_reasoning(text)
+        if "</think>" in text:
+            thought.markdown(reasoning)
+            shown.markdown(final)
+        else:
+            thought.markdown(text)
+    if "</think>" not in text:
+        shown.markdown(text)
+
+
+def show_question(question: str, shared: list) -> None:
+    # the user's question on the right of the chat window, what went along with it folded away
+    with st.container(horizontal_alignment="right"):
+        with st.chat_message("user", width="content"):
+            st.markdown(question)
+            if shared:
+                with st.expander(f"Shared: {len(shared)} item{'s' if len(shared) > 1 else ''}",
+                                 icon=":material/attach_file:"):
+                    st.markdown("\n".join(f"- {name}" for name in shared))
+            else:
+                st.caption("Nothing new shared")
+
+
 def show_chat() -> None:
     # every turn as a question with what was shared along, and the answer with its tokens
     for turn in st.session_state.get("copilot_chat_turns", []):
-        with st.chat_message("user"):
-            st.markdown(turn["question"])
-            shared = turn["texts"] + turn["plots"]
-            st.caption("Shared: " + ", ".join(shared) if shared else "Nothing new shared")
+        show_question(turn["question"], turn["texts"] + turn["plots"])
 
         with st.chat_message("assistant"):
-            st.markdown(turn["answer"])
+            show_answer(turn["answer"])
             input_tokens, output_tokens = turn["tokens"]
             st.caption(f"About {input_tokens:,} input tokens, estimated before sending · {output_tokens:,} output tokens, "
                        f"reasoning included")
@@ -144,13 +191,24 @@ st.title("Copilot")
 st.caption("Ask about the results of every perspective so far. The llm sees only what is picked here, and it "
            "keeps the chat, so what was shared once need not be shared again.")
 
-history = st.session_state.get("copilot_chat_history", [])
-show_chat()
-# the turn being asked appears here while its answer streams in
-live = st.container()
+# the avatar of a question on the right of its bubble, as the question itself is
+st.markdown(
+    """
+    <style>
+      [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarUser"]) { flex-direction: row-reverse; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-if history:
-    st.button("New chat", on_click=new_chat, icon=":material/add_comment:")
+history = st.session_state.get("copilot_chat_history", [])
+
+# the chat window: the turns scroll inside it and it follows the newest, the composer below stays in sight
+chat = st.container(height=520, border=True)
+with chat:
+    show_chat()
+    # the turn being asked appears here while its answer streams in
+    live = st.container()
 
 # the images are in the format of the provider the chat began with
 if history and st.session_state.get("copilot_chat_provider") != provider:
@@ -163,13 +221,26 @@ plots = available_plots()
 seed_multi("copilot_sel_texts", [], list(abstractions))
 seed_multi("copilot_sel_plots", [], list(plots))
 
-st.multiselect("Information to share", list(abstractions), key="copilot_sel_texts")
-st.multiselect("Plots to share", list(plots), key="copilot_sel_plots")
+# before the first question, ideas to start from in the empty chat window, gone once the chat has begun
+if not history:
+    with chat:
+        st.pills("Suggestions", SUGGESTIONS, key="copilot_suggestion", on_change=use_suggestion)
 
-st.pills("Suggestions", SUGGESTIONS, key="copilot_suggestion", on_change=use_suggestion)
-st.text_area("Question", key="copilot_sel_question", height=120)
+# the composer below the chat: the question, what goes along with it, and the buttons
+with st.container(border=True):
+    st.text_area("Question", key="copilot_sel_question", height=120, label_visibility="collapsed",
+                 placeholder="Ask about the results of the perspectives…")
+    share, new, _, ask = st.columns([1.2, 1.2, 3.6, 1])
+    with share.popover("Share", icon=":material/attach_file:", width="stretch"):
+        st.multiselect("Information to share", list(abstractions), key="copilot_sel_texts")
+        st.multiselect("Plots to share", list(plots), key="copilot_sel_plots")
+    if history:
+        new.button("New chat", on_click=new_chat, icon=":material/add_comment:", width="stretch")
+    asked = ask.button("Ask", type="primary", icon=":material/send:", width="stretch")
+    picked = st.session_state["copilot_sel_texts"] + st.session_state["copilot_sel_plots"]
+    st.caption("Sharing: " + ", ".join(picked) if picked else "Nothing picked to share")
 
-if st.button("Ask", type="primary", icon=":material/send:"):
+if asked:
     question = st.session_state["copilot_sel_question"].strip()
     if not question:
         st.warning("Enter a question first.")
@@ -209,15 +280,12 @@ if st.button("Ask", type="primary", icon=":material/send:"):
 
     # the answer is written piece by piece below the chat, the rerun then moves the turn into it
     with live:
-        with st.chat_message("user"):
-            st.markdown(question)
-            picked = st.session_state["copilot_sel_texts"] + picked_plots
-            st.caption("Shared: " + ", ".join(picked) if picked else "Nothing new shared")
+        show_question(question, st.session_state["copilot_sel_texts"] + picked_plots)
 
         with st.chat_message("assistant"):
             try:
-                st.write_stream(connector.stream(messages=chat_history,
-                                                 max_tokens=int(st.session_state["copilot_sel_max_tokens"])))
+                stream_answer(connector.stream(messages=chat_history,
+                                               max_tokens=int(st.session_state["copilot_sel_max_tokens"])))
             except Exception as exc:
                 st.error(f"The request failed: {exc}")
                 st.stop()
