@@ -12,7 +12,7 @@ META = ["case:concept:name", "time:timestamp"]
 
 DIVERGENCES = {"kl": "KL divergence", "js": "Jensen–Shannon", "tv": "Total variation", "hellinger": "Hellinger"}
 REFERENCES = {"previous": "previous signal window", "recent": "mean of the recent signal windows", "baseline": "mean of all signal windows"}
-DISTANCES = {"euclidean": "Euclidean distance", "cosine": "Cosine distance", "manhattan": "Manhattan distance", "chebyshev": "Chebyshev distance"}
+DISTANCES = {"euclidean": "Euclidean distance", "cosine": "Cosine distance"}
 
 
 # scaling and PCA
@@ -95,7 +95,7 @@ def compute_pca_reconstruction_errors(feature_matrix: pd.DataFrame, pca: PCA) ->
 
 def compute_som(df: pd.DataFrame, size: tuple[int, int] = (5, 5), learning_rate: float = 0.5, distance: str = "euclidean") -> MiniSom:
     # every neuron of the grid becomes one cluster, so a 5x5 map can hold 25 of them.
-    # supported distances are euclidean, cosine, manhattan and chebyshev
+    # supported distances are euclidean and cosine
 
     # the meta columns are only carried along for reference, the map trains without them
     data = df.drop(columns=META, errors="ignore").to_numpy()
@@ -207,7 +207,7 @@ def compute_dbscan(df: pd.DataFrame, eps: float = 0.5, min_samples: int = 5, dis
     # dense regions become clusters: a row with at least min_samples rows (itself
     # included) within eps is a core of one. rows neither core nor within eps of a
     # core are noise and get cluster -1.
-    # supported distances are euclidean, cosine, manhattan and chebyshev
+    # supported distances are euclidean and cosine
     data = df.drop(columns=META, errors="ignore").to_numpy()
 
     # prefix features repeat a lot, often thousands of rows share one exact vector.
@@ -485,12 +485,6 @@ def _paired_distances(a: np.ndarray, b: np.ndarray, distance: str) -> np.ndarray
     # the distance of every row of a to the same row of b
     if distance == "euclidean":
         return np.linalg.norm(a - b, axis=1)
-
-    if distance == "manhattan":
-        return np.abs(a - b).sum(axis=1)
-
-    if distance == "chebyshev":
-        return np.abs(a - b).max(axis=1)
 
     if distance == "cosine":
         norms = np.linalg.norm(a, axis=1) * np.linalg.norm(b, axis=1)

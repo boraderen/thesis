@@ -21,8 +21,8 @@ Style:
   reaches. If several configurations show the drifts of a perspective, take the one whose
   threshold separates the drift windows most clearly and name the others in the *Analysis*
   bullets. Plain text in the cells, each wrapped in `<small>…</small>` to keep the table small.
-- Distance: the distance measure of the clustering (`euclidean`, `cosine`, `manhattan` or
-  `chebyshev`); k-means always uses `euclidean`.
+- Distance: the distance measure of the clustering (`euclidean` or `cosine`); k-means always
+  uses `euclidean`.
 - Threshold: for each configuration, the drift score above which a signal window counts as a
   drift, chosen as in `skills/kairo-drift-analyst/references/analysis-guide.md` (*Thresholds*).
   Use the numeric form `<divergence> ≥ <number>` in the threshold cell; benchmarks read this

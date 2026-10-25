@@ -279,13 +279,13 @@ We illustrate one drift per perspective with three example logs (Table~\ref{tab:
 	\medskip
 	\begin{subfigure}{0.3\textwidth}
 		\centering
-		\includegraphics[height=7.2cm]{figures/celonis-variant-explorer-pre}
+		\includegraphics[height=5.2cm]{figures/celonis-variant-explorer-pre}
 		\caption{Before the drift}
 		\label{fig:rheon:example_cf_celonis_pre}
 	\end{subfigure}
 	\begin{subfigure}{0.45\textwidth}
 		\centering
-		\includegraphics[height=7.2cm]{figures/celonis-variant-explorer-post}
+		\includegraphics[height=5.2cm]{figures/celonis-variant-explorer-post}
 		\caption{After the drift}
 		\label{fig:rheon:example_cf_celonis_post}
 	\end{subfigure}
@@ -300,24 +300,9 @@ We illustrate one drift per perspective with three example logs (Table~\ref{tab:
 
 \begin{figure}[tbp]
 	\centering
-	\begin{subfigure}{\textwidth}
-		\centering
-		\includegraphics[width=0.65\textwidth]{figures/resource_reassignment}
-		\caption{Events per activity and resource}
-		\label{fig:rheon:example_res_counts}
-	\end{subfigure}
-
-	\medskip
-	\begin{subfigure}{\textwidth}
-		\centering
-		\includegraphics[width=0.75\textwidth]{figures/celonis-workload-by-activities}
-		\caption{Events per resource and activity in Celonis}
-		\label{fig:rheon:example_res_celonis}
-	\end{subfigure}
+	\includegraphics[width=0.55\textwidth]{figures/celonis-workload-by-activities}
 	\caption[Example log with a reassignment drift]{%
-		The example log with a sudden reassignment drift on July 1, 2020, before (left) and after (right) the drift.
-		\subref{fig:rheon:example_res_counts}~Number of events of each activity (rows) that each resource (columns) executes before and after the drift.
-		\subref{fig:rheon:example_res_celonis}~Screenshot of Celonis with the same numbers as bars for each pair of resource and activity. After the drift, each activity has a new dominant resource, e.g., $a$ moves from \texttt{res\_01} to \texttt{res\_02}.}
+		Screenshot of Celonis for the example log with a sudden reassignment drift on July 1, 2020, before (left) and after (right) the drift. The bars give the number of events of each activity that each resource executes. After the drift, each activity has a new dominant resource, e.g., $a$ moves from \texttt{res\_01} to \texttt{res\_02}.}
 	\label{fig:rheon:example_res}
 \end{figure}
 
@@ -325,9 +310,9 @@ We illustrate one drift per perspective with three example logs (Table~\ref{tab:
 
 \begin{figure}[tbp]
 	\centering
-	\includegraphics[width=0.7\textwidth]{figures/celonis-dotted-chart-by-drift}
+	\includegraphics[width=0.55\textwidth]{figures/celonis-dotted-chart-by-drift}
 	\caption[Example log with an arrival rate drift]{%
-		Screenshot of the dotted chart of Celonis for the example log with a sudden arrival rate drift on July 1, 2020 (dashed line). Each dot is an event, placed at its time and at its case, with the cases ordered by their arrival. The chart shows the cases from February 2020 on, with the cases before the drift in green and after the drift in red. After the drift, the mean inter-arrival time rises from 219 to 4,380 minutes, so only a few cases arrive.}
+		Screenshot of the dotted chart of Celonis for the example log with a sudden arrival rate drift on July 1, 2020 (dashed line). Each dot is an event, placed at its time and at its case, with the cases ordered by their arrival. The chart shows the events from June~20 to August~29, 2020, with the cases before the drift in green and after the drift in red. After the drift, the mean inter-arrival time rises from 219 to 4,380 minutes, so only a few cases arrive.}
 	\label{fig:rheon:example_inter}
 \end{figure}
 

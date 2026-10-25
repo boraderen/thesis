@@ -741,7 +741,7 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 <tr><td><code>df</code></td><td>the input of the clustering</td><td>The rows to learn the states from.</td></tr>
 <tr><td><code>size</code></td><td>tuple of rows and columns, e.g. <code>(3, 3)</code> or <code>(10, 10)</code></td><td>The grid, so rows × columns states.</td></tr>
 <tr><td><code>learning_rate</code></td><td>number above 0, usually 0.1 to 1</td><td>How far the neurons move towards a row at the start of the training.</td></tr>
-<tr><td><code>distance</code></td><td><code>"euclidean"</code>, <code>"cosine"</code>, <code>"manhattan"</code> or <code>"chebyshev"</code></td><td>How a row finds its closest neuron.</td></tr>
+<tr><td><code>distance</code></td><td><code>"euclidean"</code> or <code>"cosine"</code></td><td>How a row finds its closest neuron.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> the trained <code>MiniSom</code>. The neurons start on random rows and see every row
   once in random order, and a fixed seed keeps the grid the same between runs on the same rows.</p>
@@ -760,7 +760,7 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 <pre><code>get_som_state_distances(som, distance="euclidean") -&gt; pd.DataFrame</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>som</code></td><td>from <code>compute_som</code></td><td>The trained map.</td></tr>
-<tr><td><code>distance</code></td><td>the four distances of <code>compute_som</code></td><td>How to measure, best the one the map was trained with.</td></tr>
+<tr><td><code>distance</code></td><td><code>"euclidean"</code> or <code>"cosine"</code></td><td>How to measure, best the one the map was trained with.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> a square DataFrame, its rows and columns named <code>"(i, j)"</code>.</p>
 
@@ -769,7 +769,7 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 <pre><code>get_som_state_colors(som, distance="euclidean") -&gt; dict</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>som</code></td><td>from <code>compute_som</code></td><td>The trained map.</td></tr>
-<tr><td><code>distance</code></td><td>the four distances of <code>compute_som</code></td><td>How the neurons are compared, best the one the map was trained with.</td></tr>
+<tr><td><code>distance</code></td><td><code>"euclidean"</code> or <code>"cosine"</code></td><td>How the neurons are compared, best the one the map was trained with.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> <code>{(i, j): "#rrggbb"}</code>.</p>
 
@@ -856,7 +856,7 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 <table><thead><tr><th>Argument</th><th>Values</th><th>What it does</th></tr></thead><tbody>
 <tr><td><code>df</code></td><td>the input of the clustering</td><td>The rows to measure.</td></tr>
 <tr><td><code>min_samples</code></td><td>integer from 1</td><td>The neighbour to measure to, the same as for <code>compute_dbscan</code>.</td></tr>
-<tr><td><code>distance</code></td><td>the four distances of <code>compute_som</code></td><td>How to measure, the same as for <code>compute_dbscan</code>.</td></tr>
+<tr><td><code>distance</code></td><td><code>"euclidean"</code> or <code>"cosine"</code></td><td>How to measure, the same as for <code>compute_dbscan</code>.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> a plotly figure. On large intra-case logs it takes long, every row is measured.</p>
 
@@ -867,7 +867,7 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 <tr><td><code>df</code></td><td>the input of the clustering</td><td>The rows to group.</td></tr>
 <tr><td><code>eps</code></td><td>number above 0</td><td>The radius of a row's neighbourhood, read off the knee of the k-distance curve.</td></tr>
 <tr><td><code>min_samples</code></td><td>integer from 1</td><td>How many rows within <code>eps</code>, the row itself counted, make it a core row of a cluster.</td></tr>
-<tr><td><code>distance</code></td><td>the four distances of <code>compute_som</code></td><td>How the neighbourhood is measured.</td></tr>
+<tr><td><code>distance</code></td><td><code>"euclidean"</code> or <code>"cosine"</code></td><td>How the neighbourhood is measured.</td></tr>
 </tbody></table>
 <p><strong>Returns</strong> a fitted sklearn <code>DBSCAN</code>, fitted on the distinct rows weighted by how often
   they occur. Raises a <code>ValueError</code> when every row is noise.</p>
@@ -911,7 +911,8 @@ print(kairo.get_chat_history(chat_history))</code></pre>
 <p>Score the states to compare methods and parameters, e.g. several <code>k</code>, grid sizes or
   <code>eps</code>, or the pipeline with and without PCA. <code>df</code> is the frame the states were computed
   on, <code>states</code> what <code>get_som_states</code>, <code>get_kmeans_states</code> or
-  <code>get_dbscan_states</code> returned for it. A score that needs two states is <code>nan</code> with fewer.</p>
+  <code>get_dbscan_states</code> returned for it, and <code>distance</code> is <code>"euclidean"</code> or
+  <code>"cosine"</code>, best the one of the clustering. A score that needs two states is <code>nan</code> with fewer.</p>
 <table><thead><tr><th>Function</th><th>For</th><th>Returns</th></tr></thead><tbody>
 <tr><td><code>compute_som_quantization_error(df, states, som, distance="euclidean")</code></td><td>SOM</td>
   <td>The mean distance of every row to its neuron. Lower fits closer, bigger grids always lower it.</td></tr>
@@ -1255,7 +1256,7 @@ print(kairo.count_output_tokens("anthropic", llm.response))</code></pre>
 <table><thead><tr><th>Constant</th><th>Value</th><th>Used by</th></tr></thead><tbody>
 <tr><td><code>kairo.DIVERGENCES</code></td><td>dict of <code>kl</code>, <code>js</code>, <code>tv</code> and <code>hellinger</code></td><td><code>compute_drift_signal</code></td></tr>
 <tr><td><code>kairo.REFERENCES</code></td><td>dict of <code>previous</code>, <code>recent</code> and <code>baseline</code></td><td><code>compute_drift_signal</code></td></tr>
-<tr><td><code>kairo.DISTANCES</code></td><td>dict of <code>euclidean</code>, <code>cosine</code>, <code>manhattan</code> and <code>chebyshev</code></td><td><code>compute_som</code>, <code>compute_dbscan</code> and the state distances</td></tr>
+<tr><td><code>kairo.DISTANCES</code></td><td>dict of <code>euclidean</code> and <code>cosine</code></td><td><code>compute_som</code>, <code>compute_dbscan</code> and the state distances</td></tr>
 <tr><td><code>kairo.INTRA_GLOSSARY</code>, <code>kairo.RESOURCE_GLOSSARY</code>, <code>kairo.INTER_GLOSSARY</code></td><td>dict from every feature group to its label and what it computes</td><td>The feature tables above, the dashboard's feature glossaries and the feature descriptions for language models</td></tr>
 <tr><td><code>kairo.DEFAULT_SYSTEM_PROMPT</code></td><td>text</td><td>The <code>system_prompt</code> of <code>create_messages</code> or <code>LLMConnector.call</code>. It makes the
   model an analysis assistant for drift detection: it explains the method, every feature, what kairo can compute

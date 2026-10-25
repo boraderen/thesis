@@ -414,7 +414,7 @@ The inter-case features describe each feature window by all cases that run in it
 
 \begin{definition}[Inter-Case Features]
 	\label{def:approach:inter}
-	Let $L = (E, \pi, \preceq)$ be an event log, let $\mathit{prev}_L$, $\mathit{gap}_L$, $E^w_L$ and $W_L$ be as in Definition~\ref{def:approach:windows} with the length $\Delta_f$ of the feature windows, and let $\tau > 0$ be a stall threshold. Let $N_{\mathit{num}} = \Set{n_1, \dots, n_s}$ and $N_{\mathit{cat}}$ be disjoint sets of numerical and categorical case attributes of $L$ (Definition~\ref{def:prelim:event_log}) that every event has, and let $V = \Set{u_1, \dots, u_t}$ be the set of pairs $(n, v)$ of an attribute $n \in N_{\mathit{cat}}$ and one of its values $v$ in $L$. For a feature window $w = [t, t + \Delta_f) \in W_L$, our feature groups are:
+	Let $L = (E, \pi, \preceq)$ be an event log, let $\mathit{prev}_L$, $\mathit{gap}_L$, $E^w_L$ and $W_L$ be as in Definition~\ref{def:approach:windows} with the length $\Delta_f$ of the feature windows, and let $\Delta_{\mathit{stall}} > 0$ be a stall threshold. Let $N_{\mathit{num}} = \Set{n_1, \dots, n_s}$ and $N_{\mathit{cat}}$ be disjoint sets of numerical and categorical case attributes of $L$ (Definition~\ref{def:prelim:event_log}) that every event has, and let $V = \Set{u_1, \dots, u_t}$ be the set of pairs $(n, v)$ of an attribute $n \in N_{\mathit{cat}}$ and one of its values $v$ in $L$. For a feature window $w = [t, t + \Delta_f) \in W_L$, our feature groups are:
 	\begin{itemize}
 		\item \emph{Active cases} (\texttt{active\_cases}): $\mathit{active}_L(w) = \abs{\Set{\pi_{\mathit{case}}(e) \given e \in E^w_L}}$.
 		\item \emph{New arrivals} (\texttt{new\_arrivals}): $\mathit{arrivals}_L(w) = \abs{\Set{c \in C_L \given \mathit{start}_L(c) \in w}}$.
@@ -427,9 +427,9 @@ The inter-case features describe each feature window by all cases that run in it
 		      \[
 			      G = \MultiSet{\mathit{gap}_L(e) \given e \in E^w_L \cap \dom(\mathit{prev}_L)}.
 		      \]
-		\item \emph{Stalled cases} (\texttt{stalled\_cases}): the cases whose last event lies more than $\tau$ before the end $t + \Delta_f$ of $w$ and that still have a later event:
+		\item \emph{Stalled cases} (\texttt{stalled\_cases}): the cases whose last event lies more than $\Delta_{\mathit{stall}}$ before the end $t + \Delta_f$ of $w$ and that still have a later event:
 		      \[
-			      \mathit{stalled}_L(w) = \abs{\Set{\pi_{\mathit{case}}(e) \given e \in \dom(\mathit{prev}_L) \land \pi_{\mathit{time}}(\mathit{prev}_L(e)) + \tau < t + \Delta_f < \pi_{\mathit{time}}(e)}}.
+			      \mathit{stalled}_L(w) = \abs{\Set{\pi_{\mathit{case}}(e) \given e \in \dom(\mathit{prev}_L) \land \pi_{\mathit{time}}(\mathit{prev}_L(e)) + \Delta_{\mathit{stall}} < t + \Delta_f < \pi_{\mathit{time}}(e)}}.
 		      \]
 		\item \emph{Means} (\texttt{attr\_means}) and \emph{standard deviations of numerical attributes} (\texttt{attr\_stds}) with $M_n = \MultiSet{\pi_n(e) \given e \in E^w_L}$:
 		      \[
@@ -449,7 +449,7 @@ The inter-case features describe each feature window by all cases that run in it
 \begin{itemize}[beginpenalty=10000]
 	\item A case is active in every feature window that contains one of its events. Arrivals and completions, in contrast, count it only once.
 	\item If only the number of cases per unit of time rises, the events per active case stay about the same.
-	\item The stalled cases are only informative if $\tau$ is of the order of the gaps and many ends of feature windows fall into gaps.
+	\item The stalled cases are only informative if $\Delta_{\mathit{stall}}$ is of the order of the gaps and many ends of feature windows fall into gaps.
 	\item The attribute features weight events, not cases. Without chosen case attributes, drifts in the case attributes stay invisible.
 \end{itemize}
 
@@ -694,7 +694,7 @@ A clustering groups the rows (feature windows or events) of the reduced matrix s
 
 The algorithms also help to choose each other's hyperparameters. For example, a SOM with a large grid shows how many groups of frequently used cells lie far apart from each other, which suggests the number $k$ of clusters for k-means. The evaluation measures of Section~\ref{sec:prelim:cluster_eval} additionally show how good a clustering is and support the choice of the grid size, $k$, $\varepsilon$ and $\mathit{minPts}$.
 
-Our framework supports various distances for the clustering. Besides the Euclidean distance, the SOM and DBSCAN also work with the Manhattan, Chebyshev and cosine distances (Section~\ref{sec:prelim:pca}). k-means only uses the Euclidean distance, since each of its centers is the mean of its vectors (Definition~\ref{def:prelim:kmeans}). In the running example, all three algorithms use the Euclidean distance.
+Our framework supports two distances for the clustering. Besides the Euclidean distance, the SOM and DBSCAN also work with the cosine distance (Section~\ref{sec:prelim:pca}). k-means only uses the Euclidean distance, since each of its centers is the mean of its vectors (Definition~\ref{def:prelim:kmeans}). In the running example, all three algorithms use the Euclidean distance.
 
 \begin{definition}[States and Trajectories]
 	\label{def:approach:states}

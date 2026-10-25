@@ -58,7 +58,7 @@ An event log captures how a process was executed. In the traditional case-centri
 
 \noindent\emph{Vectors:}
 \begin{itemize}[beginpenalty=10000]
-	\item We write a vector $\mathbf{x} \in \R^n$ as $\mathbf{x} = (x_1, \dots, x_n)$ and treat it as a column vector, so $\mathbf{x}^\top$ is a row vector.
+	\item Vectors are column vectors. To save space, we write a vector $\mathbf{x} \in \R^n$ as the tuple $\mathbf{x} = (x_1, \dots, x_n)$, and $\mathbf{x}^\top$ is the corresponding row vector.
 	\item $\mathbf{0}$ is the zero vector, and for $1 \le i \le p$, $\mathit{onehot}_p(i) \in \R^p$ has a 1 at position $i$ and 0 elsewhere, e.g., $\mathit{onehot}_3(2) = (0, 1, 0)$.
 	\item For $\mathbf{x} \in \R^p$ and $\mathbf{y} \in \R^q$, the concatenation $(\mathbf{x}, \mathbf{y}) \in \R^{p+q}$ appends $\mathbf{y}$ to $\mathbf{x}$, e.g., $((1, 2), (3)) = (1, 2, 3)$.
 \end{itemize}
@@ -117,7 +117,7 @@ We define event logs as a set of events using an attribute function. In this not
 \begin{table}[tb]
 	\centering
 	\caption[Example event log table]{%
-		Event log $L_1$ with three cases and eleven events. Each row is an event with its attributes, and the second header row gives the attribute names. The activities are $a$, $b$, $c$ and $d$. The timestamp is the completion time of an event, and the duration is its processing time in minutes. The amount in euros is a case attribute.}
+		Event log $L_1$ with two cases and five events. Each row is an event with its attributes, and the second header row gives the attribute names. The activities are $a$, $b$ and $c$. The timestamp is the completion time of an event, and the duration is its processing time in minutes. The amount in euros is a case attribute.}
 	\label{tab:prelim:example_log}
 	\begin{tabular}{@{}cccllrr@{}}
 		\toprule
@@ -125,49 +125,42 @@ We define event logs as a set of events using an attribute function. In this not
 		         & $\mathit{case}$ & $\mathit{act}$ & $\mathit{time}$  & $\mathit{res}$ & $\mathit{duration}$ & $\mathit{amount}$ \\
 		\midrule
 		$e_1$    & 1               & $a$            & 2020-03-02 08:15 & Anna           & 15                  & 5000              \\
-		$e_2$    & 1               & $b$            & 2020-03-02 10:40 & Ben            & 45                  & 5000              \\
-		$e_3$    & 1               & $c$            & 2020-03-02 15:05 & Clara          & 25                  & 5000              \\
-		$e_4$    & 1               & $d$            & 2020-03-03 09:30 & Anna           & 5                   & 5000              \\
+		$e_2$    & 1               & $b$            & 2020-03-02 14:40 & Ben            & 45                  & 5000              \\
+		$e_3$    & 1               & $b$            & 2020-03-03 09:30 & Ben            & 40                  & 5000              \\
 		\addlinespace
-		$e_5$    & 2               & $a$            & 2020-03-02 09:00 & Anna           & 10                  & 1200              \\
-		$e_6$    & 2               & $c$            & 2020-03-02 13:20 & Clara          & 30                  & 1200              \\
-		$e_7$    & 2               & $d$            & 2020-03-02 16:45 & Ben            & 10                  & 1200              \\
-		\addlinespace
-		$e_8$    & 3               & $a$            & 2020-03-02 14:10 & Anna           & 20                  & 8000              \\
-		$e_9$    & 3               & $b$            & 2020-03-03 08:50 & Ben            & 40                  & 8000              \\
-		$e_{10}$ & 3               & $b$            & 2020-03-03 11:30 & Ben            & 55                  & 8000              \\
-		$e_{11}$ & 3               & $c$            & 2020-03-03 16:00 & Clara          & 20                  & 8000              \\
+		$e_4$    & 2               & $a$            & 2020-03-02 13:20 & Anna           & 10                  & 1200              \\
+		$e_5$    & 2               & $c$            & 2020-03-03 16:00 & Clara          & 20                  & 1200              \\
 		\bottomrule
 	\end{tabular}
 \end{table}
 
 \begin{example}
 	\label{ex:prelim:event_log}
-	Table~\ref{tab:prelim:example_log} shows the event log $L_1 = (E, \pi, \preceq)$ with the events $E = \Set{e_1, \dots, e_{11}}$.
+	Table~\ref{tab:prelim:example_log} shows the event log $L_1 = (E, \pi, \preceq)$ with the events $E = \Set{e_1, \dots, e_5}$.
 
 	\begin{itemize}
-		\item $\U{ev} = E = \Set{e_1, \dots, e_{11}}$.
+		\item $\U{ev} = E = \Set{e_1, \dots, e_5}$.
 		
-		\item $\U{case} = \Set{1, 2, 3}$, $\U{act} = \Set{a, b, c, d}$ and $\U{res} = \Set{\text{Anna}, \text{Ben}, \text{Clara}}$.
+		\item $\U{case} = \Set{1, 2}$, $\U{act} = \Set{a, b, c}$ and $\U{res} = \Set{\text{Anna}, \text{Ben}, \text{Clara}}$.
 		
 		\item $\U{att} = \Set{\mathit{case}, \mathit{act}, \mathit{time}, \mathit{res}, \mathit{duration}, \mathit{amount}}$.
 		
-		\item $\U{val} = \R \cup \Set{a, b, c, d, \text{Anna}, \text{Ben}, \text{Clara}} \cup \U{time} \supseteq \U{case} \cup \U{act} \cup \U{time} \cup \U{res}$. The case IDs, durations and amounts are real numbers and therefore also in $\U{val}$.
+		\item $\U{val} = \R \cup \Set{a, b, c, \text{Anna}, \text{Ben}, \text{Clara}} \cup \U{time} \supseteq \U{case} \cup \U{act} \cup \U{time} \cup \U{res}$. The case IDs, durations and amounts are real numbers and therefore also in $\U{val}$.
 		
 		\item $\U{map} = \U{att} \pto \U{val}$ is the set of all partial functions from these six attribute names to values, e.g., $\Set{(\mathit{act}, b)} \in \U{map}$ and $\emptyset \in \U{map}$.
 		
 		\item $\pi \in E \to \U{map}$ maps each event to the attribute value mapping of its row in Table~\ref{tab:prelim:example_log}, e.g.,
 			\[
 		\begin{aligned}
-			\pi(e_9) = \{ & (\mathit{case}, 3), (\mathit{act}, b), (\mathit{time}, \text{2020-03-03 08:50}), \\
-			              & (\mathit{res}, \text{Ben}), (\mathit{duration}, 40), (\mathit{amount}, 8000)\}.
+			\pi(e_3) = \{ & (\mathit{case}, 1), (\mathit{act}, b), (\mathit{time}, \text{2020-03-03 09:30}), \\
+			              & (\mathit{res}, \text{Ben}), (\mathit{duration}, 40), (\mathit{amount}, 5000)\}.
 		\end{aligned}
 			\]
-		\item For all attribute names $n \in \U{att}$, the values of $e_9$ are $\pi_{\mathit{case}}(e_9) = 3$, $\pi_{\mathit{act}}(e_9) = b$, $\pi_{\mathit{time}}(e_9) = \text{2020-03-03 08:50}$, $\pi_{\mathit{res}}(e_9) = \text{Ben}$, $\pi_{\mathit{duration}}(e_9) = 40$ and $\pi_{\mathit{amount}}(e_9) = 8000$.
+		\item For all attribute names $n \in \U{att}$, the values of $e_3$ are $\pi_{\mathit{case}}(e_3) = 1$, $\pi_{\mathit{act}}(e_3) = b$, $\pi_{\mathit{time}}(e_3) = \text{2020-03-03 09:30}$, $\pi_{\mathit{res}}(e_3) = \text{Ben}$, $\pi_{\mathit{duration}}(e_3) = 40$ and $\pi_{\mathit{amount}}(e_3) = 5000$.
 		
-		\item $\mathit{amount}$ is a case attribute, since all events of a case have the same amount, e.g., $\pi(e){\restriction}_{\Set{\mathit{amount}}} = \Set{(\mathit{amount}, 8000)}$ for the four events $e$ of case~3.
+		\item $\mathit{amount}$ is a case attribute, since all events of a case have the same amount, e.g., $\pi(e){\restriction}_{\Set{\mathit{amount}}} = \Set{(\mathit{amount}, 5000)}$ for the three events $e$ of case~1.
 
-		\item \emph{Cases and traces:} $L_1$ has the cases $C_{L_1} = \Set{1, 2, 3}$. Case~3 has the events $e_8 \preceq e_9 \preceq e_{10} \preceq e_{11}$ and thus the trace $\mathit{trace}_{L_1}(3) = \seq{a, b, b, c}$. It starts at \mbox{2020-03-02 14:10} and ends at \mbox{2020-03-03 16:00}. The prefix of $e_{10}$ is $\sigma = \mathit{prefix}_{L_1}(e_{10}) = \seq{a, b, b}$ with $\partial_{\mathit{multiset}}(\sigma) = [a, b^2]$ and $\mathit{df}(\sigma) = [(a, b), (b, b)]$.
+		\item \emph{Cases and traces:} $L_1$ has the cases $C_{L_1} = \Set{1, 2}$. Case~1 has the events $e_1 \preceq e_2 \preceq e_3$ and thus the trace $\mathit{trace}_{L_1}(1) = \seq{a, b, b}$. It starts at \mbox{2020-03-02 08:15} and ends at \mbox{2020-03-03 09:30}. The prefix of $e_3$ is $\sigma = \mathit{prefix}_{L_1}(e_3) = \seq{a, b, b}$ with $\partial_{\mathit{multiset}}(\sigma) = [a, b^2]$ and $\mathit{df}(\sigma) = [(a, b), (b, b)]$.
 	\end{itemize}
 
 
@@ -189,7 +182,7 @@ Figure~\ref{fig:prelim:process_tree} shows a nested process tree. It produces e.
 
 \begin{figure}[tbp]
 	\centering
-	\includegraphics[width=0.6\textwidth]{figures/vanderaalst_process_tree}
+	\includegraphics[width=0.4\textwidth]{figures/vanderaalst_process_tree}
 	\caption[Example process tree]{%
 		The process tree ${\rightarrow}(a, {\circlearrowleft}({\rightarrow}({\wedge}({\times}(b, c), d), e), f), {\times}(g, h))$ showing different process tree operators. Taken from \textcite{vanderaalst2016process}.}
 	\label{fig:prelim:process_tree}
@@ -212,23 +205,21 @@ We use calendar windows, i.e., time intervals of fixed length that start at cale
 	\centering
 	\begin{tikzpicture}[x=0.24cm, y=0.85cm, font=\small]
 		% alternate shading of the calendar windows
-		\fill[black!6] (12, -0.4) rectangle (24, 2.8);
-		\fill[black!6] (36, -0.4) rectangle (48, 2.8);
+		\fill[black!6] (12, -0.4) rectangle (24, 1.8);
+		\fill[black!6] (36, -0.4) rectangle (48, 1.8);
 		% window boundaries and names
 		\foreach \h in {0, 12, 24, 36, 48}
-			\draw[dashed, black!50] (\h, -0.4) -- (\h, 2.8);
+			\draw[dashed, black!50] (\h, -0.4) -- (\h, 1.8);
 		\foreach \h/\w in {6/0, 18/1, 30/2, 42/3}
-			\node at (\h, 3.1) {$w_{\w}$};
+			\node at (\h, 2.1) {$w_{\w}$};
 		% cases
-		\node[anchor=east] at (-0.8, 2) {Case 1};
-		\node[anchor=east] at (-0.8, 1) {Case 2};
-		\node[anchor=east] at (-0.8, 0) {Case 3};
+		\node[anchor=east] at (-0.8, 1) {Case 1};
+		\node[anchor=east] at (-0.8, 0) {Case 2};
 		% events of a case in their order, one unit on the x-axis is one hour from 2020-03-02 0:00
-		\draw (8.25, 2) -- (10.667, 2) -- (15.083, 2) -- (33.5, 2);
-		\draw (9, 1) -- (13.333, 1) -- (16.75, 1);
-		\draw (14.167, 0) -- (32.833, 0) -- (35.5, 0) -- (40, 0);
+		\draw (8.25, 1) -- (14.667, 1) -- (33.5, 1);
+		\draw (13.333, 0) -- (40, 0);
 		% events with their activity
-		\foreach \h/\y/\act/\e in {8.25/2/a/1, 10.667/2/b/2, 15.083/2/c/3, 33.5/2/d/4, 9/1/a/5, 13.333/1/c/6, 16.75/1/d/7, 14.167/0/a/8, 32.833/0/b/9, 35.5/0/b/10, 40/0/c/11} {
+		\foreach \h/\y/\act/\e in {8.25/1/a/1, 14.667/1/b/2, 33.5/1/b/3, 13.333/0/a/4, 40/0/c/5} {
 			\node[circle, draw, fill=white, inner sep=0pt, minimum size=0.42cm] at (\h, \y) {$\act$};
 			\node[above=0.21cm] at (\h, \y) {$e_{\e}$};
 		}
@@ -248,11 +239,9 @@ We use calendar windows, i.e., time intervals of fixed length that start at cale
 	\begin{itemize}
 		\item For $k = 1$, the window is $w_1 = [\text{2020-03-02 12:00}, \text{2020-03-03 0:00})$.
 
-		\item The timestamp $t$ = \mbox{2020-03-02 15:05} of $e_3$ lies in $w_1$.
+		\item The timestamp $t$ = \mbox{2020-03-02 14:40} of $e_2$ lies in $w_1$.
 
-		\item The timestamps of $e_3$, $e_6$, $e_7$ and $e_8$ lie in $w_1$, so $w_1$ contains events of all three cases.
-
-		\item A case often spans several windows, e.g., the timestamps of case~3 lie in $w_1$, $w_2$ and $w_3$.
+		\item A case often spans several windows, e.g., the timestamps of case~1 lie in $w_0$, $w_1$ and $w_2$.
 	\end{itemize}
 \end{example}
 
@@ -260,7 +249,7 @@ We use calendar windows, i.e., time intervals of fixed length that start at cale
 \label{sec:prelim:drift}
 In this section, we formalize concept drifts. The building block of a concept drift is the process change, which replaces one process version by another. 
 
-A concept drift is a situation in which a process changes. According to \textcite{kraus2026characterization}, an event log with a drift then contains data from different process versions. They describe a process version by the process model that governs its execution. We use a broader notion. Besides the control-flow, a process version also determines which resources execute which activities, how long activities take and how long a case waits between two events. It also determines how many cases arrive and which values their case attributes take. The drift type describes in which of these properties two versions differ (Section~\ref{sec:intro_ssec:motiv}).
+According to \textcite{kraus2026characterization}, an event log with a drift contains data from different process versions. They describe a process version by the process model that governs its execution. We use a broader notion. Besides the control-flow, a process version also determines which resources execute which activities, how long activities take and how long a case waits between two events. It also determines how many cases arrive and which values their case attributes take. The drift type describes in which of these properties two versions differ (Section~\ref{sec:intro_ssec:motiv}).
 
 \begin{definition}[Process Change]
 	\label{def:prelim:change}
@@ -390,18 +379,18 @@ The four drift modes originate from the taxonomy of \textcite{bose2011handling},
 
 \section{Scaling and Principal Component Analysis}
 \label{sec:prelim:pca}
-Each event or calendar window is described by numerical features, which we write as vectors.
+Scaling, PCA and clustering work on numerical data. We describe each object by $n$ numerical values, its \emph{features}.
 
 \medskip
 \noindent\emph{Feature vectors:}
 \begin{itemize}[beginpenalty=10000]
-	\item $\mathbf{x} = (x_1, \dots, x_n) \in \R^n$ is the feature vector of an event or a calendar window with its features $x_1, \dots, x_n$.
+	\item A feature vector $\mathbf{x} = (x_1, \dots, x_n) \in \R^n$ holds the $n$ features of an object.
 	\item A feature matrix $X \in \R^{m \times n}$ contains $m$ feature vectors $\mathbf{x}_1, \dots, \mathbf{x}_m$ as its rows $\mathbf{x}_1^\top, \dots, \mathbf{x}_m^\top$, and $x_{j,i}$ is the value of the $i$-th feature in the $j$-th vector.
 	\item $\norm{\mathbf{x}} = \sqrt{\sum_{i=1}^{n} x_i^2}$ is the Euclidean norm of $\mathbf{x}$, and $\norm{\mathbf{x} - \mathbf{y}}$ is the Euclidean distance of two vectors $\mathbf{x}, \mathbf{y} \in \R^n$.
-	\item Further distances of $\mathbf{x}$ and $\mathbf{y}$ are the Manhattan distance $\sum_{i=1}^{n} \abs{x_i - y_i}$, the Chebyshev distance $\max_{1 \le i \le n} \abs{x_i - y_i}$ and, for $\mathbf{x}, \mathbf{y} \neq \mathbf{0}$, the cosine distance $1 - \mathbf{x}^\top \mathbf{y} / (\norm{\mathbf{x}} \norm{\mathbf{y}})$.
+	\item For $\mathbf{x}, \mathbf{y} \neq \mathbf{0}$, $1 - \mathbf{x}^\top \mathbf{y} / (\norm{\mathbf{x}} \norm{\mathbf{y}})$ is the cosine distance of $\mathbf{x}$ and $\mathbf{y}$.
 \end{itemize}
 
-Features may have different units and ranges, e.g., binary, one-hot, minutes, counts and shares. If their variances differ strongly, the variances determine the directions of the principal components more than the correlations. Therefore, each feature is usually brought to mean 0 and variance 1 before PCA. An alternative is the min-max normalization to the interval $[0, 1]$.
+In Chapter~\ref{chap:approach}, the rows of a feature matrix are the events or the feature windows of an event log (Section~\ref{sec:approach:features}). Features may have different units and ranges, e.g., binary, one-hot, minutes, counts and shares. If their variances differ strongly, the variances determine the directions of the principal components more than the correlations. Therefore, each feature is usually brought to mean 0 and variance 1 before PCA. An alternative is the min-max normalization to the interval $[0, 1]$.
 
 \begin{definition}[Scaling]
 	\label{def:prelim:scaling}
@@ -450,45 +439,13 @@ PCA projects vectors onto a few directions in which they spread the most. It thu
 	\item We choose $d$ at the elbow of $\mathit{err}_X(d)$ over $d$, i.e., where a further component hardly lowers the reconstruction error.
 \end{itemize}
 
-\begin{figure}[tb]
-	\centering
-	\begin{tikzpicture}[x=0.5cm, y=0.5cm, font=\small]
-		% axes, the y-axis starts at 3 to save space
-		\draw[->] (0, 3) -- (10.6, 3);
-		\node[below=0.55cm] at (5.3, 3) {Arrivals};
-		\draw[->] (0, 3) -- (0, 13.2) node[above] {Active cases};
-		\foreach \x in {2, 4, 6, 8, 10}
-			\draw (\x, 3) -- (\x, 2.8) node[below] {\x};
-		\foreach \y in {4, 6, 8, 10, 12}
-			\draw (0, \y) -- (-0.2, \y) node[left] {\y};
-		% principal components as new axes through the mean
-		\draw[black!45] (1.2, 4.2) -- (10, 13) node[above right=-0.1cm, text=black] {$\mathbf{v}_1$};
-		\draw[black!45] (6.8, 6.2) -- (3.2, 9.8) node[above left=-0.1cm, text=black] {$\mathbf{v}_2$};
-		% reconstruction errors of x_3 and x_4
-		\draw[dashed] (6, 11) -- (7, 10) -- (8, 9);
-		% feature vectors
-		\fill (2, 5) circle (2.5pt) node[below right] {$\mathbf{x}_1$};
-		\fill (4, 7) circle (2.5pt) node[below right] {$\mathbf{x}_2$};
-		\fill (6, 11) circle (2.5pt) node[above left] {$\mathbf{x}_3$};
-		\fill (8, 9) circle (2.5pt) node[below right] {$\mathbf{x}_4$};
-		% mean and reconstruction
-		\draw[very thick] (4.7, 8) -- (5.3, 8) (5, 7.7) -- (5, 8.3);
-		\node[below=0.15cm] at (5, 8) {$\boldsymbol{\mu}$};
-		\draw[fill=white] (7, 10) circle (2.5pt);
-		\node[right] at (7.35, 10) {$\hat{\mathbf{x}}_3 = \hat{\mathbf{x}}_4$};
-	\end{tikzpicture}
-	\caption[PCA for two correlated features]{%
-		PCA for the four feature vectors of Example~\ref{ex:prelim:pca}. The gray lines are the principal components through the mean $\boldsymbol{\mu}$ (cross). The variance along $\mathbf{v}_1$ is $\lambda_1 = 9$, along $\mathbf{v}_2$ only $\lambda_2 = 1$. Thus, the projection onto $\mathbf{v}_1$ keeps 90\% of the variance. The reconstructions of $\mathbf{x}_1$ and $\mathbf{x}_2$ are exact. $\mathbf{x}_3$ and $\mathbf{x}_4$ are both reconstructed as $(7, 10)$ (empty circle), and the dashed lines are their reconstruction errors.}
-	\label{fig:prelim:pca}
-\end{figure}
-
 \begin{example}
 	\label{ex:prelim:pca}
 	Four calendar windows are described by their number of arrivals and their number of active cases.
 	\begin{itemize}
 		\item The feature vectors $\mathbf{x}_1 = (2, 5)$, $\mathbf{x}_2 = (4, 7)$, $\mathbf{x}_3 = (6, 11)$ and $\mathbf{x}_4 = (8, 9)$ have the mean vector and the covariance matrix
 		      \[
-			      \boldsymbol{\mu} = \begin{pmatrix} 5 \\ 8 \end{pmatrix}
+			      \boldsymbol{\mu} = (5, 8)
 			      \quad\text{and}\quad
 			      \Sigma = \begin{pmatrix} 5 & 4 \\ 4 & 5 \end{pmatrix}.
 		      \]
@@ -501,7 +458,7 @@ PCA projects vectors onto a few directions in which they spread the most. It thu
 
 		\item The projections onto $\mathbf{v}_1$ are $-3\sqrt{2}$, $-\sqrt{2}$, $2\sqrt{2}$ and $2\sqrt{2}$.
 
-		\item The reconstructions of $\mathbf{x}_1$ and $\mathbf{x}_2$ are exact. $\mathbf{x}_3$ and $\mathbf{x}_4$ are both reconstructed as $(7, 10)$ with the squared error 2, so $\mathit{err}_X(1) = (0 + 0 + 2 + 2) / 4 = 1 = \lambda_2$ (Figure~\ref{fig:prelim:pca}).
+		\item The reconstructions of $\mathbf{x}_1$ and $\mathbf{x}_2$ are exact. $\mathbf{x}_3$ and $\mathbf{x}_4$ are both reconstructed as $(7, 10)$ with the squared error 2, so $\mathit{err}_X(1) = (0 + 0 + 2 + 2) / 4 = 1 = \lambda_2$.
 	\end{itemize}
 \end{example}
 
@@ -575,7 +532,7 @@ A SOM is a neural network whose neurons lie on a usually two-dimensional grid. T
 	\item The SOM forms at most $p \cdot q$ clusters.
 	\item As in k-means, every vector belongs to a cluster.
 	\item Similarly to k-means, the grid size must be specified in advance.
-	\item Instead of the Euclidean distance, the BMU can be determined with another distance, e.g., the Manhattan, Chebyshev or cosine distance. The update of the prototypes stays the same.
+	\item Instead of the Euclidean distance, the BMU can be determined with another distance, e.g., the cosine distance. The update of the prototypes stays the same.
 \end{itemize}
 
 \begin{figure}[tb]
@@ -693,7 +650,7 @@ DBSCAN forms clusters from regions in which vectors lie densely (\textcite{ester
 \noindent\emph{Properties:}
 \begin{itemize}[beginpenalty=10000]
 	\item Unlike in k-means and the SOM, the number of clusters follows from the data.
-	\item Any distance can replace the Euclidean distance in the $\varepsilon$-neighborhood~\autocite{ester1996density}, e.g., the Manhattan, Chebyshev or cosine distance.
+	\item Any distance can replace the Euclidean distance in the $\varepsilon$-neighborhood~\autocite{ester1996density}, e.g., the cosine distance.
 	\item A common approach to choose $\varepsilon$ is the knee of the sorted $k$-dist graph with $k = \mathit{minPts}$, where the graph starts to rise steeply. This graph shows the distance of each point to its $k$-th nearest neighbor in ascending order.
 \end{itemize}
 
