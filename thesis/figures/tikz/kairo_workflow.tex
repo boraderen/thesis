@@ -1,15 +1,19 @@
-% workflow of kairo for one perspective: every arrow is a function, every symbol its output
-\begin{tikzpicture}[font=\small, >={Stealth},
-		wfstep/.style={->, thick},
-		wffn/.style={anchor=west, font=\footnotesize, align=left},
-		wfdata/.style={anchor=east, font=\footnotesize, align=right},
+% workflow of kairo for one perspective in two rows: every arrow is a function, every symbol
+% its output
+\begin{tikzpicture}[font=\scriptsize, >={Stealth},
+		wfstep/.style={->, thick, black!70},
+		wffn/.style={font=\scriptsize, align=center},
+		wfdata/.style={font=\scriptsize, align=center},
 		wfgrid/.style={step=0.2, black!35, very thin}]
 	\definecolor{wfA}{RGB}{0,114,178}
 	\definecolor{wfB}{RGB}{230,159,0}
 	\definecolor{wfC}{RGB}{0,158,115}
 	\def\wftype#1{{\color{black!55}#1}}
+	\def\rowa{0}
+	\def\rowb{-3.0}
+	% ---------- first row ----------
 	% event log, a database
-	\begin{scope}[shift={(0,0)}]
+	\begin{scope}[shift={(0,\rowa)}]
 		\fill[black!6] (-0.7,-0.35) rectangle (0.7,0.35);
 		\fill[black!6] (0,-0.35) ellipse (0.7 and 0.15);
 		\draw (-0.7,0.35) -- (-0.7,-0.35);
@@ -18,40 +22,41 @@
 		\draw (-0.7,-0.12) arc (180:360:0.7 and 0.15);
 		\draw (-0.7,0.12) arc (180:360:0.7 and 0.15);
 		\filldraw[fill=black!15] (0,0.35) ellipse (0.7 and 0.15);
+		\node[wfdata, below] at (0,-0.6) {Event log\\\wftype{XES or CSV}};
 	\end{scope}
-	\node[wfdata] at (-1.7,0) {Event log\\\wftype{XES or CSV file}};
 	% log, one row per event
-	\begin{scope}[shift={(0,-1.8)}]
+	\begin{scope}[shift={(3.4,\rowa)}]
 		\fill[black!15] (-1.0,0.2) rectangle (1.0,0.4);
 		\draw[wfgrid] (-1.0,-0.4) grid (1.0,0.4);
 		\draw (-1.0,-0.4) rectangle (1.0,0.4);
+		\node[wfdata, below] at (0,-0.6) {Log, one row per event\\\wftype{\texttt{DataFrame}}};
 	\end{scope}
-	\node[wfdata] at (-1.7,-1.8) {Log\\one row per event\\\wftype{\texttt{DataFrame}}};
 	% feature matrix, wide
-	\begin{scope}[shift={(0,-3.6)}]
+	\begin{scope}[shift={(7.4,\rowa)}]
 		\fill[black!20] (-1.4,-0.4) rectangle (-1.2,0.4);
 		\draw[wfgrid] (-1.4,-0.4) grid (1.4,0.4);
 		\draw (-1.4,-0.4) rectangle (1.4,0.4);
+		\node[wfdata, below] at (0,-0.6) {Feature matrix $X$, $m \times n$\\\wftype{\texttt{DataFrame}}};
 	\end{scope}
-	\node[wfdata] at (-1.7,-3.6) {Feature matrix $X$\\$m \times n$\\\wftype{\texttt{DataFrame}}};
 	% scaled matrix, same size
-	\begin{scope}[shift={(0,-5.4)}]
+	\begin{scope}[shift={(11.8,\rowa)}]
 		\fill[wfA!12] (-1.2,-0.4) rectangle (1.4,0.4);
 		\fill[black!20] (-1.4,-0.4) rectangle (-1.2,0.4);
 		\draw[wfgrid] (-1.4,-0.4) grid (1.4,0.4);
 		\draw (-1.4,-0.4) rectangle (1.4,0.4);
+		\node[wfdata, below] at (0,-0.6) {Scaled matrix, $m \times n$\\\wftype{\texttt{DataFrame}}};
 	\end{scope}
-	\node[wfdata] at (-1.7,-5.4) {Scaled matrix\\$m \times n$\\\wftype{\texttt{DataFrame}}};
+	% ---------- second row ----------
 	% reduced matrix, narrow
-	\begin{scope}[shift={(0,-7.2)}]
+	\begin{scope}[shift={(0,\rowb)}]
 		\fill[wfA!25] (-0.2,-0.4) rectangle (0.4,0.4);
 		\fill[black!20] (-0.4,-0.4) rectangle (-0.2,0.4);
 		\draw[wfgrid] (-0.4,-0.4) grid (0.4,0.4);
 		\draw (-0.4,-0.4) rectangle (0.4,0.4);
+		\node[wfdata, below] at (0,-0.6) {Reduced matrix $Z$\\\wftype{\texttt{DataFrame}}};
 	\end{scope}
-	\node[wfdata] at (-1.7,-7.2) {Reduced matrix $Z$\\$m \times d$, $d \le n$\\\wftype{\texttt{DataFrame}}};
 	% states, clusters of rows
-	\begin{scope}[shift={(0,-9.0)}]
+	\begin{scope}[shift={(3.6,\rowb)}]
 		\foreach \x/\y in {-0.95/0.1, -0.8/0.25, -0.7/0.02, -0.85/-0.12, -0.6/0.18}
 			\fill[wfA] (\x,\y) circle (0.055);
 		\foreach \x/\y in {-0.1/-0.2, 0.05/-0.05, 0.12/-0.25, -0.05/-0.32, 0.2/-0.12}
@@ -61,34 +66,34 @@
 		\draw[densely dashed, black!50] (-0.78,0.08) ellipse (0.3 and 0.28);
 		\draw[densely dashed, black!50] (0.04,-0.18) ellipse (0.3 and 0.24);
 		\draw[densely dashed, black!50] (0.82,0.18) ellipse (0.3 and 0.24);
+		\node[wfdata, below] at (0,-0.6) {States, one per row\\\wftype{\texttt{DataFrame}}};
 	\end{scope}
-	\node[wfdata] at (-1.7,-9.0) {States\\one per row of $Z$\\\wftype{\texttt{DataFrame}}};
 	% state distributions, shares per signal window
-	\begin{scope}[shift={(0,-10.8)}]
+	\begin{scope}[shift={(7.9,\rowb)}]
 		\foreach \x/\a/\b in {-1.0/0.5/0.3, -0.6/0.48/0.32, -0.2/0.52/0.28, 0.2/0.12/0.24, 0.6/0.1/0.26, 1.0/0.14/0.22} {
 			\fill[wfA] (\x-0.14,-0.4) rectangle (\x+0.14,-0.4+\a);
 			\fill[wfB] (\x-0.14,-0.4+\a) rectangle (\x+0.14,-0.4+\a+\b);
 			\fill[wfC] (\x-0.14,-0.4+\a+\b) rectangle (\x+0.14,0.4);
 		}
+		\node[wfdata, below] at (0,-0.6) {State distributions\\\wftype{\texttt{DataFrame}}};
 	\end{scope}
-	\node[wfdata] at (-1.7,-10.8) {State distributions\\one per signal window\\\wftype{\texttt{DataFrame}}};
 	% drift signal, a spike
-	\begin{scope}[shift={(0,-12.6)}]
+	\begin{scope}[shift={(12.3,\rowb)}]
 		\draw[->, black!60] (-1.25,-0.4) -- (1.3,-0.4);
 		\draw[->, black!60] (-1.2,-0.45) -- (-1.2,0.45);
 		\draw[wfA, thick] (-1.1,-0.32) -- (-0.8,-0.3) -- (-0.5,-0.33) -- (-0.2,-0.31) -- (0.0,0.35) -- (0.2,-0.3) -- (0.5,-0.32) -- (0.8,-0.31) -- (1.1,-0.33);
+		\node[wfdata, below] at (0,-0.6) {Drift signal\\\wftype{\texttt{DataFrame}}};
 	\end{scope}
-	\node[wfdata] at (-1.7,-12.6) {Drift signal\\one score per signal window\\\wftype{\texttt{DataFrame}}};
-	% the functions between the outputs
-	\foreach \y/\fn in {
-			-0.9/{\texttt{kairo.read\_log}},
-			-2.7/{\texttt{kairo.compute\_features\_intra}, \texttt{\_resource} or \texttt{\_inter}},
-			-4.5/{\texttt{kairo.standardize} (optional)},
-			-6.3/{\texttt{kairo.compute\_pca} \wftype{(\texttt{PCA})}, then\\\texttt{kairo.apply\_pca} (optional)},
-			-8.1/{\texttt{kairo.compute\_som}, \texttt{\_kmeans} or \texttt{\_dbscan}\\\wftype{(\texttt{MiniSom}, \texttt{KMeans} or \texttt{DBSCAN})}, then \texttt{kairo.get\_*\_states}},
-			-9.9/{\texttt{kairo.compute\_state\_distributions}},
-			-11.7/{\texttt{kairo.compute\_drift\_signal}}} {
-		\draw[wfstep] (0,\y+0.4) -- (0,\y-0.4);
-		\node[wffn] at (0.2,\y) {\fn};
+	% ---------- functions ----------
+	\foreach \a/\b/\fn in {0.8/2.3/{\texttt{read\_log}}, 4.5/5.9/{\texttt{compute\_}\\\texttt{features\_*}}, 8.9/10.3/{\texttt{standardize}\\\wftype{optional}}} {
+		\draw[wfstep] (\a,\rowa) -- (\b,\rowa);
+		\node[wffn, above] at ({(\a + \b) / 2}, \rowa + 0.05) {\fn};
 	}
+	\foreach \a/\b/\fn in {0.6/2.4/{\texttt{compute\_som},\\\texttt{\_kmeans}, \texttt{\_dbscan}}, 4.85/6.65/{\texttt{compute\_state\_}\\\texttt{distributions}}, 9.2/11.0/{\texttt{compute\_}\\\texttt{drift\_signal}}} {
+		\draw[wfstep] (\a,\rowb) -- (\b,\rowb);
+		\node[wffn, above] at ({(\a + \b) / 2}, \rowb + 0.05) {\fn};
+	}
+	% from the end of the first row to the start of the second
+	\draw[wfstep, rounded corners=6pt] (11.8,-1.35) -- (11.8,-1.65) -- (0,-1.65) -- (0,-2.5);
+	\node[wffn, fill=white, inner sep=1.5pt] at (6.0,-1.65) {\texttt{compute\_pca}, \texttt{apply\_pca} \wftype{optional}};
 \end{tikzpicture}

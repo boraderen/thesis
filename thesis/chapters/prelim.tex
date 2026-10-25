@@ -379,12 +379,12 @@ The four drift modes originate from the taxonomy of \textcite{bose2011handling},
 
 \section{Scaling and Principal Component Analysis}
 \label{sec:prelim:pca}
-Scaling, PCA and clustering work on numerical data. We describe each object by $n$ numerical values, its \emph{features}.
+Scaling, PCA and clustering work on numerical data. We describe each element by $n$ numerical values, its \emph{features}.
 
 \medskip
 \noindent\emph{Feature vectors:}
 \begin{itemize}[beginpenalty=10000]
-	\item A feature vector $\mathbf{x} = (x_1, \dots, x_n) \in \R^n$ holds the $n$ features of an object.
+	\item A feature vector $\mathbf{x} = (x_1, \dots, x_n) \in \R^n$ holds the $n$ features of an element.
 	\item A feature matrix $X \in \R^{m \times n}$ contains $m$ feature vectors $\mathbf{x}_1, \dots, \mathbf{x}_m$ as its rows $\mathbf{x}_1^\top, \dots, \mathbf{x}_m^\top$, and $x_{j,i}$ is the value of the $i$-th feature in the $j$-th vector.
 	\item $\norm{\mathbf{x}} = \sqrt{\sum_{i=1}^{n} x_i^2}$ is the Euclidean norm of $\mathbf{x}$, and $\norm{\mathbf{x} - \mathbf{y}}$ is the Euclidean distance of two vectors $\mathbf{x}, \mathbf{y} \in \R^n$.
 	\item For $\mathbf{x}, \mathbf{y} \neq \mathbf{0}$, $1 - \mathbf{x}^\top \mathbf{y} / (\norm{\mathbf{x}} \norm{\mathbf{y}})$ is the cosine distance of $\mathbf{x}$ and $\mathbf{y}$.

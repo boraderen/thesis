@@ -66,7 +66,7 @@ Thus, a precision, recall and F1-score \enquote{evaluate} the framework only par
 
 \section{Choosing a Configuration}
 \label{sec:discussion:config}
-For the clustering, a SOM with a large grid is useful in helping to choose $k$ for k-means. It shows how many groups of frequently used cells lie far apart from each other (Section~\ref{sec:approach:clustering}). DBSCAN is harder to tune. In our running example, the sorted $k$-dist graph has no clear knee for the choice of $\varepsilon$. Its $k$-distances also become slow for many rows (Section~\ref{sec:impl:kairo:pipeline}). This is another reason to use DBSCAN in the resource and inter-case perspectives, in which the rows are feature windows, and not in the intra-case perspective, in which they are events.
+For the clustering, a SOM with a large grid is useful in helping to choose $k$ for k-means. It shows how many groups of frequently used cells lie far apart from each other (Section~\ref{sec:prelim:som}). DBSCAN is harder to tune. In our running example, the sorted $k$-dist graph has no clear knee for the choice of $\varepsilon$. Its $k$-distances also become slow for many rows (Section~\ref{sec:impl:kairo:pipeline}). This is another reason to use DBSCAN in the resource and inter-case perspectives, in which the rows are feature windows, and not in the intra-case perspective, in which they are events.
 
 The choice of the window lengths and thresholds is still manual work. Similar to the heuristics for $\varepsilon$ and $\mathit{minPts}$ of DBSCAN (Section~\ref{sec:prelim:dbscan}), we suggest three rules of thumb as a starting point. Let $\mathit{span}_L$ be the time span of the log $L$ in days and $\abs{E}$ its number of events:
 \begin{itemize}
