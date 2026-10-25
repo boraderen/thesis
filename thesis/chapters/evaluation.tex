@@ -119,6 +119,7 @@ The Padella benchmark~\autocite{padella2026everything} injects drifts into five 
 	\item \emph{Perspectives:} The \texttt{cf} drifts are truth events of the intra-case perspective and the time drifts of the resource perspective (Figure~\ref{fig:eval:padella:perspectives}). We only evaluate these two perspectives.
 	\item \emph{Result:} Run~1 detects 19 of the 29 drifts, but has 75 FPs and only reaches an F1-score of 0.309. Run~2 detects 28 of the 29 drifts with 8 FPs and reaches an F1-score of 0.862 (Figure~\ref{fig:eval:padella:confusion} and Table~\ref{tab:eval:padella:metrics}). This shows the main handicap of our framework: on the same logs, two configurations of a perspective perform very differently.
 	\item \emph{Precision of Run~1:} The low F1-score of Run~1 mainly follows from its precision of 0.202. With a recall of 0.655, Run~1 detects two thirds of the drifts, but the 75 FPs push its F1-score down. With the precision of 0.778 of Run~2, Run~1 would reach an F1-score of 0.711 at the same recall.
+	\item \emph{Other detectors:} On the test logs of CDLG, CV4CDD-4D~\autocite{kraus2025machine} detects the change points of control-flow drifts with an F1-score of 0.81 to 0.83, depending on the allowed latency, and CVDrift~\autocite{khraiwesh2027window} reaches 0.77 to 0.97 on activity duration drifts. Since the logs, drift types and tolerances differ, these scores only frame the F1-scores of our runs and do not rank the detectors.
 \end{itemize}
 
 \begin{table}[tb]

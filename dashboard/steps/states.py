@@ -75,10 +75,6 @@ def compute_scores(p: str, method: str, compressed: pd.DataFrame, states: pd.Dat
         scores.append(("Occupancy entropy", f"{kairo.compute_som_occupancy_entropy(states, model.get_weights().shape[:2]):.2f}",
                        "How evenly the rows spread over the neurons, from 0 (all in one) to 1 (all equal). "
                        "Low values mean many empty or tiny states."))
-    if method == "DBSCAN":
-        scores.append(("DBCV", _score(kairo.compute_dbcv(compressed, states, distance)),
-                       "Density-based validation, from -1 to 1, higher is better. Rewards dense states separated "
-                       "by sparse regions, noise counts against it. Scored on a sample of 2,000 rows."))
 
     scores.append(("Silhouette", _score(kairo.compute_silhouette(compressed, states, distance)),
                    "From -1 to 1, higher is better. How much closer every row is to its own state than to the "

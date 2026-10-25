@@ -33,7 +33,6 @@ from .analysis import (
     compute_som_occupancy_entropy,
     compute_silhouette,
     compute_calinski_harabasz,
-    compute_dbcv,
     compute_state_distributions,
     compute_drift_signal,
     compute_drift_signal_mean,

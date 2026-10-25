@@ -12,7 +12,7 @@ Style:
   time you write the entry.
 - Dates as `YYYY-MM-DD`, signal windows by their start, state names as kairo prints them, drift
   scores with three decimals.
-- No config ids or hashes and no clustering scores (silhouette, Calinski–Harabasz, DBCV,
+- No config ids or hashes and no clustering scores (silhouette, Calinski–Harabasz,
   quantization error, occupancy entropy) anywhere in the entry.
 - Configuration table: exactly one row for each required perspective (`SKILL.md`, rule 11), each
   with exactly one drift signal and one threshold: two rows (intra-case, resource) for a Padella

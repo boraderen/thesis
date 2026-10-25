@@ -278,9 +278,6 @@ def score_states(reduced: pd.DataFrame, labels: pd.DataFrame, method: str, model
         scores["quantization_error"] = kairo.compute_som_quantization_error(reduced, labels, model, distance)
         scores["occupancy_entropy"] = kairo.compute_som_occupancy_entropy(labels, size)
 
-    if method == "dbscan":
-        scores["dbcv"] = kairo.compute_dbcv(reduced, labels, distance=distance)
-
     return scores
 
 
@@ -442,14 +439,14 @@ def sweep_som(reduced: pd.DataFrame, sizes, learning_rate: float = 0.5, distance
 
 
 def sweep_dbscan(reduced: pd.DataFrame, eps_values, min_samples: int, distance: str = "euclidean") -> pd.DataFrame:
-    """Clusters, noise share, silhouette and DBCV for every eps."""
+    """Clusters, noise share and silhouette for every eps."""
     rows = []
 
     for eps in eps_values:
         try:
             labels = kairo.get_dbscan_states(reduced, kairo.compute_dbscan(reduced, eps=eps, min_samples=min_samples, distance=distance))
         except ValueError:
-            rows.append({"eps": eps, "clusters": 0, "noise_share": 1.0, "silhouette": np.nan, "dbcv": np.nan})
+            rows.append({"eps": eps, "clusters": 0, "noise_share": 1.0, "silhouette": np.nan})
             continue
 
         rows.append({
@@ -457,7 +454,6 @@ def sweep_dbscan(reduced: pd.DataFrame, eps_values, min_samples: int, distance: 
             "clusters": int(labels.loc[labels["cluster"] != -1, "cluster"].nunique()),
             "noise_share": float((labels["cluster"] == -1).mean()),
             "silhouette": kairo.compute_silhouette(reduced, labels, distance=distance),
-            "dbcv": kairo.compute_dbcv(reduced, labels, distance=distance),
         })
 
     return pd.DataFrame(rows).set_index("eps")

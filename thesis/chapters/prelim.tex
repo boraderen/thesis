@@ -668,7 +668,7 @@ DBSCAN forms clusters from regions in which vectors lie densely (\textcite{ester
 
 \subsection{Clustering Evaluation}
 \label{sec:prelim:cluster_eval}
-The true groups of the vectors are unknown. Thus, a clustering can only be evaluated with the vectors themselves, e.g., by how compact and how well separated its clusters are. We use five such metrics. The silhouette and the Cali\'nski--Harabasz index evaluate the clusterings of all three algorithms. The quantization error and the occupancy entropy evaluate SOMs, and Density-Based Clustering Validation (DBCV) evaluates DBSCAN. For SOMs and DBSCAN, the silhouette, the quantization error and DBCV use the same distance as the clustering. The Cali\'nski--Harabasz index always uses the Euclidean distance.
+The true groups of the vectors are unknown. Thus, a clustering can only be evaluated with the vectors themselves, e.g., by how compact and how well separated its clusters are. We use four such metrics. The silhouette and the Cali\'nski--Harabasz index evaluate the clusterings of all three algorithms. The quantization error and the occupancy entropy evaluate SOMs. For SOMs and DBSCAN, the silhouette and the quantization error use the same distance as the clustering. The Cali\'nski--Harabasz index always uses the Euclidean distance.
 
 \medskip
 \noindent\emph{Clusters:}
@@ -742,41 +742,18 @@ For SOMs, we also measure how closely the prototypes fit the vectors and how eve
 	\item The occupancy entropy is 0 if all vectors lie in one cell and 1 if all cells hold equally many vectors.
 \end{itemize}
 
-\textcite{moulavi2014density} designed DBCV to compare the density within the clusters with the density between them. In a good clustering, even the sparsest region inside a cluster is denser than the region that separates it from the other clusters.
-
-\begin{definition}[Density-Based Clustering Validation]
-	\label{def:prelim:dbcv}
-	Let $\mathit{cl}$ be a DBSCAN clustering of a feature matrix $X \in \R^{m \times n}$ with $k \ge 2$ clusters.
-	\begin{itemize}
-		\item The density sparseness $\mathit{dsc}(C_l)$ is the largest gap that the vectors of $C_l$ have to bridge to connect each other, i.e., the sparsest region inside $C_l$.
-		\item The density separation $\mathit{sep}(C_l)$ is the smallest gap between $C_l$ and another cluster, i.e., the densest region between them.
-		\item The validity of $C_l$ is
-		      \[
-			      v(C_l) = \frac{\mathit{sep}(C_l) - \mathit{dsc}(C_l)}{\max\Set{\mathit{sep}(C_l), \mathit{dsc}(C_l)}}.
-		      \]
-		\item $\mathit{dbcv}(\mathit{cl}) = \sum_{l=1}^{k} \frac{\abs{C_l}}{m} \, v(C_l)$ is the DBCV of $\mathit{cl}$, where $m$ also counts the noise.
-	\end{itemize}
-\end{definition}
-
-\noindent\emph{Properties:}
-\begin{itemize}[beginpenalty=10000]
-	\item Both gaps are taken from a minimum spanning tree of each cluster, whose edge weights grow in sparse regions. The tree also captures the shape of the cluster, so DBCV evaluates clusters of arbitrary shape~\autocite{moulavi2014density}.
-	\item $v(C_l) > 0$ if $C_l$ is denser inside than towards the nearest other cluster. The DBCV lies between $-1$ and $1$~\autocite{moulavi2014density}.
-	\item Noise lowers the DBCV, since it counts in $m$ but belongs to no cluster~\autocite{moulavi2014density}.
-\end{itemize}
-
 \begin{table}[htb]
 	\centering
 	\caption[Evaluation of the example clusterings]{%
 		Metrics of the three clusterings in Figure~\ref{fig:prelim:clustering}.}
 	\label{tab:prelim:cluster_eval}
-	\begin{tabular}{@{}lrrrrr@{}}
+	\begin{tabular}{@{}lrrrr@{}}
 		\toprule
-		Clustering                                         & $\mathit{sil}$ & $\mathit{ch}$ & $\mathit{qe}$ & $\mathit{ent}$ & $\mathit{dbcv}$ \\
+		Clustering                                         & $\mathit{sil}$ & $\mathit{ch}$ & $\mathit{qe}$ & $\mathit{ent}$ \\
 		\midrule
-		k-means, $k = 3$                                   & 0.573          & 45.4          & --            & --             & --              \\
-		SOM, $2 \times 2$ grid                             & 0.585          & 65.5          & 0.575         & 0.999          & --              \\
-		DBSCAN, $\varepsilon = 0.6$, $\mathit{minPts} = 4$ & 0.627          & 52.7          & --            & --             & 0.684           \\
+		k-means, $k = 3$                                   & 0.573          & 45.4          & --            & --             \\
+		SOM, $2 \times 2$ grid                             & 0.585          & 65.5          & 0.575         & 0.999          \\
+		DBSCAN, $\varepsilon = 0.6$, $\mathit{minPts} = 4$ & 0.627          & 52.7          & --            & --             \\
 		\bottomrule
 	\end{tabular}
 \end{table}
@@ -792,8 +769,6 @@ For SOMs, we also measure how closely the prototypes fit the vectors and how eve
 		\item The SOM has the highest Cali\'nski--Harabasz index, although it splits the elongated group.
 
 		\item The SOM uses its four cells almost evenly with 8, 7, 7 and 7 vectors, so its occupancy entropy is close to 1. Its quantization error is the mean distance of the vectors to the black dots in Figure~\ref{fig:prelim:clustering_som}.
-
-		\item DBSCAN has the DBCV 0.684. Since the two noise vectors count in $m = 29$, the DBCV is at most $27/29 \approx 0.931$ here.
 	\end{itemize}
 \end{example}
 

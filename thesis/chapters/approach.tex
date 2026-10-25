@@ -722,13 +722,13 @@ In each perspective of the running example, we use a different algorithm. Table~
 		Metrics of the chosen clusterings of $L_3$ (Section~\ref{sec:prelim:cluster_eval}). DBSCAN has two clusters and noise.}
 	\label{tab:approach:cluster_eval}
 	\small
-	\begin{tabular}{@{}llrrrrrr@{}}
+	\begin{tabular}{@{}llrrrrr@{}}
 		\toprule
-		Perspective & Clustering                                            & States & $\mathit{sil}$ & $\mathit{ch}$ & $\mathit{qe}$ & $\mathit{ent}$ & $\mathit{dbcv}$ \\
+		Perspective & Clustering                                            & States & $\mathit{sil}$ & $\mathit{ch}$ & $\mathit{qe}$ & $\mathit{ent}$ \\
 		\midrule
-		Intra-case  & SOM, $3 \times 3$                                     & 9      & 0.857          & 36,694        & 0.288         & 0.973          & --              \\
-		Resource    & k-means, $k = 2$                                      & 2      & 0.934          & 24,779        & --            & --             & --              \\
-		Inter-case  & DBSCAN, $\varepsilon = 0.7$, $\mathit{minPts} = 8$    & 3      & 0.382          & 271           & --            & --             & 0.141           \\
+		Intra-case  & SOM, $3 \times 3$                                     & 9      & 0.857          & 36,694        & 0.288         & 0.973          \\
+		Resource    & k-means, $k = 2$                                      & 2      & 0.934          & 24,779        & --            & --             \\
+		Inter-case  & DBSCAN, $\varepsilon = 0.7$, $\mathit{minPts} = 8$    & 3      & 0.382          & 271           & --            & --             \\
 		\bottomrule
 	\end{tabular}
 \end{table}
@@ -879,7 +879,7 @@ An inter-case state describes the load and the cases of a feature window. Unusua
 
 \begin{example}
 	\label{ex:approach:clustering_inter}
-	We choose DBSCAN, which marks unusual feature windows as noise instead of forcing them into a state. We cluster the four standardized inter-case features of $L_3$ (Example~\ref{ex:approach:reduction_inter}) with $\mathit{minPts} = 8$, i.e., twice the number of features. The sorted 8-distance graph rises gradually and only steeply for a few outliers, so it has no clear knee. The largest 8-distance of 13.06 belongs to the empty feature window of July~18, 00:00, with the standardized mean gap $-14.53$. Therefore, we compare the radii $\varepsilon \in \Set{0.6, 0.7, 0.8, 0.9}$ with DBCV, and $\varepsilon = 0.7$ reaches the highest DBCV of 0.141.
+	We choose DBSCAN, which marks unusual feature windows as noise instead of forcing them into a state. We cluster the four standardized inter-case features of $L_3$ (Example~\ref{ex:approach:reduction_inter}) with $\mathit{minPts} = 8$, i.e., twice the number of features. The sorted 8-distance graph rises gradually and only steeply for a few outliers, so it has no clear knee. The largest 8-distance of 13.06 belongs to the empty feature window of July~18, 00:00, with the standardized mean gap $-14.53$. Therefore, we compare the radii $\varepsilon \in \Set{0.6, 0.7, 0.8, 0.9}$ with the silhouette, and $\varepsilon = 0.7$ reaches the highest silhouette of 0.382.
 	\begin{itemize}
 		\item State~1 contains 525 feature windows before the amount drift, and state~2 contains 148 after it (Figure~\ref{fig:approach:states_inter}). The remaining 58 feature windows are noise.
 
@@ -891,7 +891,7 @@ An inter-case state describes the load and the cases of a feature window. Unusua
 	\end{itemize}
 \end{example}
 
-Table~\ref{tab:approach:cluster_eval} compares the chosen clusterings of the three perspectives. In the intra-case and the resource perspective, the drift clearly separates the rows, so the silhouettes reach 0.857 and 0.934. In the inter-case perspective, the drift only changes one of the four features, and the other features scatter the clusters. Thus, the silhouette of 0.382 and the DBCV of 0.141 stay low, although the states show the drift. The Cali\'nski--Harabasz index depends on the scale of the features and thus only compares clusterings of the same perspective.
+Table~\ref{tab:approach:cluster_eval} compares the chosen clusterings of the three perspectives. In the intra-case and the resource perspective, the drift clearly separates the rows, so the silhouettes reach 0.857 and 0.934. In the inter-case perspective, the drift only changes one of the four features, and the other features scatter the clusters. Thus, the silhouette of 0.382 stays low, although the states show the drift. The Cali\'nski--Harabasz index depends on the scale of the features and thus only compares clusterings of the same perspective.
 
 \section{Drift Signals}
 \label{sec:approach:drift_signals}

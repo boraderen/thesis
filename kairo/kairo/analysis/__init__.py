@@ -4,8 +4,6 @@ from minisom import MiniSom
 from sklearn.decomposition import PCA
 from sklearn.cluster import DBSCAN, KMeans
 from sklearn.metrics import calinski_harabasz_score, pairwise_distances, silhouette_score
-from scipy.sparse.csgraph import minimum_spanning_tree
-from scipy.special import logsumexp
 
 # carried along with every feature matrix, never part of the maths
 META = ["case:concept:name", "time:timestamp"]
@@ -305,59 +303,6 @@ def compute_calinski_harabasz(df: pd.DataFrame, states: pd.DataFrame) -> float:
 
     return float(calinski_harabasz_score(data, labels))
 
-def compute_dbcv(df: pd.DataFrame, states: pd.DataFrame, distance: str = "euclidean", sample_size: int = 2000) -> float:
-    # density based clustering validation (Moulavi et al., 2014), from -1 to 1, higher means
-    # dense states apart from each other by sparser regions. made for dbscan, whose states have
-    # any shape, and noise counts against it. a sample of the rows is scored
-    data = df.drop(columns=META, errors="ignore").to_numpy()
-    labels = _state_labels(states)
-
-    if len(labels) > sample_size:
-        picked = np.random.default_rng(0).choice(len(labels), sample_size, replace=False)
-        data, labels = data[picked], labels[picked]
-
-    clusters = [c for c in np.unique(labels) if c != -1]
-
-    if len(clusters) < 2:
-        return float("nan")
-
-    distances = pairwise_distances(data, metric=distance)
-    dims = data.shape[1]
-    internals, internal_cores, sparseness = {}, {}, {}
-
-    for c in clusters:
-        members = np.flatnonzero(labels == c)
-        within = distances[np.ix_(members, members)]
-        cores = _core_distances(within, dims)
-
-        # the minimum spanning tree over the mutual reachability distances, its heaviest
-        # edge between inner nodes is how sparse the state is inside
-        reach = np.maximum(within, np.maximum.outer(cores, cores))
-        tree = minimum_spanning_tree(np.where(reach > 0, reach, 1e-12)).toarray()
-        tree = np.maximum(tree, tree.T)
-        degrees = (tree > 0).sum(axis=1)
-        inner = degrees > 1 if (degrees > 1).any() else np.ones(len(members), bool)
-        edges = tree[np.ix_(inner, inner)]
-
-        internals[c] = members[inner]
-        internal_cores[c] = cores[inner]
-        sparseness[c] = edges.max() if edges.any() else tree.max()
-
-    score = 0.0
-
-    for c in clusters:
-        # how far the state lies from the nearest other one, between their inner nodes
-        separation = min(
-            np.maximum(distances[np.ix_(internals[c], internals[o])],
-                       np.maximum.outer(internal_cores[c], internal_cores[o])).min()
-            for o in clusters if o != c
-        )
-        spread = max(separation, sparseness[c])
-        validity = (separation - sparseness[c]) / spread if spread > 0 else 0.0
-        score += (labels == c).sum() / len(labels) * validity
-
-    return float(score)
-
 
 # drift
 
@@ -491,21 +436,6 @@ def _paired_distances(a: np.ndarray, b: np.ndarray, distance: str) -> np.ndarray
         return 1 - (a * b).sum(axis=1) / np.where(norms > 0, norms, 1)
 
     raise ValueError(f"Unknown distance: {distance}, pick from: {list(DISTANCES)}")
-
-def _core_distances(within: np.ndarray, dims: int) -> np.ndarray:
-    # the all points core distance of dbcv, how dense the state is around every row. taken in
-    # log space, since the distances are raised to the number of dimensions. copies of a row
-    # lie at distance 0 and make it 0
-    n = len(within)
-
-    if n < 2:
-        return np.zeros(n)
-
-    others = ~np.eye(n, dtype=bool)
-    with np.errstate(divide="ignore"):
-        logs = np.where(others, -dims * np.log(within), -np.inf)
-
-    return np.exp(-(logsumexp(logs, axis=1) - np.log(n - 1)) / dims)
 
 def _cluster_name(cluster: int) -> str:
     # dbscan marks its noise rows as cluster -1

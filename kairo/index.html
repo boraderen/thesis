@@ -918,9 +918,6 @@ print(kairo.get_chat_history(chat_history))</code></pre>
   <td>The mean distance of every row to its neuron. Lower fits closer, bigger grids always lower it.</td></tr>
 <tr><td><code>compute_som_occupancy_entropy(states, size)</code></td><td>SOM</td>
   <td>How evenly the rows spread over the <code>size</code> grid, from 0 (one neuron) to 1 (all equal).</td></tr>
-<tr><td><code>compute_dbcv(df, states, distance="euclidean", sample_size=2000)</code></td><td>DBSCAN</td>
-  <td>Density-based clustering validation, from -1 to 1, higher is better. Rewards dense states apart by sparse
-    regions, noise counts against it. Scored on a sample of the rows.</td></tr>
 <tr><td><code>compute_silhouette(df, states, distance="euclidean", sample_size=5000)</code></td><td>all</td>
   <td>From -1 to 1, higher is better: how much closer the rows are to their own state than to the nearest other.
     Scored on a sample, noise left out.</td></tr>
@@ -928,8 +925,6 @@ print(kairo.get_chat_history(chat_history))</code></pre>
   <td>The spread between the states against the spread within, higher is better. Without an upper bound, it
     only compares runs on the same rows. Noise left out.</td></tr>
 </tbody></table>
-<p>Silhouette and Calinski-Harabasz favour round, equally sized states, so for DBSCAN, whose states can have
-  any shape, DBCV is the fairer measure.</p>
 
 <h2 id="api-trajectories">Frequencies and trajectories</h2>
 <p>These take the states frame of any method, <code>*</code> being <code>som</code>, <code>kmeans</code> or
