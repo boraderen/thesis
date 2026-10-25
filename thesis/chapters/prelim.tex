@@ -5,7 +5,7 @@ In this chapter we introduce the notation and definitions that will be used in t
 \section{Foundations}
 \label{sec:prelim:foundations}
 
-An event log captures how a process was executed. In the traditional case-centric approach, each event in an event log belongs to exactly one case, relates to exactly one activity and has a timestamp. Case identifier, activity and timestamp are traditionally the required columns in event logs for process mining. Additional attributes like resources, durations, event attributes as well as case attributes allow additional analysis. In Section~\ref{sec:prelim:maths}, we introduce mathematical notation. Section~\ref{sec:prelim:logs} defines event logs, cases and traces, Section~\ref{sec:prelim:process_trees} introduces process trees, and Section~\ref{sec:prelim:windows} defines calendar windows.
+An event log captures how a process was executed. In the traditional case-centric approach, each event in an event log belongs to exactly one case, relates to exactly one activity and has a timestamp. Case identifier, activity and timestamp are traditionally the required columns in event logs for process mining. Additional attributes like resources, durations, event attributes as well as case attributes allow additional analysis.
 
 
 \subsection{Mathematical Preliminaries}
@@ -23,7 +23,6 @@ An event log captures how a process was executed. In the traditional case-centri
 	\item A function $f$ from a set $X$ to a set $Y$ maps each element of its domain $\dom(f) \subseteq X$ to exactly one element of $Y$.
 	\item $X \pto Y$ is the set of all functions from $X$ to $Y$, which we call partial functions.
 	\item $X \to Y$ is the set of all total functions from $X$ to $Y$, i.e., of all $f \in X \pto Y$ with $\dom(f) = X$.
-	\item For a set $Q$, $f{\restriction}_Q$ is the restriction of $f$ to $Q$ with $\dom(f{\restriction}_Q) = \dom(f) \cap Q$ and $f{\restriction}_Q(x) = f(x)$ for all $x \in \dom(f{\restriction}_Q)$.
 \end{itemize}
 
 \noindent\emph{Multisets:}
@@ -94,7 +93,7 @@ We define event logs as a set of events using an attribute function. In this not
 	Furthermore:
 	\begin{itemize}
 		\item For $e \in E$ and $n \in \dom(\pi(e))$, $\pi_n(e) = \pi(e)(n)$ is the value of attribute $n$ of $e$, e.g., $\pi_{\mathit{act}}(e)$ is the activity of $e$.
-		\item An attribute name $n \in \U{att} \setminus \Set{\mathit{case}, \mathit{act}, \mathit{time}, \mathit{res}}$ is a case attribute of $L$ if all events of a case have the same value for $n$, i.e., $\pi(e){\restriction}_{\Set{n}} = \pi(e'){\restriction}_{\Set{n}}$ for all $e, e' \in E$ with $\pi_{\mathit{case}}(e) = \pi_{\mathit{case}}(e')$.
+		\item An attribute name $n \in \U{att} \setminus \Set{\mathit{case}, \mathit{act}, \mathit{time}, \mathit{res}}$ is a case attribute of $L$ if all events of a case have the same value for $n$, i.e., $\pi_n(e) = \pi_n(e')$ for all $e, e' \in E$ with $\pi_{\mathit{case}}(e) = \pi_{\mathit{case}}(e')$.
 	\end{itemize}
 \end{definition}
 
@@ -117,7 +116,7 @@ We define event logs as a set of events using an attribute function. In this not
 \begin{table}[tb]
 	\centering
 	\caption[Example event log table]{%
-		Event log $L_1$ with two cases and five events. Each row is an event with its attributes, and the second header row gives the attribute names. The activities are $a$, $b$ and $c$. The timestamp is the completion time of an event, and the duration is its processing time in minutes. The amount in euros is a case attribute.}
+		Event log $L_1$ with two cases and five events. Each row is an event with its attributes, and the second header row gives the attribute names. The timestamp is the completion time of an event, and the duration is its processing time in minutes. The amount in euros is a case attribute.}
 	\label{tab:prelim:example_log}
 	\begin{tabular}{@{}cccllrr@{}}
 		\toprule
@@ -145,7 +144,7 @@ We define event logs as a set of events using an attribute function. In this not
 		
 		\item $\U{att} = \Set{\mathit{case}, \mathit{act}, \mathit{time}, \mathit{res}, \mathit{duration}, \mathit{amount}}$.
 		
-		\item $\U{val} = \R \cup \Set{a, b, c, \text{Anna}, \text{Ben}, \text{Clara}} \cup \U{time} \supseteq \U{case} \cup \U{act} \cup \U{time} \cup \U{res}$. The case IDs, durations and amounts are real numbers and therefore also in $\U{val}$.
+		\item $\U{val} = \R \cup \Set{a, b, c, \text{Anna}, \text{Ben}, \text{Clara}} \cup \U{time} \supseteq \U{case} \cup \U{act} \cup \U{time} \cup \U{res}$.
 		
 		\item $\U{map} = \U{att} \pto \U{val}$ is the set of all partial functions from these six attribute names to values, e.g., $\Set{(\mathit{act}, b)} \in \U{map}$ and $\emptyset \in \U{map}$.
 		
@@ -156,9 +155,9 @@ We define event logs as a set of events using an attribute function. In this not
 			              & (\mathit{res}, \text{Ben}), (\mathit{duration}, 40), (\mathit{amount}, 5000)\}.
 		\end{aligned}
 			\]
-		\item For all attribute names $n \in \U{att}$, the values of $e_3$ are $\pi_{\mathit{case}}(e_3) = 1$, $\pi_{\mathit{act}}(e_3) = b$, $\pi_{\mathit{time}}(e_3) = \text{2020-03-03 09:30}$, $\pi_{\mathit{res}}(e_3) = \text{Ben}$, $\pi_{\mathit{duration}}(e_3) = 40$ and $\pi_{\mathit{amount}}(e_3) = 5000$.
+		\item The values of $e_3$ are, e.g., $\pi_{\mathit{act}}(e_3) = b$ and $\pi_{\mathit{res}}(e_3) = \text{Ben}$.
 		
-		\item $\mathit{amount}$ is a case attribute, since all events of a case have the same amount, e.g., $\pi(e){\restriction}_{\Set{\mathit{amount}}} = \Set{(\mathit{amount}, 5000)}$ for the three events $e$ of case~1.
+		\item $\mathit{amount}$ is a case attribute, since all events of a case have the same amount, e.g., $\pi_{\mathit{amount}}(e) = 5000$ for the three events $e$ of case~1.
 
 		\item \emph{Cases and traces:} $L_1$ has the cases $C_{L_1} = \Set{1, 2}$. Case~1 has the events $e_1 \preceq e_2 \preceq e_3$ and thus the trace $\mathit{trace}_{L_1}(1) = \seq{a, b, b}$. It starts at \mbox{2020-03-02 08:15} and ends at \mbox{2020-03-03 09:30}. The prefix of $e_3$ is $\sigma = \mathit{prefix}_{L_1}(e_3) = \seq{a, b, b}$ with $\partial_{\mathit{multiset}}(\sigma) = [a, b^2]$ and $\mathit{df}(\sigma) = [(a, b), (b, b)]$.
 	\end{itemize}
@@ -240,8 +239,6 @@ We use calendar windows, i.e., time intervals of fixed length that start at cale
 		\item For $k = 1$, the window is $w_1 = [\text{2020-03-02 12:00}, \text{2020-03-03 0:00})$.
 
 		\item The timestamp $t$ = \mbox{2020-03-02 14:40} of $e_2$ lies in $w_1$.
-
-		\item A case often spans several windows, e.g., the timestamps of case~1 lie in $w_0$, $w_1$ and $w_2$.
 	\end{itemize}
 \end{example}
 
@@ -259,10 +256,10 @@ According to \textcite{kraus2026characterization}, an event log with a drift con
 		\item from $t_e$ on, the process behaves according to version $v'$ and
 		\item between $t_s$ and $t_e$, the process changes gradually from $v$ to $v'$.
 	\end{itemize}
-	$t_s$ and $t_e$ are the drift points of the change. The change is sudden if $t_s = t_e$, and gradual otherwise.
+	$t_s$ and $t_e$ are the drift points of the change. The change is sudden if $t_s = t_e$, and gradual otherwise. The conditions only concern the properties in which $v$ and $v'$ differ, i.e., the drift type of the change. If the process changes several times, they only hold between the neighboring changes of the same drift type (Definition~\ref{def:prelim:drift}), and changes of different drift types may overlap.
 \end{definition}
 
-In a gradual change, both versions coexist for some time, and the old version is discontinued gradually. We assume that the share of behavior that follows $v'$ grows linearly between $t_s$ and $t_e$.
+In a gradual change, both versions coexist for some time, and the old version is discontinued gradually. We assume that the share of behavior that follows $v'$ grows between $t_s$ and $t_e$.
 
 \begin{definition}[Concept Drift, Drift Mode]
 	\label{def:prelim:drift}
@@ -270,27 +267,24 @@ In a gradual change, both versions coexist for some time, and the old version is
 	\[
 		\delta = \seq{(v_1, v_2, s_1, t_1), (v_2, v_3, s_2, t_2), \dots, (v_m, v_{m+1}, s_m, t_m)}
 	\]
-	of $m \ge 1$ process changes with $t_i \le s_{i+1}$ for $1 \le i < m$. The drift points of $\delta$ are the drift points of its changes. The drift mode of $\delta$ is
+	of $m \ge 1$ process changes with $t_i \le s_{i+1}$ for $1 \le i < m$ such that the process behaves according to $v_i$ between $t_{i-1}$ and $s_i$ for $1 \le i \le m + 1$, with $t_0 = -\infty$ and $s_{m+1} = \infty$. The drift points of $\delta$ are the drift points of its changes. The drift mode of $\delta$ is
 	\begin{itemize}
 		\item \emph{sudden} if $m = 1$ and $s_1 = t_1$,
 		\item \emph{gradual} if $m = 1$ and $s_1 < t_1$,
 		\item \emph{recurring} if $m \ge 2$ and a version occurs more than once, i.e., $v_i = v_j$ for some $1 \le i < j \le m + 1$,
-		\item \emph{incremental} if $m \ge 2$, the versions $v_1, \dots, v_{m+1}$ are pairwise different and each change alters the process only slightly, where all changes follow the same initiative.
 	\end{itemize}
 \end{definition}
 
-The four drift modes originate from the taxonomy of \textcite{bose2011handling}, and \textcite{kraus2026characterization} call them drift types. We call them drift modes instead and reserve the term drift type for what changes. In this thesis we will focus on sudden and gradual drifts. Figure~\ref{fig:prelim:drift_modes} shows the four drift modes.
+The drift modes originate from the taxonomy of \textcite{bose2011handling}, and \textcite{kraus2026characterization} call them drift types. We call them drift modes instead and reserve the term drift type for what changes. In this thesis we will focus on sudden and gradual drifts. Figure~\ref{fig:prelim:drift_modes} shows the three drift modes.
 
 \begin{figure}[tb]
 	\centering
 	\definecolor{versionA}{RGB}{0,114,178}
-	\definecolor{versionB}{RGB}{86,180,233}
-	\definecolor{versionC}{RGB}{0,158,115}
 	\definecolor{versionD}{RGB}{230,159,0}
 	\begin{tikzpicture}[font=\small, case/.style={line width=1pt}]
 		% axis labels shared by the four panels
 		\node[rotate=90] at (-0.4, 0.95) {Process version};
-		\node at (6.9, -0.75) {Time};
+		\node at (5.1, -0.75) {Time};
 		% sudden: one change at 1.5
 		\begin{scope}
 			\draw[->] (0, 0) -- (3.15, 0);
@@ -321,30 +315,8 @@ The four drift modes originate from the taxonomy of \textcite{bose2011handling},
 			\node at (0.5, 0.92) {$v_1$};
 			\node at (2.5, 1.72) {$v_2$};
 		\end{scope}
-		% incremental: three small changes at 0.75, 1.5 and 2.25
-		\begin{scope}[xshift=7.1cm]
-			\draw[->] (0, 0) -- (3.15, 0);
-			\draw[->] (0, 0) -- (0, 1.95);
-			\node at (1.55, 2.2) {incremental};
-			\foreach \x/\idx in {0.75/1, 1.5/2, 2.25/3} {
-				\draw[dashed, black!60] (\x, 0) -- (\x, 1.75);
-				\node[below] at (\x, 0) {$t_{\idx}$};
-			}
-			\foreach \x in {0.0375, 0.1125, 0.1875, 0.2625, 0.3375, 0.4125, 0.4875, 0.5625, 0.6375, 0.7125}
-				\draw[case, versionA] (\x, 0.29) -- (\x, 0.51);
-			\foreach \x in {0.7875, 0.8625, 0.9375, 1.0125, 1.0875, 1.1625, 1.2375, 1.3125, 1.3875, 1.4625}
-				\draw[case, versionB] (\x, 0.64) -- (\x, 0.86);
-			\foreach \x in {1.5375, 1.6125, 1.6875, 1.7625, 1.8375, 1.9125, 1.9875, 2.0625, 2.1375, 2.2125}
-				\draw[case, versionC] (\x, 0.99) -- (\x, 1.21);
-			\foreach \x in {2.2875, 2.3625, 2.4375, 2.5125, 2.5875, 2.6625, 2.7375, 2.8125, 2.8875, 2.9625}
-				\draw[case, versionD] (\x, 1.34) -- (\x, 1.56);
-			\node at (0.375, 0.72) {$v_1$};
-			\node at (1.125, 1.07) {$v_2$};
-			\node at (1.875, 1.42) {$v_3$};
-			\node at (2.625, 1.77) {$v_4$};
-		\end{scope}
 		% recurring: v1 and v2 alternate at 0.75, 1.5 and 2.25
-		\begin{scope}[xshift=10.65cm]
+		\begin{scope}[xshift=7.1cm]
 			\draw[->] (0, 0) -- (3.15, 0);
 			\draw[->] (0, 0) -- (0, 1.95);
 			\node at (1.55, 2.2) {recurring};
@@ -362,8 +334,8 @@ The four drift modes originate from the taxonomy of \textcite{bose2011handling},
 			\node at (2.625, 1.72) {$v_2$};
 		\end{scope}
 	\end{tikzpicture}
-	\caption[The four drift modes]{%
-		The four drift modes. Each tick is a case, and its height and color show the process version it follows. Dashed lines mark the drift points. A sudden change replaces $v_1$ by $v_2$ at one point in time. In a gradual change, more and more cases follow $v_2$ between $s_1$ and $t_1$. An incremental drift leads from $v_1$ to $v_4$ in small steps, and a recurring drift returns to earlier versions. The changes of the incremental and the recurring drift are sudden here, i.e., $s_i = t_i$.}
+	\caption[The three drift modes]{%
+		The three drift modes. Each tick is a case, and its height and color show the process version it follows. Dashed lines mark the drift points. The changes of the recurring drift are sudden here, i.e., $s_i = t_i$.}
 	\label{fig:prelim:drift_modes}
 \end{figure}
 
@@ -464,13 +436,7 @@ PCA projects vectors onto a few directions in which they spread the most. It thu
 
 \section{Clustering}
 \label{sec:prelim:clustering}
-A clustering algorithm groups vectors such that vectors in the same group are similar to each other. Let $X \in \R^{m \times n}$ be a feature matrix with the rows $\mathbf{x}_1^\top, \dots, \mathbf{x}_m^\top$. A clustering of $X$ is a function $\mathit{cl} \in \Set{1, \dots, m} \to K$ that assigns each vector a cluster from a set $K$. The following three algorithms form clusters in different ways:
-\begin{itemize}
-	\item \emph{k-means} forms a given number of clusters around centers (Section~\ref{sec:prelim:kmeans}).
-	\item A \emph{self-organizing map} arranges prototypes on a grid whose cells are the clusters (Section~\ref{sec:prelim:som}).
-	\item \emph{DBSCAN} merges dense regions into clusters and marks the vectors outside them as noise (Section~\ref{sec:prelim:dbscan}).
-\end{itemize}
-Figure~\ref{fig:prelim:clustering} applies all three algorithms to the same vectors. Section~\ref{sec:prelim:cluster_eval} introduces metrics that evaluate the resulting clusterings.
+A clustering algorithm groups vectors such that vectors in the same group are similar to each other. Let $X \in \R^{m \times n}$ be a feature matrix with the rows $\mathbf{x}_1^\top, \dots, \mathbf{x}_m^\top$. A clustering of $X$ is a function $\mathit{cl} \in \Set{1, \dots, m} \to K$ that assigns each vector a cluster from a set $K$. Sections~\ref{sec:prelim:kmeans} to~\ref{sec:prelim:dbscan} present k-means, SOMs and DBSCAN. Figure~\ref{fig:prelim:clustering} applies all three algorithms to the same vectors. Section~\ref{sec:prelim:cluster_eval} introduces metrics that evaluate the resulting clusterings.
 
 \subsection{k-Means}
 \label{sec:prelim:kmeans}
@@ -528,10 +494,8 @@ A SOM is a neural network whose neurons lie on a usually two-dimensional grid. T
 \noindent\emph{Properties:}
 \begin{itemize}[beginpenalty=10000]
 	\item The neighborhood function also pulls the neighbors of the BMU towards the vector. Thus, neighboring cells get similar prototypes, and vectors that are close in the feature space fall into close cells.
-	\item Towards the end of the training, $\sigma(t)$ is so small that almost only the BMU adapts.
 	\item The SOM forms at most $p \cdot q$ clusters.
-	\item As in k-means, every vector belongs to a cluster.
-	\item Similarly to k-means, the grid size must be specified in advance.
+	\item As in k-means, every vector belongs to a cluster, and the grid size must be specified in advance.
 	\item Instead of the Euclidean distance, the BMU can be determined with another distance, e.g., the cosine distance. The update of the prototypes stays the same.
 \end{itemize}
 
@@ -643,7 +607,7 @@ DBSCAN forms clusters from regions in which vectors lie densely (\textcite{ester
 		\item $l \in I$ is directly density-reachable from $j \in I$ if $j$ is a core point and $l \in N_\varepsilon(j)$. $l$ is density-reachable from $j$ if there are $i_1, \dots, i_r \in I$ with $i_1 = j$ and $i_r = l$ such that $i_{h+1}$ is directly density-reachable from $i_h$ for $1 \le h < r$.
 		\item A cluster is a non-empty set $C \subseteq I$ that is maximal and connected. Maximal means that $l \in C$ if $j \in C$ and $l$ is density-reachable from $j$. Connected means that for all $j, l \in C$, there is an $i \in I$ from which both $j$ and $l$ are density-reachable.
 		\item The points of a cluster that are not core points are border points. Points that belong to no cluster are noise.
-		\item For the clusters $C_1, \dots, C_k$, the clustering is $\mathit{cl}(j) = l$ for $j \in C_l$ and $\mathit{cl}(j) = \mathit{noise}$ if $j$ is noise. Thus, $K = \Set{1, \dots, k, \mathit{noise}}$.
+		\item For the clusters $C_1, \dots, C_k$ in discovery order, the clustering is $\mathit{cl}(j) = \min\Set{l \given j \in C_l}$ for non-noise points and $\mathit{cl}(j) = \mathit{noise}$ if $j$ is noise. Thus, $K = \Set{1, \dots, k, \mathit{noise}}$.
 	\end{itemize}
 \end{definition}
 
@@ -693,8 +657,8 @@ The silhouette compares the distance of a vector to its own cluster with its dis
 		      \[
 			      s(j) =
 			      \begin{cases}
-				      \dfrac{b(j) - a(j)}{\max\Set{a(j), b(j)}} & \text{if } \abs{C_l} > 1, \\[1.5ex]
-				      0                                          & \text{if } \abs{C_l} = 1.
+				      \dfrac{b(j) - a(j)}{\max\Set{a(j), b(j)}} & \text{if } \abs{C_l} > 1 \text{ and } \max\Set{a(j), b(j)} > 0, \\[1.5ex]
+				      0                                          & \text{otherwise}.
 			      \end{cases}
 		      \]
 		\item $\mathit{sil}(\mathit{cl}) = \frac{1}{m'} \sum_{j \in I'} s(j)$ is the silhouette of $\mathit{cl}$.
@@ -799,35 +763,16 @@ A divergence measures how much two probability distributions over the same finit
 	\item $D_{\mathrm{TV}}$ and $D_{\mathrm{H}}$ are symmetric and lie in $[0, 1]$. $D_{\mathrm{TV}}$ is the share that has to move between the elements of $K$ to turn $q$ into $p$.
 \end{itemize}
 
-\begin{table}[tb]
-	\centering
-	\caption[Divergences of the example distributions]{%
-		The four divergences in both directions for the distributions $p = (0.5, 0.5, 0)$ and $q = (0.25, 0.25, 0.5)$ over $K = \Set{1, 2, 3}$ of Example~\ref{ex:prelim:divergences}. Since $p(3) = 0 < q(3)$, only $D_{\mathrm{KL}}(q, p)$ is infinite.}
-	\label{tab:prelim:divergences}
-	\begin{tabular}{@{}lrr@{}}
-		\toprule
-		Divergence           & $D(p, q)$ & $D(q, p)$ \\
-		\midrule
-		$D_{\mathrm{KL}}$    & 0.693     & $\infty$  \\
-		$D_{\mathrm{JS}}$    & 0.216     & 0.216     \\
-		$D_{\mathrm{TV}}$    & 0.500     & 0.500     \\
-		$D_{\mathrm{H}}$     & 0.541     & 0.541     \\
-		\bottomrule
-	\end{tabular}
-\end{table}
-
 \begin{example}
 	\label{ex:prelim:divergences}
-	We compare two distributions over $K = \Set{1, 2, 3}$ (Table~\ref{tab:prelim:divergences}). We write a distribution $p$ over $K$ as $(p(1), p(2), p(3))$.
+	We compare two distributions over $K = \Set{1, 2, 3}$. We write a distribution $p$ over $K$ as $(p(1), p(2), p(3))$.
 	\begin{itemize}
-		\item The distributions are $p = (0.5, 0.5, 0)$ and $q = (0.25, 0.25, 0.5)$. Thus, only $q$ gives the element~3 a share.
+		\item The distributions are $p = (0.5, 0.5, 0)$ and $q = (0.25, 0.25, 0.5)$.
 
 		\item $D_{\mathrm{KL}}(p, q) = 2 \cdot 0.5 \log \frac{0.5}{0.25} = \log 2 \approx 0.693$. Conversely, $D_{\mathrm{KL}}(q, p) = \infty$, since $q(3) = 0.5$ and $p(3) = 0$.
 
 		\item With $m = (0.375, 0.375, 0.25)$, $D_{\mathrm{JS}}(p, q) = \frac{1}{2} D_{\mathrm{KL}}(p, m) + \frac{1}{2} D_{\mathrm{KL}}(q, m) \approx \frac{1}{2} \cdot 0.288 + \frac{1}{2} \cdot 0.144 \approx 0.216$.
 
 		\item $D_{\mathrm{TV}}(p, q) = \frac{1}{2} (0.25 + 0.25 + 0.5) = 0.5$, i.e., a share of 0.5 moves from the element~3 to the elements~1 and~2. $D_{\mathrm{H}}(p, q) \approx 0.541$.
-
-		\item $D_{\mathrm{JS}}$, $D_{\mathrm{TV}}$ and $D_{\mathrm{H}}$ are finite and the same in both directions, whereas $D_{\mathrm{KL}}$ depends on the direction.
 	\end{itemize}
 \end{example}

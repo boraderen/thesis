@@ -28,7 +28,7 @@ TP and FN count drifts, FP counts detections and TN counts signal windows. The z
 
 \begin{itemize}
 	\item \emph{Run~1:} Agents with our skill \texttt{kairo-drift-analyst} create configurations and thresholds (Section~\ref{sec:impl:kairo:agent}). On the Padella benchmark, agents using the models GPT-6.1 Sol analyze 22 logs, GPT-5.6 Luna seven logs and Claude Sonnet-5.5 five logs. All Rheon logs are analyzed by agents using the model GPT-6 Luna.
-	\item \emph{Run~2:} All configurations and thresholds are hand-tuned. Run~2 reveals that configurations exist in which the states detect the drifts.
+	\item \emph{Run~2:} All configurations and thresholds are hand-tuned. The tuning uses the ground truth of the evaluated logs. Run~2 reveals that configurations exist in which the states detect the drifts.
 	\item \emph{Clustering:} Figure~\ref{fig:eval:clustering} shows how often their configurations use each clustering algorithm.
 \end{itemize}
 

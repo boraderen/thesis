@@ -1,8 +1,6 @@
 # Agent instructions, results and notes
 /AGENTS.md
-/benchmark_rules.md
-/literature_review.md
-/how-to-write-papers.md
+/papers/literature_review.md
 
 # Agent config, skills and skill links
 /.claude/
@@ -17,7 +15,6 @@
 /benchmarks/
 
 # Local drafts and documents
-/thesis-de/
 /chapters/
 /paper/
 /presentation/

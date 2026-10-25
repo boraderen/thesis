@@ -69,8 +69,7 @@ compactions. Read them first.
 
 ## Reading list
 
-Paths from the repository root. If a section of the English thesis is still a placeholder, read it
-in `thesis-de/chapters/`.
+Paths from the repository root.
 
 1. `thesis/chapters/prelim.tex`: formal definitions (event logs, windows, drift modes, scaling,
    PCA, clustering, scores, divergences).
